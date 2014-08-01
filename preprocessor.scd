@@ -52,7 +52,7 @@ Proto {
 		// should replace from right to left -- don't break indices
 		~removeRegexpDups.(regexp.findRegexp("`[a-z0-9]+")).reverseDo { |found|
 			// allow escaping "\`"
-			if(found[0] == 0 or: { found[1][found[0]-1] != $\ }) {
+			if(found[0] == 0 or: { regexp[found[0]-1] != $\\ }) {
 				key = found[1].drop(1).asSymbol;
 				if(~tokens[key].notNil) {
 					// replace only one instance: before match ++ replacement ++ after match
