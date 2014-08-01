@@ -40,7 +40,7 @@ Proto {
 	);
 
 	~statements = (
-		clPatternSet: "`id(.`id)+ = .*"
+		clPatternSet: "^ *`id(.`id)* = .*"
 	);
 
 	// support functions
