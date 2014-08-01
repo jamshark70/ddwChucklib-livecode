@@ -93,6 +93,7 @@ Proto {
 // statement handlers will use instances, so I can set state variables
 Proto {
 	~clClass = BP;
+	~isMain = false;
 
 	~process = { |code|
 		~eqIndex = code.indexOf($=);
@@ -102,7 +103,7 @@ Proto {
 		~parseIDs.(code);
 		~parsePattern.(code);
 		// ~buildStatement.();
-		code.quote
+		// code.quote
 	};
 
 	~parseIDs = { |code|
@@ -136,14 +137,152 @@ Proto {
 		// parameter name
 		if(test.isNil) {
 			~parm = ~clClass.new(~objKey)[\defaultParm] ?? { \main };
+			~isMain = true;
 		} {
 			~parm = test.asSymbol;
 		};
 	};
+
+	// cases:
+	//   - composite (with \)
+	//   - no |
+	//   - has |
+	~cases = [
+		{ |code| code.includes($\\) } -> \compositePattern,
+		{ |code| code.includes($|) } -> \patternWithDividers,
+		true -> \patternWithoutDividers
+	];
+
+	~parsePattern = { |code|
+		var case;
+
+		code = code[~eqIndex + 1 ..].trim;
+
+		// cases
+		case = ~cases.detect { |case| case.key.(code) };
+		if(case.isNil) {
+			Error("clPatternSet: Pattern does not match any known cases. This should never happen").throw;
+		};
+		~patString = case.value.envirGet.(code);
+	};
+
+	~compositePattern = { |code|
+		Error("Composite patterns not supported yet").throw;
+	};
+
+	~patternWithDividers = { |code|
+		var obj = ~clClass.new(~objKey),
+		time = 0, division, value,
+		levels = Array.new, times = Array.new, deltas,
+		pat = code.findRegexp("\".*\"");
+		if(pat.size == 0 or: { pat.first.size <= 0 }) {
+			Error("clPatternSet: Couldn't find pattern string").throw
+		};
+		pat = pat[0][1];
+		pat = pat[1 .. pat.size-2].split($|).collectAs(~divideEvents, Array);
+		~parseBeatsPerBar.(code, pat);
+		pat.do { |seg, i|
+			division = ~beatsPerSeg.wrapAt(i) / seg.size;
+			seg.do { |event, i|
+				value = obj.valueForParm(event, ~parm);
+				if(value.notNil) {
+					levels = levels.add(value);
+					times = times.add(time + (division * i));
+				};
+			};
+			time = time + (division * seg.size);
+		};
+		#deltas, levels = ~timesToDeltas.(times, levels);
+		~deltas = deltas;
+		~levels = levels;
+		~times = times;
+		"Pstep(Pseq(%, 1), Pseq(%, 1), 1)".format(levels.asCompileString, deltas.asCompileString).postcs;
+	};
+
+	~patternWithoutDividers = { |code|
+		var obj = ~clClass.new(~objKey),
+		time = 0, division, value,
+		levels = Array.new, times = Array.new, deltas,
+		pat = code.findRegexp("\".*\"");
+		if(pat.size == 0 or: { pat.first.size <= 0 }) {
+			Error("clPatternSet: Couldn't find pattern string").throw
+		};
+		pat = pat[0][1];
+		pat = [pat[1 .. pat.size-2].collect(~divideEvents)];
+		~parseBeatsPerBar.(code, pat, $/);
+		division = ~beatsPerSeg[0] / pat[0].size;
+		pat[0].do { |event, i|
+			value = obj.valueForParm(event, ~parm);
+			if(value.notNil) {
+				levels = levels.add(value);
+				times = times.add(time + (division * i));
+			};
+		};
+		#deltas, levels = ~timesToDeltas.(times, levels);
+		~deltas = deltas;
+		~levels = levels;
+		~times = times;
+		"Pstep(Pseq(%, 1), Pseq(%, 1), 1)".format(levels.asCompileString, deltas.asCompileString).postcs;
+	};
+
+	~divideEvents = { |seg|
+		// for now: one char per event
+		// later, this will support pitches and ties/slurs
+		seg
+	};
+
+	// matchOverride needs refactoring
+	~parseBeatsPerBar = { |code, pat, matchOverride|
+		var obj = ~clClass.new(~objKey),
+		quoteI = code.indexOf($"), div, total,
+		matchArray = [code.first, matchOverride];
+		case { matchArray.any(_.isDecDigit) } {
+			~beatsPerBar = code[.. quoteI - 1].interpret; // allows math for bpb
+			~beatsPerSeg = [~beatsPerBar / pat.size];
+		}
+		// additive rhythm: all events are equal duration; assume BP's subdivision if not given
+		{ matchArray.any(_ == $+) } {
+			div = code[1 .. quoteI - 1].trim;
+			if(div.notEmpty) {
+				div = div.interpret;
+			} {
+				div = obj.division ?? { 0.25 };
+			};
+			~beatsPerSeg = pat.collect({ |events| events.size * div });
+			~beatsPerBar = ~beatsPerSeg.sum;
+		}
+		// divide BP's bar length equally by segments (may create overlapping subdivisions)
+		{ matchArray.any(_ == $/) } {
+			~beatsPerBar = ~clClass.new(~objKey).beatsPerBar;
+			~beatsPerSeg = [~beatsPerBar / pat.size];
+		}
+		{
+			~beatsPerBar = pat.size;
+			~beatsPerSeg = [~beatsPerBar];
+		};  // default case
+		~beatsPerBar
+	};
+
+	~timesToDeltas = { |times, levels|
+		var deltas = (times ++ ~beatsPerBar).differentiate;
+		if(times.first == 0) {
+			deltas = deltas.drop(1);
+		} {
+			deltas[0] = Rest(times[0]);
+			levels = levels.insert(0, levels[0]);
+		};
+		[deltas, levels]
+	};
 }.import((chucklibLiveCode: #[tokens, replaceRegexpMacros, removeRegexpDups, removeDupIndices]), #[tokens]) => PR(\clPatternSet);
 )
 
-Proto { ~defaultParm = \dur } => BP(\kik);
+BP(\kik).free;
+Proto {
+	~defaultParm = \dur;
+	~valueForParm = { |event| if(event == $x) { 0 } };
+	~beatsPerBar = 4;
+	~division = 0.25;
+} => BP(\kik);
 
 /kik.k1 = 'xxxx';
 /kik.k1 .xyz = 'xxxx';
@@ -151,5 +290,17 @@ Proto { ~defaultParm = \dur } => BP(\kik);
 
 /kik = 'xxxx';
 
+/kik = "x|x|x|x";
 PR(\chucklibLiveCode).instance.listVars;
 
+/kik = " x|x|x|x";
+/kik = 3"x|x|x|x";
+/kik = /"x|x|x";
+/kik = +1/4"x x|x |x x";
+
+/kik = "xxxx";
+
+/kik = /"xxxx";
+/kik = +0.5"x x xx x";
+
+/kik = "x x xx x";
