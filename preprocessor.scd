@@ -13,7 +13,18 @@ this.preProcessor = { |code|
 
 (
 Proto {
-	~process = {
+	~process = { |code|
+		var result;
+		block { |break|
+			~statements.keysValuesDo { |key, value|
+				if(~replaceRegexpMacros.(value).matchRegexp(code)) {
+					result = key.envirGet.value(code);
+					break.(result);
+				};
+			};
+			"Code does not match any known cl-livecode statement template. Ignored.".warn;
+			nil
+		};
 	};
 
 	~tokens = (
@@ -26,6 +37,7 @@ Proto {
 	);
 
 	~patternSet = { |code|
+		"did patternSet".debug;
 	};
 
 	// support functions
@@ -69,3 +81,5 @@ Proto {
 } => PR(\chucklibLiveCode);
 )
 
+PR(\chucklibLiveCode).process("kik.k1 = 'xxxx'");
+PR(\chucklibLiveCode).process("flippityblargh");
