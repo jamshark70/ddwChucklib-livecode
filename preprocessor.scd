@@ -102,7 +102,7 @@ Proto {
 		};
 		~parseIDs.(code);
 		~parsePattern.(code);
-		// ~buildStatement.();
+		~buildStatement.();
 		// code.quote
 	};
 
@@ -232,7 +232,7 @@ Proto {
 	};
 
 	// matchOverride needs refactoring
-	~parseBeatsPerBar = { |code, pat, matchOverride|
+	~parseBeatsPerBar = { |code, pat, matchOverride(1.asAscii)|
 		var obj = ~clClass.new(~objKey),
 		quoteI = code.indexOf($"), div, total,
 		matchArray = [code.first, matchOverride];
@@ -273,15 +273,34 @@ Proto {
 		};
 		[deltas, levels]
 	};
+
+	// CODE GENERATION
+
+	~buildStatement = {
+		var stmt = "%(%).setPattern(%, %, %);".format(
+			~clClass, ~objKey.asCompileString,
+			~phrase.asCompileString, ~parm.asCompileString,
+			~patString
+		);
+		if(~isMain) {
+			stmt = stmt + "%(%).setPattern(%, %, Pseq(%, inf))".format(
+				~clClass, ~objKey.asCompileString,
+				~phrase.asCompileString, \dur.asCompileString,
+				~deltas.asCompileString
+			)
+		};
+		stmt.postcs
+	};
 }.import((chucklibLiveCode: #[tokens, replaceRegexpMacros, removeRegexpDups, removeDupIndices]), #[tokens]) => PR(\clPatternSet);
 )
 
 BP(\kik).free;
 Proto {
-	~defaultParm = \dur;
+	~defaultParm = \go;
 	~valueForParm = { |event| if(event == $x) { 0 } };
 	~beatsPerBar = 4;
 	~division = 0.25;
+	~setPattern = { |... args| args.asCompileString.debug("setPattern") };
 } => BP(\kik);
 
 /kik.k1 = 'xxxx';
@@ -304,3 +323,5 @@ PR(\chucklibLiveCode).instance.listVars;
 /kik = +0.5"x x xx x";
 
 /kik = "x x xx x";
+
+/kik.main.parm2 = "x x xx x";
