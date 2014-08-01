@@ -95,6 +95,10 @@ Proto {
 	~clClass = BP;
 
 	~process = { |code|
+		~eqIndex = code.indexOf($=);
+		if(~eqIndex.isNil) {
+			Error("patternSet statement has no '=': This should never happen").throw;
+		};
 		~parseIDs.(code);
 		~parsePattern.(code);
 		// ~buildStatement.();
@@ -103,41 +107,37 @@ Proto {
 
 	~parseIDs = { |code|
 		var i, ids, test;
-		i = code.indexOf($=);  // everything before this should be the ID string
-		if(i.notNil) {
-			ids = code[..i-1].split($.).collect(_.trim);  // wslib dependency
-			ids = Pseq(ids).asStream;
+		// everything before ~eqIndex should be the ID string
+		ids = code[.. ~eqIndex - 1].split($.).collect(_.trim);  // wslib dependency
+		ids = Pseq(ids).asStream;
 
-			// class (I expect this won't be used often)
+		// class (I expect this won't be used often)
+		test = ids.next;
+		if(test.first.isUpper) {
+			~clClass = test.asSymbol.asClass;
 			test = ids.next;
-			if(test.first.isUpper) {
-				~clClass = test.asSymbol.asClass;
-				test = ids.next;
-			};
+		};
 
-			// chucklib object key
-			~objKey = test.asSymbol;  // really? what about array types?
-			if(~clClass.exists(~objKey).not) {
-				Error("clPatternSet: %(%) does not exist.".format(~clClass.name, ~objKey.asCompileString)).throw;
-			};
-			test = ids.next;
+		// chucklib object key
+		~objKey = test.asSymbol;  // really? what about array types?
+		if(~clClass.exists(~objKey).not) {
+			Error("clPatternSet: %(%) does not exist.".format(~clClass.name, ~objKey.asCompileString)).throw;
+		};
+		test = ids.next;
 
-			// phrase name
-			if(test.isNil) {
-				~phrase = \main;
-			} {
-				~phrase = test.asSymbol;
-			};
-			test = ids.next;
-
-			// parameter name
-			if(test.isNil) {
-				~parm = ~clClass.new(~objKey)[\defaultParm] ?? { \main };
-			} {
-				~parm = test.asSymbol;
-			};
+		// phrase name
+		if(test.isNil) {
+			~phrase = \main;
 		} {
-			Error("patternSet statement has no '=': This should never happen").throw;
+			~phrase = test.asSymbol;
+		};
+		test = ids.next;
+
+		// parameter name
+		if(test.isNil) {
+			~parm = ~clClass.new(~objKey)[\defaultParm] ?? { \main };
+		} {
+			~parm = test.asSymbol;
 		};
 	};
 }.import((chucklibLiveCode: #[tokens, replaceRegexpMacros, removeRegexpDups, removeDupIndices]), #[tokens]) => PR(\clPatternSet);
@@ -146,9 +146,10 @@ Proto {
 Proto { ~defaultParm = \dur } => BP(\kik);
 
 /kik.k1 = 'xxxx';
-/kik.k1.buf = 'xxxx';
+/kik.k1 .xyz = 'xxxx';
 /PR.kik.k1.buf = 'xxxx';  // should throw error
+
+/kik = 'xxxx';
 
 PR(\chucklibLiveCode).instance.listVars;
 
-PR(\chucklibLiveCode).instance.env
