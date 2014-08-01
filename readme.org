@@ -1,0 +1,56 @@
+* chucklib-livecode
+
+An experimental framework for live-coding using ddwChucklib objects in
+the SuperCollider programming language.
+
+It's far from complete and it may prove that the design is unworkable,
+but I just wanted to get started.
+
+This design will be more suited to algorave music (algorithmic dance
+music in clubs, often with some degree of live coding), but I hope it
+will become flexible enough for other kinds of experimental music.
+
+** Design overview
+
+In /chucklib/, =BP= objects play patterns to make sounds. Using this
+framework, =BPs= should conform to an interface whose details are
+still in flux. In general:
+
+- A data structure mapping parameter values onto single-character IDs,
+  used by a BP method =valueForParm=. (You could also override this
+  method.)
+
+- A default parameter key. This will set the rhythm for this BP.
+
+- Timing information: =beatsPerBar=, =division=.
+
+With this information provided, you can improvise new patterns using a
+parser hooked into the interpreter's =preProcessor=. For instance:
+
+#+begin_example
+/kik = "xxxx";   // 4otf
+
+/kik.fill1 = "x|x|x|x  x";  // trailing 16th-note
+
+/kik.triple = /"xxx";  // 3 divided over the bar
+
+/hh = ".-.-.-.-";  // normal offbeats
+
+/hh = ".-|. -^| ^- |.-";  // extra emphasis on 2-a and 3-e
+
+// not supported yet, but soon
+/kik/hh/snr+  // play
+/kik/hh/snr+4  // play on next quant = 4
+/kik/hh/snr-  // stop
+#+end_example
+
+Eventually I'll add support for writing pitches... still thinking about how to do that.
+
+* License
+
+For now, I will license this under Creative Commons CC-BY-NC-SA
+4.0. You may create a derivative project, provided you don't use the
+code commercially and, if you release your code, you should credit me
+and license it under CC-BY-NC-SA or a more permissive license.
+
+[[http://creativecommons.org/licenses/by-nc-sa/4.0/]]
