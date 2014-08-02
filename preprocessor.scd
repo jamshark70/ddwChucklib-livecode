@@ -1,6 +1,6 @@
 this.preProcessor = { |code|
 	if(code.first == $/) {
-		\chucklibLiveCode.eval(code.drop(1))
+		\chucklibLiveCode.eval(code)
 	} {
 		code
 	}
@@ -8,8 +8,87 @@ this.preProcessor = { |code|
 
 // main preprocessor
 { |code|
-	PR(\chucklibLiveCode)/*.copy?*/.process(code);
+	code = \clParseIntoStatements.eval(code);
+	code.do { |stmt, i|
+		if(stmt.first == $/) {
+			code[i] = PR(\chucklibLiveCode)/*.copy?*/.process(stmt.drop(1));
+		};
+	};
+	code.join(";\n");
 } => Func(\chucklibLiveCode);
+
+// remove slashes and semicolons
+// separate strings
+(
+{ |code|
+	var escape = false, betweenStmts = true, // quote = false, squote = false,
+	paren = 0, brackets = 0, braces = 0,
+	ch, statements = Array(), str = "", continue;
+	code = CollStream(code);
+	while { (ch = code.next).notNil } {
+		case
+		{ ch == $; and: { [paren, brackets, braces].every(_ == 0) } } {
+			statements = statements.add(str);
+			str = "";
+			betweenStmts = true;
+		}
+		{ betweenStmts and: { ch.isSpace.not } } {
+			betweenStmts = false;
+			str = String.with(ch);  // remove dead matter between statements
+		}
+		{ betweenStmts /*and: { ch.isSpace }*/ } {
+			nil
+		}
+		{ ch == $\" } {
+			continue = true;
+			str = str ++ ch;
+			while { continue and: { (ch = code.next).notNil } } {
+				switch(ch)
+				{ $\\ } {
+					escape = escape.not;
+				}
+				{ $\" } {
+					str = str ++ ch;
+					if(escape) {
+						escape = false;
+					} {
+						continue = false;
+					}
+				}
+				{ str = str ++ ch }
+			}
+		}
+		{ ch == $\" } {
+			continue = true;
+			str = str ++ ch;
+			while { continue and: { (ch = code.next).notNil } } {
+				switch(ch)
+				{ $\\ } {
+					escape = escape.not;
+				}
+				{ $\" } {
+					str = str ++ ch;
+					if(escape) {
+						escape = false;
+					} {
+						continue = false;
+					}
+				}
+				{ str = str ++ ch }
+			}
+		}
+		// because a ; inside grouping delimiters should not end a statement
+		{ ch == $( } { str = str ++ ch; paren = paren + 1 }
+		{ ch == $) } { str = str ++ ch; paren = paren - 1 }
+		{ ch == $[ } { str = str ++ ch; brackets = brackets + 1 }
+		{ ch == $] } { str = str ++ ch; brackets = brackets - 1 }
+		{ ch == ${ } { str = str ++ ch; braces = braces + 1 }
+		{ ch == $} } { str = str ++ ch; braces = braces - 1 }
+		{ str = str ++ ch };  // default case
+	};
+	statements.add(str)
+} => Func(\clParseIntoStatements);
+);
 
 (
 Proto {
@@ -140,6 +219,7 @@ Proto {
 			~isMain = true;
 		} {
 			~parm = test.asSymbol;
+			~isMain = (~parm == ~clClass.new(~objKey)[\defaultParm]);
 		};
 	};
 
@@ -278,19 +358,19 @@ Proto {
 	// CODE GENERATION
 
 	~buildStatement = {
-		var stmt = "%(%).setPattern(%, %, %);".format(
+		var stmt = "%(%).setPattern(%, %, %)".format(
 			~clClass, ~objKey.asCompileString,
 			~phrase.asCompileString, ~parm.asCompileString,
 			~patString
 		);
 		if(~isMain) {
-			stmt = stmt + "%(%).setPattern(%, %, Pseq(%, inf))".format(
+			stmt = stmt ++ ";\n%(%).setPattern(%, %, Pseq(%, inf))".format(
 				~clClass, ~objKey.asCompileString,
 				~phrase.asCompileString, \dur.asCompileString,
 				~deltas.asCompileString
 			)
 		};
-		stmt.postcs
+		stmt;
 	};
 }.import((chucklibLiveCode: #[tokens, replaceRegexpMacros, removeRegexpDups, removeDupIndices]), #[tokens]) => PR(\clPatternSet);
 )
