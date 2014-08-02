@@ -1,7 +1,8 @@
 BP(\kik).free;
 Proto {
 	~defaultParm = \go;
-	~valueForParm = { |event| if(event == $x) { 0 } };
+	~map = ($x: 1, $.: 0.1);
+	~valueForParm = { |event| ~map[event] };
 	~beatsPerBar = 4;
 	~division = 0.25;
 	~setPattern = { |... args| args.asCompileString.debug("setPattern") };
@@ -29,3 +30,18 @@ PR(\chucklibLiveCode).instance.listVars;
 /kik = "x x xx x";
 
 /kik.main.parm2 = "x x xx x";
+
+
+
+
+\clParseIntoStatements.eval("x = x + 1; y = y + 1");
+
+\clParseIntoStatements.eval("x = (x + 1; x + 2); y = y + 1");
+
+\clParseIntoStatements.eval("/kik = \"xxxx\"; /hh = \".-.-.-.-\"");
+
+\chucklibLiveCode.eval("x = x + 1; y = y + 1");
+
+\chucklibLiveCode.eval("/kik.main.go = \"xxxx\";");
+
+\chucklibLiveCode.eval("/kik.main.go = \"xxxx\"; /kik.main.amp = \"x|x|x  .|x\"");
