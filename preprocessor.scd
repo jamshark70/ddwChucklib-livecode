@@ -342,16 +342,16 @@ Proto {
 	};
 
 	// matchOverride needs refactoring
-	~parseBeatsPerBar = { |code, pat, matchOverride(1.asAscii)|
+	~parseBeatsPerBar = { |code, pat, matchOverride|
 		var obj = ~clClass.new(~objKey),
 		quoteI = code.indexOf($"), div, total,
-		matchArray = [code.first, matchOverride];
-		case { matchArray.any(_.isDecDigit) } {
+		matchChar = code.first ?? { matchOverride ?? { 1.asAscii } };
+		case { matchChar.isDecDigit } {
 			~beatsPerBar = code[.. quoteI - 1].interpret; // allows math for bpb
 			~beatsPerSeg = [~beatsPerBar / pat.size];
 		}
 		// additive rhythm: all events are equal duration; assume BP's subdivision if not given
-		{ matchArray.any(_ == $+) } {
+		{ matchChar == $+ } {
 			div = code[1 .. quoteI - 1].trim;
 			if(div.notEmpty) {
 				div = div.interpret;
@@ -363,7 +363,7 @@ Proto {
 		}
 		// divide BP's bar length equally by segments (may create overlapping subdivisions)
 		// now the default case is the same as / so, comment out for now
-		// { matchArray.any(_ == $/) } {
+		// { matchChar == $/ } {
 		// 	~beatsPerBar = ~clClass.new(~objKey).beatsPerBar;
 		// 	~beatsPerSeg = [~beatsPerBar / pat.size];
 		// }

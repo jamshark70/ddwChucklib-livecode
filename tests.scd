@@ -17,14 +17,18 @@ Proto {
 /kik = "x|x|x|x";
 PR(\chucklibLiveCode).instance.listVars;
 
-/kik = " x|x|x|x";
-/kik = 3"x|x|x|x";
-/kik = /"x|x|x";
-/kik = +1/4"x x|x |x x";
+/kik = " x|x|x|x";  // || segments occupy equal divisions of the bar
+/kik = 3"x|x|x|x";  // 3 beats per bar
+/kik = /"x|x|x";    // redundant: same as no marker
+/kik = +1/4"x x|x |x x";  // additive: each slot is 1/4 beat
+
+/kik = +1/4"x xx x x";  // additive: each slot is 1/4 beat (| = ignored, maybe visually useful)
 
 /kik = "xxxx";
 
 /kik = /"xxxx";
+/kik = /"xxx";
+
 /kik = +0.5"x x xx x";
 
 /kik = "x x xx x";
