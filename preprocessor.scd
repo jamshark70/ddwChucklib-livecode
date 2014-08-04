@@ -10,7 +10,7 @@ this.preProcessor = { |code|
 { |code|
 	code = \clParseIntoStatements.eval(code);
 	code.do { |stmt, i|
-		if(stmt.first == $/) {
+		if(stmt.first == $/ and: { stmt[1] != $/ }) {
 			code[i] = PR(\chucklibLiveCode)/*.copy?*/.process(stmt.drop(1));
 		};
 	};
@@ -23,14 +23,25 @@ this.preProcessor = { |code|
 { |code|
 	var escape = false, betweenStmts = true, // quote = false, squote = false,
 	paren = 0, brackets = 0, braces = 0,
-	ch, statements = Array(), str = "", continue;
+	ch, ch2, statements = Array(), str = String.new, continue;
 	code = CollStream(code);
 	while { (ch = code.next).notNil } {
 		case
 		{ ch == $; and: { [paren, brackets, braces].every(_ == 0) } } {
 			statements = statements.add(str);
-			str = "";
+			str = String.new;
 			betweenStmts = true;
+		}
+		{ ch == $/ } {
+			ch2 = code.next;
+			switch(ch2)
+			{ $/ } {
+				while { (ch = code.next).notNil and: { ch != $\n } };
+				code.pos = code.pos - 1;
+			}
+			// a separate function allows recursion for nesting
+			{ $* } { \clParseDelimComment.eval(code) }
+			{ if(ch2.notNil) { str = str.add(ch).add(ch2); betweenStmts = false; } };
 		}
 		{ betweenStmts and: { ch.isSpace.not } } {
 			betweenStmts = false;
@@ -88,6 +99,25 @@ this.preProcessor = { |code|
 	};
 	statements.add(str)
 } => Func(\clParseIntoStatements);
+
+// 'code' is a CollStream
+// assumes we've already read the slash-star
+{ |code|
+	var ch, ch2, continue = true;
+	while { (ch = code.next).notNil and: { continue } } {
+		switch(ch)
+		{ $/ } {
+			ch2 = code.next;
+			if(ch2 == $*) { \clParseDelimComment.eval(code) };  // recursion
+		}
+		{ $* } {
+			ch2 = code.next;
+			if(ch2 == $/) { continue = false };
+		}
+	};
+	if(ch.notNil) { code.pos = code.pos - 1 };
+	code
+} => Func(\clParseDelimComment);
 );
 
 (

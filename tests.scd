@@ -36,6 +36,9 @@ PR(\chucklibLiveCode).instance.listVars;
 
 \clParseIntoStatements.eval("x = x + 1; y = y + 1");
 
+\clParseIntoStatements.eval("x = x + 1; // xyz
+y = y + 1");
+
 \clParseIntoStatements.eval("x = (x + 1; x + 2); y = y + 1");
 
 \clParseIntoStatements.eval("/kik = \"xxxx\"; /hh = \".-.-.-.-\"");
@@ -45,3 +48,19 @@ PR(\chucklibLiveCode).instance.listVars;
 \chucklibLiveCode.eval("/kik.main.go = \"xxxx\";");
 
 \chucklibLiveCode.eval("/kik.main.go = \"xxxx\"; /kik.main.amp = \"x|x|x  .|x\"");
+
+
+c = CollStream(" abc */ def");
+\clParseDelimComment.eval(c);
+c.next
+
+c = CollStream(" abc /* def */ ghi */ jkl");
+\clParseDelimComment.eval(c);
+c.nextN(5);
+
+c = CollStream(" abc");
+\clParseDelimComment.eval(c);
+c.next;
+
+
+\clParseIntoStatements.eval("/kik = /* yoo hoo */ \"xxxx\"; /hh = \".-.-.-.-\"");
