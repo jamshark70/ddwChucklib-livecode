@@ -35,6 +35,7 @@ PR(\chucklibLiveCode).instance.listVars;
 
 /kik.main.parm2 = "x x xx x";
 
+/kik..parm2 = "x x xx x";
 
 
 

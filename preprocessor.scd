@@ -149,7 +149,7 @@ Proto {
 	);
 
 	~statements = (
-		clPatternSet: "^ *`id(\\.`id)* = .*"
+		clPatternSet: "^ *`id(\\.|`id)* = .*"
 	);
 
 	// support functions
@@ -236,7 +236,7 @@ Proto {
 		test = ids.next;
 
 		// phrase name
-		if(test.isNil) {
+		if(test.size == 0) {
 			~phrase = \main;
 		} {
 			~phrase = test.asSymbol;
@@ -244,7 +244,7 @@ Proto {
 		test = ids.next;
 
 		// parameter name
-		if(test.isNil) {
+		if(test.size == 0) {
 			~parm = ~clClass.new(~objKey)[\defaultParm] ?? { \main };
 			~isMain = true;
 		} {
