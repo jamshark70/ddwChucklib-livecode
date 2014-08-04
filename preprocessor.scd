@@ -144,8 +144,11 @@ Proto {
 	};
 
 	~tokens = (
-		id: "[A-Za-z0-9_]+",
-		int: "(-[0-9]+|[0-9]+)"
+		al: "A-Za-z",
+		dig: "0-9",
+		id: "[A-Za-z][A-Za-z0-9_]*",
+		int: "(-[0-9]+|[0-9]+)",
+		spc: " 	"  // space, tab, return
 	);
 
 	~statements = (
