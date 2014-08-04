@@ -148,11 +148,14 @@ Proto {
 		dig: "0-9",
 		id: "[A-Za-z][A-Za-z0-9_]*",
 		int: "(-[0-9]+|[0-9]+)",
+		// http://www.regular-expressions.info/floatingpoint.html
+		float: "[\\-+]?[0-9]*\\.?[0-9]+([eE][\\-+]?[0-9]+)?",
 		spc: " 	"  // space, tab, return
 	);
 
 	~statements = (
-		clPatternSet: "^ *`id(\\.|`id)* = .*"
+		clPatternSet: "^ *`id(\\.|`id)* = .*",
+		clStartStop: "^([/`spc]*`id)+[`spc]*[+-]"
 	);
 
 	// support functions
@@ -406,4 +409,43 @@ Proto {
 		stmt;
 	};
 }.import((chucklibLiveCode: #[tokens, replaceRegexpMacros, removeRegexpDups, removeDupIndices]), #[tokens]) => PR(\clPatternSet);
+
+Proto {
+	~regexp = PR(\chucklibLiveCode).replaceRegexpMacros("[+-][`spc]*[\\-0-9\\.]*|`id");
+	~floatRegexp = PR(\chucklibLiveCode).replaceRegexpMacros("^`float$");
+	~process = { |code|
+		var parsed = code.findRegexp(~regexp),
+		quant, method, keys, result = String.new;
+		if(parsed.size >= 1) {
+			parsed = parsed.separate { |a, b|
+				(a[1].first.tryPerform(\isAlpha) ? false).not
+			};
+			parsed.do { |row, i|
+				if("+-".includes(row.last[1].first)) {
+					quant = row.last[1].drop(1);
+					if(~floatRegexp.matchRegexp(quant)) {
+						quant = quant.interpret;
+					} {
+						quant = quant.trim;
+						if(quant.size == 0) {  // ok, no quant given
+							quant = -1;
+						} {
+							"clStartStop: % is not a valid quant indicator".format(row.last).warn;
+						};
+					};
+					if(row.last[1].first == $+) { method = \play } { method = \stop };
+					keys = row.drop(-1).flop[1].collect(_.asSymbol).select { |key| BP.exists(key) };
+					result = result ++ "BP(%).%(%)".format(
+						keys.asCompileString,
+						method, quant
+					);
+					if(i < (parsed.size - 1)) { code = code ++ ";\n" };
+				};
+			};
+		} {
+			Error("clStartStop: Regexp problem").throw;
+		};
+		result.debug("clStartStop result");
+	};
+}.import((chucklibLiveCode: #[tokens, replaceRegexpMacros, removeRegexpDups, removeDupIndices]), #[tokens]) => PR(\clStartStop);
 )

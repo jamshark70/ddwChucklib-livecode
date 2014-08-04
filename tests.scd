@@ -69,3 +69,11 @@ c.next;
 
 
 \clParseIntoStatements.eval("/kik = /* yoo hoo */ \"xxxx\"; /hh = \".-.-.-.-\"");
+
+
+// regexp for start/stop processes
+x = "/a/b/c d e +-1 z y --1".findRegexp(PR(\chucklibLiveCode).replaceRegexpMacros(
+	"[+-][`spc]*[\\-0-9\\.]*|`id"
+));
+
+x.separate { |a, b| a[1].first.isAlpha.not };

@@ -80,15 +80,21 @@ PR(\abstractLiveCode).chuck(BP(\kik), nil, (
 p = BP(\kik);
 p.phrases[\main].postcs;
 
+p.listMethods;
+
 p.play;
 
 TempoClock.tempo = 2;
+
+/kik+
 
 /kik = "xxxx"
 
 /kik = "x|x  x|x|x"
 
 /kik = "x|x  x|xx| x  "
+
+/kik-
 
 p.stop;
 
