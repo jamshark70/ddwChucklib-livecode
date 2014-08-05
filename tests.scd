@@ -124,3 +124,15 @@ x.splitArray(x.items, $|);
 
 
 /kik = ".b1*3.f1";
+
+
+
+// pitches?
+PR(\clPatternSet).copy.process("kik = \"0 |23\"");
+PR(\chucklibLiveCode).instance.listVars;
+
+PR(\clPatternSet).copy.process("kik = \"0 23\"");
+
+PR(\clPatternSet).copy.process("kik = \"1 3+4.\"");
+
+PR(\clPatternSet).copy.process("kik = \"0| |2.2. 2.|3\"");

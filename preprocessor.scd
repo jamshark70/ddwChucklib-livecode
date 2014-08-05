@@ -209,6 +209,7 @@ Proto {
 Proto {
 	~clClass = BP;
 	~isMain = false;
+	~isPitch = false;
 	// note: ~parm will be set to nil for composite patterns
 
 	~process = { |code|
@@ -322,7 +323,7 @@ Proto {
 	~patternWithDividers = { |code|
 		var obj = ~clClass.new(~objKey),
 		time = 0, division, value,
-		levels = Array.new, times = Array.new, deltas,
+		levels = Array.new, times = Array.new, legatos = Array.new, deltas,
 		pat = code.findRegexp("\".*\"");
 		if(pat.size == 0 or: { pat.first.size <= 0 }) {
 			Error("clPatternSet: Couldn't find pattern string").throw
@@ -333,51 +334,85 @@ Proto {
 		pat.do { |seg, i|
 			division = ~beatsPerSeg.wrapAt(i) / seg.size;
 			seg.do { |event, i|
-				value = obj.valueForParm(event, ~parm);
-				if(value.notNil) {
+				value = ~valueForParm.(event, obj, ~parm);
+				case
+				{ value.isArray } {
+					levels = levels.add(value[0]);
+					times = times.add(time + (division * i));
+					legatos = legatos.add(value[1]);
+				}
+				{ value.notNil } {
 					levels = levels.add(value);
 					times = times.add(time + (division * i));
+					legatos = legatos.add(0.98);
 				};
 			};
 			time = time + (division * seg.size);
 		};
-		#deltas, levels = ~timesToDeltas.(times, levels);
+		#deltas, levels, legatos = ~timesToDeltas.(times, levels, legatos);
 		~deltas = deltas;
 		~levels = levels;
 		~times = times;
+		~legatos = legatos;
 		"Pstep(Pseq(%, 1), Pseq(%, 1), 1)".format(levels.asCompileString, deltas.asCompileString).postcs;
 	};
 
 	~patternWithoutDividers = { |code|
 		var obj = ~clClass.new(~objKey),
 		time = 0, division, value,
-		levels = Array.new, times = Array.new, deltas,
+		levels = Array.new, times = Array.new, legatos = Array.new, deltas,
 		pat = code.findRegexp("\".*\"");
 		if(pat.size == 0 or: { pat.first.size <= 0 }) {
 			Error("clPatternSet: Couldn't find pattern string").throw
 		};
 		pat = pat[0][1];
-		pat = [pat[1 .. pat.size-2].collect(~divideEvents)];
+		// pat = [pat[1 .. pat.size-2].collectAs(~divideEvents, Array)];
+		pat = [~divideEvents.(pat[1 .. pat.size-2])];
 		~parseBeatsPerBar.(code, pat, $/);
 		division = ~beatsPerSeg[0] / pat[0].size;
 		pat[0].do { |event, i|
-			value = obj.valueForParm(event, ~parm);
-			if(value.notNil) {
+			value = ~valueForParm.(event, obj, ~parm);
+			case
+			{ value.isArray } {
+				levels = levels.add(value[0]);
+				times = times.add(time + (division * i));
+				legatos = legatos.add(value[1]);
+			}
+			{ value.notNil } {
 				levels = levels.add(value);
 				times = times.add(time + (division * i));
+				legatos = legatos.add(0.98);
 			};
 		};
-		#deltas, levels = ~timesToDeltas.(times, levels);
+		#deltas, levels, legatos = ~timesToDeltas.(times, levels, legatos);
 		~deltas = deltas;
 		~levels = levels;
 		~times = times;
+		~legatos = legatos;
 		"Pstep(Pseq(%, 1), Pseq(%, 1), 1)".format(levels.asCompileString, deltas.asCompileString).postcs;
 	};
 
 	~divideEvents = { |seg|
 		// for now: one char per event
 		// later, this will support pitches and ties/slurs
-		seg
+		var stream = CollStream(seg), ch, str,
+		result = Array.new;
+		// seg.asCompileString.debug(">> divideEvents");
+		while { (ch = stream.next).notNil } {
+			if(ch.isDecDigit) {
+				~isPitch = true;
+				str = String.with(ch);
+				while { (ch = stream.next).notNil and: { "+-',~_.".includes(ch) } } {
+					str = str.add(ch);
+				};
+				result = result.add(str);
+				if(ch.notNil) { stream.pos = stream.pos - 1 };
+			} {
+				result = result.add(ch);
+			};
+		};
+		// result.asCompileString.debug("<< divideEvents");
+		result
 	};
 
 	// matchOverride needs refactoring
@@ -413,17 +448,40 @@ Proto {
 		~beatsPerBar
 	};
 
-	~timesToDeltas = { |times, levels|
+	~timesToDeltas = { |times, levels, legatos|
 		var deltas = (times ++ ~beatsPerBar).differentiate;
 		if(times.first == 0) {
 			deltas = deltas.drop(1);
 		} {
 			deltas[0] = Rest(times[0]);
 			levels = levels.insert(0, levels[0]);
+			legatos = legatos.insert(0, legatos[0]);
 		};
-		[deltas, levels]
+		legatos = legatos.collect { |lg, i|
+			if(lg == 0.4) { 0.15 / deltas[i].value } { lg }
+		};
+		[deltas, levels, legatos]
 	};
 
+	~valueForParm = { |event, obj, parm|
+		var degree, legato = 0.9;
+		if(event.isString) {
+			degree = (event[0].ascii - 48).wrap(1, 10);
+			event.drop(1).do { |ch|
+				switch(ch)
+				{ $- } { degree = degree - 0.1 }
+				{ $+ } { degree = degree + 0.1 }
+				{ $, } { degree = degree - 7 }
+				{ $' } { degree = degree + 7 }
+				{ $~ } { legato = 1.01 }
+				{ $_ } { legato = 0.9 }
+				{ $. } { legato = 0.4 }
+			};
+			[degree, legato]
+		} {
+			obj.valueForParm(event, parm);
+		};
+	};
 	// CODE GENERATION
 
 	~buildStatement = {
@@ -437,6 +495,13 @@ Proto {
 				~clClass, ~objKey.asCompileString,
 				~phrase.asCompileString, \dur.asCompileString,
 				~deltas.asCompileString
+			)
+		};
+		if(~isPitch) {
+			stmt = stmt ++ ";\n%(%).setPattern(%, %, Pseq(%, inf))".format(
+				~clClass, ~objKey.asCompileString,
+				~phrase.asCompileString, \legato.asCompileString,
+				~legatos.asCompileString
 			)
 		};
 		stmt;
