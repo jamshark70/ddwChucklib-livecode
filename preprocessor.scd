@@ -209,6 +209,7 @@ Proto {
 Proto {
 	~clClass = BP;
 	~isMain = false;
+	// note: ~parm will be set to nil for composite patterns
 
 	~process = { |code|
 		~eqIndex = code.indexOf($=);
@@ -260,11 +261,15 @@ Proto {
 	};
 
 	// cases:
-	//   - composite (with \)
+	//   - composite
 	//   - no |
 	//   - has |
 	~cases = [
-		{ |code| ".(".includes(code[1].debug("test char")) } -> \compositePattern,
+		{ |code|
+			var i;
+			if(code[1] == $") { i = 1 } { i = 0 };
+			".(".includes(code[i])
+		} -> \compositePattern,
 		{ |code| code.includes($|) } -> \patternWithDividers,
 		true -> \patternWithoutDividers
 	];
@@ -287,13 +292,31 @@ Proto {
 		var stream, group;
 		~isMain = false;
 		~parm = nil;
-		code = code.drop(1).drop(-1);
-		if(code.first == $.) {
+		code = ~unquoteString.(code);
+		// code = code.drop(1).drop(-1);
+		if(code.first != $() {
 			code = code.drop(1) ++ $);
 		};
 		stream = CollStream(code);
 		group = PR(\clCompGrouping).copy.process(stream);
-		group.clumpOperators.asPatString;
+		group.clumpOperators.repeats_(inf).asPatString;
+	};
+	~unquoteString = { |str, pos = 0, delimiter = $"|
+		var i = str.indexOf(delimiter), j, escaped = false;
+		if(i.isNil) {
+			str
+		} {
+			j = i;
+			while {
+				j = j + 1;
+				j < str.size and: {
+					escaped or: { str[j] != delimiter }
+				}
+			} {
+				if(str[j] == $\\) { escaped = escaped.not } { escaped = false };
+			};
+			str[i + 1 .. j - 1];
+		};
 	};
 
 	~patternWithDividers = { |code|

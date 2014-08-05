@@ -124,5 +124,3 @@ x.splitArray(x.items, $|);
 
 
 /kik = ".b1*3.f1";
-
-Pseq([ Pn('b1', 3), 'f1' ])

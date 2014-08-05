@@ -10,11 +10,12 @@ Proto {
 	);
 	~beatsPerBar = { ~clock.beatsPerBar };
 	~division = 0.25;
+	~phraseSeq = \main;
 
 	~prep = {
 		if(~phrases.isNil) {
 			~phrases = (
-				main: PbindProxy(\dur, Pfunc { Rest(~clock.beatsPerBar) })
+				main: Pchain(PbindProxy(\dur, Pfuncn { Rest(~clock.beatsPerBar) }), ~defaults)
 			);
 		};
 		~userprep.();
@@ -29,22 +30,40 @@ Proto {
 		if(dict.notNil) { dict[event] };  // else nil
 	};
 
+	~defaults = ();  // or Pbind
+
 	~setPattern = { |phrase, parm, pattern|
 		var pat = ~phrases[phrase];
 		if(pat.isNil) {
 			pat = PbindProxy.new;
-			~phrases[phrase] = pat;
+			~phrases[phrase] = Pchain(pat, ~defaults);
+		} {
+			pat = pat.patterns.first;
 		};
 		~clock.schedAbs(~clock.nextBar - 0.001, e {
-			pat.set(parm, pattern);
+			if(parm.notNil) {
+				pat.set(parm, pattern);
+			} {
+				// composite pattern
+				~phraseSeq = pattern;
+				if(~isPlaying) { ~reschedule.() };
+			};
 			nil
 		});
 	};
 
 	~asPattern = {
-		PnNilSafe(Plazy {
-			~phrases[\main]
-		}, inf, 20)
+		Psym(BPStream(\phraseSeq), ~phrases);
+		// PnNilSafe(Plazy {
+		// 	~phrases[\main]
+		// }, inf, 20)
+	};
+
+	~reschedule = { |quant(-1)|
+		var oldStreamPlayer = ~eventStreamPlayer,
+		newStreamPlayer = BP(~collIndex).asEventStreamPlayer;
+		~clock.schedAbs(~clock.nextTimeOnGrid(quant) - 0.001, { oldStreamPlayer.stop });
+		~clock.play(newStreamPlayer.refresh, quant);
 	};
 } => PR(\abstractLiveCode);
 )
@@ -65,19 +84,22 @@ PR(\abstractLiveCode).chuck(BP(\kik), nil, (
 	},
 	userfree: { ~chan.free },
 
-	time: 0.25,
+	time: 0.12,
+	defaults: Pbind(
+		\instrument, \kik,
+		\time, Plazy { BPStream(\time) }
+	),
 
 	phrases: (
-		main: PbindProxy(
-			\instrument, \kik,
-			\time, BPStream(\time),
-			\dur, Pn(Rest(4), inf),  // this will be overridden
-		)
+		main: Pchain(PbindProxy(
+			\dur, Pn(Rest(4), 1)  // this will be overridden
+		), Plazy { PnNilSafe(~defaults, inf) })
 	)
 ));
 )
 
 p = BP(\kik);
+TempoClock.default => p;
 p.phrases[\main].postcs;
 
 p.listMethods;
@@ -92,10 +114,15 @@ TempoClock.tempo = 2;
 
 /kik = "x|x  x|x|x"
 
-/kik = "x|x  x|xx| x  "
+/kik.f1 = "x|x  x|xx| x  "
+
+/kik = .main*3.f1
 
 /kik-
 
 p.stop;
+p.isPlaying;
 
 p.free;
+
+p.phrases.inspect
