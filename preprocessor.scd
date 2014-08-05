@@ -264,7 +264,7 @@ Proto {
 	//   - no |
 	//   - has |
 	~cases = [
-		{ |code| code.includes($\\) } -> \compositePattern,
+		{ |code| ".(".includes(code.first) } -> \compositePattern,
 		{ |code| code.includes($|) } -> \patternWithDividers,
 		true -> \patternWithoutDividers
 	];
@@ -283,7 +283,10 @@ Proto {
 	};
 
 	~compositePattern = { |code|
-		Error("Composite patterns not supported yet").throw;
+		var stream = CollStream(code),
+		groups = PR(\clCompGrouping).copy.process(stream);
+		// check separators and make sequence/random objects
+		// render
 	};
 
 	~patternWithDividers = { |code|
@@ -409,6 +412,104 @@ Proto {
 		stmt;
 	};
 }.import((chucklibLiveCode: #[tokens, replaceRegexpMacros, removeRegexpDups, removeDupIndices]), #[tokens]) => PR(\clPatternSet);
+
+// model composite-pattern elements as objects
+
+Proto {
+
+	~asPatString = { |stream|
+		nil
+	};
+} => PR(\clCompSequence);
+
+Proto {
+	~repeats = 1;
+	~process = { |stream|
+		var ch, continue = true, str = String.new, rpt;
+		~items = Array();
+		while { continue and: { (ch = stream.next).notNil } } {
+			case
+			{ ".|".includes(ch) } {   // operators, add as chars
+				~items = ~items.add(str).add(ch);
+				str = String.new;
+			}
+			{ ch == $( } {
+				if(str.size > 0) { ~items = ~items.add(str) };
+				~items = ~items.add(PR(\clCompGrouping).copy.process(stream));
+				str = String.new;
+			}
+			{ ch == $) } {
+				if(str.size > 0) { ~items = ~items.add(str) };
+				continue = false;
+			}
+			{ ch == $* } {
+				rpt = tryNoTrace {
+					~scanInt.(stream);
+				} { |exc|
+					if(exc.what == \nonInt) { nil } { exc.throw }
+				};
+				if(rpt.notNil) {
+					~items = ~items.add(rpt ++ "*" ++ str);
+					str = String.new;
+				} {
+					"Composite pattern: Ignored invalid repeat string %".format(rpt).warn;
+				};
+				"\nCollStream state:".postln;
+				stream.collection.postln;
+				(String.fill(stream.pos, $ ) ++ "^\n").postln;
+			}
+			{ ch.isAlpha or: { ch.isDecDigit or: { ch == $_ } } } {
+				str = str ++ ch
+			}
+			{
+				"Composite pattern: Unexpected character % in grouping".format(ch).warn;
+			};
+		};
+		if(continue) {
+			Error("Composite pattern: Unclosed () group").throw;
+		} {
+			ch = stream.next;
+			if(ch == $*) {
+				~repeats = tryNoTrace {
+					~scanInt.(stream).asInteger;
+				} { |exc|
+					if(exc.what == \nonInt) { 1 } { exc.throw };
+				};
+			} {
+				stream.pos = stream.pos - 1;
+			};
+		};
+		currentEnvironment
+	};
+
+	~scanInt = { |stream|
+		var str = String.new, ch;
+		while { (ch = stream.next).notNil and: { ch.isDecDigit } } {
+			str = str ++ ch;
+		};
+		stream.pos = stream.pos - 1;
+		if(str.isEmpty) {
+			Exception(\nonInt).throw;
+		};
+		str // .asInteger;
+	};
+
+	~asPatString = { |stream|
+		nil
+	};
+} => PR(\clCompGrouping);
+
+Proto {
+
+	~asPatString = { |stream|
+		nil
+	};
+} => PR(\clCompRandom);
+
+// LATER
+// Proto {
+// } => PR(\clCompWeightedRand);
+
 
 Proto {
 	~regexp = PR(\chucklibLiveCode).replaceRegexpMacros("[+-][`spc]*[\\-0-9\\.]*|`id");

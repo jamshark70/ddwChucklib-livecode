@@ -77,3 +77,16 @@ x = "/a/b/c d e +-1 z y --1".findRegexp(PR(\chucklibLiveCode).replaceRegexpMacro
 ));
 
 x.separate { |a, b| a[1].first.isAlpha.not };
+
+
+// composite processes
+PR(\clCompGrouping).copy.process(CollStream("abc.def.ghi)")).items;
+
+x = PR(\clCompGrouping).copy.process(CollStream("abc.(def.ghi))")).items;
+x[2].items
+
+x = PR(\clCompGrouping).copy.process(CollStream("abc.(def.ghi)*3)*10"));
+x.listVars
+x.items[2].listVars
+
+x = PR(\clCompGrouping).copy.process(CollStream("abc.(def.ghi*5)*3)*10"));
