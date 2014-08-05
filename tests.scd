@@ -80,7 +80,29 @@ x.separate { |a, b| a[1].first.isAlpha.not };
 
 
 // composite processes
-PR(\clCompGrouping).copy.process(CollStream("abc.def.ghi)")).items;
+x = PR(\clCompGrouping).copy.process(CollStream("abc.def.ghi)"));
+x.listVars;
+x.clumpOperators;
+x.listVars;
+
+x = PR(\clCompGrouping).copy.process(CollStream("abc.def|ghi)"));
+x.listVars;
+x.clumpOperators;
+x.listVars;
+x.items.listVars;
+x.items.items.do(_.listVars);
+
+x = PR(\clCompGrouping).copy.process(CollStream("abc.(def|ghi))"));
+x.listVars;
+x.clumpOperators;
+x.listVars;
+x.items.listVars;
+x.items.items[1].listVars;
+x.items.items[1].items.listVars;
+
+x.items.items[2].clumpOperators;
+x.items.items[2].listVars;
+x.items.items[2].items.listVars;
 
 x = PR(\clCompGrouping).copy.process(CollStream("abc.(def.ghi))")).items;
 x[2].items
@@ -90,3 +112,8 @@ x.listVars
 x.items[2].listVars
 
 x = PR(\clCompGrouping).copy.process(CollStream("abc.(def.ghi*5)*3)*10"));
+x.listVars;
+
+x = PR(\clCompGrouping).copy.process(CollStream("abc.def|ghi)"));
+x.listVars;
+x.splitArray(x.items, $|);

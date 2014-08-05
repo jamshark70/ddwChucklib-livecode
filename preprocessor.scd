@@ -283,7 +283,11 @@ Proto {
 	};
 
 	~compositePattern = { |code|
-		var stream = CollStream(code),
+		var stream, groups;
+		if(code.first != $() {
+			code = code ++ $);
+		};
+		stream = CollStream(code);
 		groups = PR(\clCompGrouping).copy.process(stream);
 		// check separators and make sequence/random objects
 		// render
@@ -416,13 +420,75 @@ Proto {
 // model composite-pattern elements as objects
 
 Proto {
-
+	~type = \seq;
+	~prep = { |items|
+		~items = items;
+		currentEnvironment
+	};
 	~asPatString = { |stream|
 		nil
+	};
+	~clumpOperators = {
+		~items = ~splitArray.(~items, $.).debug("seq: split");
+		~items = ~items.collect { |item|
+			case
+			{ item.isKindOf(Array) } {
+				if(item.size > 1) {
+					PR(\clCompGrouping).copy.prep(item).clumpOperators;
+				} {
+					item = item[0];
+					if(item.isKindOf(Proto) and: { item.type == \group }) {
+						"seq: hit a group, clumping recursion".debug;
+						item.listVars;
+						item.clumpOperators;
+					} {
+						item
+					}
+				};
+			}
+			{ item.isKindOf(Proto) and: { item.type == \group } } {
+				"seq: hit a group, clumping recursion".debug;
+				item.listVars;
+				item.clumpOperators;
+			}
+			{ item }
+		};
+		// ~items = PR(\clCompSequence).copy.prep(~items);
+		currentEnvironment
+	};
+	~splitArray = { |array, delimiter|
+		var result = Array.new, subarray = Array.new;
+		array.do { |item|
+			if(item == delimiter) {
+				result = result.add(subarray);
+				subarray = Array.new;
+			} {
+				subarray = subarray.add(item);
+			};
+		};
+		result.add(subarray)
 	};
 } => PR(\clCompSequence);
 
 Proto {
+	~type = \rand;
+	~prep = { |items|
+		~items = items;
+		currentEnvironment
+	};
+	~asPatString = { |stream|
+		nil
+	};
+	~clumpOperators = { currentEnvironment };
+} => PR(\clCompRandom);
+
+// LATER
+// Proto {
+// 	~clumpOperators = { currentEnvironment };
+// } => PR(\clCompWeightedRand);
+
+Proto {
+	~type = \group;
 	~repeats = 1;
 	~process = { |stream|
 		var ch, continue = true, str = String.new, rpt;
@@ -454,9 +520,9 @@ Proto {
 				} {
 					"Composite pattern: Ignored invalid repeat string %".format(rpt).warn;
 				};
-				"\nCollStream state:".postln;
-				stream.collection.postln;
-				(String.fill(stream.pos, $ ) ++ "^\n").postln;
+				// "\nCollStream state:".postln;
+				// stream.collection.postln;
+				// (String.fill(stream.pos, $ ) ++ "^\n").postln;
 			}
 			{ ch.isAlpha or: { ch.isDecDigit or: { ch == $_ } } } {
 				str = str ++ ch
@@ -482,6 +548,39 @@ Proto {
 		currentEnvironment
 	};
 
+	~clumpOperators = {
+		// ~clumpRandomOps.();  // if no randomizers, adds an extra array layer for the sequence
+		if(~items.includes($|)) {
+			~items = ~splitArray.(~items, $|).debug("split");
+			~items = ~items.collect { |item|
+				case
+				{ item.isKindOf(Array) } {
+					if(item.size > 1) {
+						PR(\clCompSequence).copy.prep(item).debug("made seq, calling clumpops").clumpOperators;
+					} {
+						item[0]
+					};
+				}
+				{ item.isKindOf(Proto) and: { item.type == \group } } {
+					"hit a group, clumping recursion".debug;
+					item.clumpOperators;
+				}
+			};
+			~items = PR(\clCompRandom).copy.prep(~items);
+		} {
+			~items = PR(\clCompSequence).copy.prep(~items).debug("made seq, calling clumpops").clumpOperators; // [~items];
+		};
+		currentEnvironment
+	};
+	// ~clumpRandomOps = {
+	// 	var split;
+	// 	if(~items.includes($|)) {
+	// 		split = ~splitArray.(~items, $|);
+	// 	} {
+	// 		~items = [~items]
+	// 	};
+	// };
+
 	~scanInt = { |stream|
 		var str = String.new, ch;
 		while { (ch = stream.next).notNil and: { ch.isDecDigit } } {
@@ -497,18 +596,7 @@ Proto {
 	~asPatString = { |stream|
 		nil
 	};
-} => PR(\clCompGrouping);
-
-Proto {
-
-	~asPatString = { |stream|
-		nil
-	};
-} => PR(\clCompRandom);
-
-// LATER
-// Proto {
-// } => PR(\clCompWeightedRand);
+}.import((clCompSequence: #[splitArray])) => PR(\clCompGrouping);
 
 
 Proto {
