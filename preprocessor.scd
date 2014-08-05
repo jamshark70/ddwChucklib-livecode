@@ -264,7 +264,7 @@ Proto {
 	//   - no |
 	//   - has |
 	~cases = [
-		{ |code| ".(".includes(code.first) } -> \compositePattern,
+		{ |code| ".(".includes(code[1].debug("test char")) } -> \compositePattern,
 		{ |code| code.includes($|) } -> \patternWithDividers,
 		true -> \patternWithoutDividers
 	];
@@ -273,6 +273,7 @@ Proto {
 		var case;
 
 		code = code[~eqIndex + 1 ..].trim;
+		// code.asCompileString.debug("code");
 
 		// cases
 		case = ~cases.detect { |case| case.key.(code) };
@@ -283,14 +284,16 @@ Proto {
 	};
 
 	~compositePattern = { |code|
-		var stream, groups;
-		if(code.first != $() {
-			code = code ++ $);
+		var stream, group;
+		~isMain = false;
+		~parm = nil;
+		code = code.drop(1).drop(-1);
+		if(code.first == $.) {
+			code = code.drop(1) ++ $);
 		};
 		stream = CollStream(code);
-		groups = PR(\clCompGrouping).copy.process(stream);
-		// check separators and make sequence/random objects
-		// render
+		group = PR(\clCompGrouping).copy.process(stream);
+		group.clumpOperators.asPatString;
 	};
 
 	~patternWithDividers = { |code|
@@ -421,34 +424,50 @@ Proto {
 
 Proto {
 	~type = \seq;
+	~repeats = 1;
 	~prep = { |items|
 		~items = items;
 		currentEnvironment
 	};
 	~asPatString = { |stream|
-		nil
+		if(stream.isNil) { stream = CollStream.new };
+		stream << "P" << ~type << "(";
+		~itemString.(stream);
+		stream << ", " << ~repeats << ")";
+		stream.collection;
+	};
+	~itemString = { |stream|
+		if(stream.isNil) { stream = CollStream.new };
+		stream << "[";
+		~items.do { |item, i|
+			if(i > 0) { stream << ", " };
+			if(item.isKindOf(Proto)) {
+				item.asPatString(stream);
+			} {
+				stream <<< item;
+			};
+		};
+		stream << "]";
+		stream.collection;
 	};
 	~clumpOperators = {
-		~items = ~splitArray.(~items, $.).debug("seq: split");
+		~items = ~splitArray.(~items, $.);
 		~items = ~items.collect { |item|
 			case
+			{ item.isString } { ~processRepeats.(item)/*.asSymbol*/ }
 			{ item.isKindOf(Array) } {
 				if(item.size > 1) {
 					PR(\clCompGrouping).copy.prep(item).clumpOperators;
 				} {
 					item = item[0];
 					if(item.isKindOf(Proto) and: { item.type == \group }) {
-						"seq: hit a group, clumping recursion".debug;
-						item.listVars;
 						item.clumpOperators;
 					} {
-						item
+						if(item.isString) { ~processRepeats.(item)/*.asSymbol*/ } { item }
 					}
 				};
 			}
 			{ item.isKindOf(Proto) and: { item.type == \group } } {
-				"seq: hit a group, clumping recursion".debug;
-				item.listVars;
 				item.clumpOperators;
 			}
 			{ item }
@@ -468,19 +487,52 @@ Proto {
 		};
 		result.add(subarray)
 	};
+	~processRepeats = { |str|
+		var i;
+		if(str.first.isDecDigit) {
+			i = str.indexOf($*);
+			if(i.isNil) {
+				Error("Invalid item: Repeats without item to repeat").throw;
+			};
+			PR(\clCompRpt).copy.prep(str[i+1..].asSymbol, str[..i-1].asInteger);
+		} {
+			str.asSymbol
+		};
+	};
 } => PR(\clCompSequence);
 
 Proto {
 	~type = \rand;
+	~repeats = 1;
 	~prep = { |items|
 		~items = items;
 		currentEnvironment
 	};
-	~asPatString = { |stream|
-		nil
+	~clumpOperators = { currentEnvironment };
+}.import((clCompSequence: #[asPatString, itemString])) => PR(\clCompRandom);
+
+Proto {
+	~type = \n;
+	~repeats = 1;
+	~prep = { |items, repeats(1)|
+		~items = items;
+		~repeats = repeats;
+		currentEnvironment
 	};
 	~clumpOperators = { currentEnvironment };
-} => PR(\clCompRandom);
+	~asPatString = { |stream|
+		if(stream.isNil) { stream = CollStream.new };
+		stream << "Pn(";
+		if(~items.isKindOf(Proto)) {
+			~items.asPatString(stream);
+		} {
+			stream <<< ~items;
+		};
+		stream << ", " << ~repeats << ")";
+		stream.collection;
+	};
+}.import((clCompSequence: #[itemString])) => PR(\clCompRpt);
+
 
 // LATER
 // Proto {
@@ -496,7 +548,8 @@ Proto {
 		while { continue and: { (ch = stream.next).notNil } } {
 			case
 			{ ".|".includes(ch) } {   // operators, add as chars
-				~items = ~items.add(str).add(ch);
+				if(str.size > 0) { ~items = ~items.add(str) };
+				~items = ~items.add(ch);
 				str = String.new;
 			}
 			{ ch == $( } {
@@ -551,24 +604,25 @@ Proto {
 	~clumpOperators = {
 		// ~clumpRandomOps.();  // if no randomizers, adds an extra array layer for the sequence
 		if(~items.includes($|)) {
-			~items = ~splitArray.(~items, $|).debug("split");
+			~items = ~splitArray.(~items, $|);
 			~items = ~items.collect { |item|
 				case
+				{ item.isString } { item.asSymbol }
 				{ item.isKindOf(Array) } {
 					if(item.size > 1) {
-						PR(\clCompSequence).copy.prep(item).debug("made seq, calling clumpops").clumpOperators;
+						PR(\clCompSequence).copy.prep(item).clumpOperators;
 					} {
-						item[0]
+						if(item[0].isString) { item[0].asSymbol } { item[0] }
+						// item[0]
 					};
 				}
 				{ item.isKindOf(Proto) and: { item.type == \group } } {
-					"hit a group, clumping recursion".debug;
 					item.clumpOperators;
 				}
 			};
 			~items = PR(\clCompRandom).copy.prep(~items);
 		} {
-			~items = PR(\clCompSequence).copy.prep(~items).debug("made seq, calling clumpops").clumpOperators; // [~items];
+			~items = PR(\clCompSequence).copy.prep(~items).clumpOperators; // [~items];
 		};
 		currentEnvironment
 	};
@@ -594,7 +648,11 @@ Proto {
 	};
 
 	~asPatString = { |stream|
-		nil
+		if(~items.isKindOf(Proto)) {
+			~items.repeats_(~repeats).asPatString(stream);
+		} {
+			Error("Composite pattern: Group should contain a Proto but doesn't").throw;
+		};
 	};
 }.import((clCompSequence: #[splitArray])) => PR(\clCompGrouping);
 
