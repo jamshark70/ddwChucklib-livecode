@@ -783,4 +783,72 @@ Proto {
 		result.debug("clStartStop result");
 	};
 }.import((chucklibLiveCode: #[tokens, replaceRegexpMacros, removeRegexpDups, removeDupIndices]), #[tokens]) => PR(\clStartStop);
+);
+
+(
+Proto {
+	~event = (eventKey: \singleSynthPlayer);
+
+	~defaultParm = \go;
+	~parmMap = (
+		go: ($x: 0)
+	);
+	~beatsPerBar = { ~clock.beatsPerBar };
+	~division = 0.25;
+	~phraseSeq = \main;
+
+	~prep = {
+		if(~phrases.isNil) {
+			~phrases = (
+				main: Pchain(PbindProxy(\dur, Pfuncn { Rest(~clock.beatsPerBar) }), ~defaults)
+			);
+		};
+		~userprep.();
+		Environment.current
+	};
+	~freeCleanup = {
+		~userfree.();
+	};
+
+	~valueForParm = { |event, parm|
+		var dict = ~parmMap[parm];
+		if(dict.notNil) { dict[event] };  // else nil
+	};
+
+	~defaults = ();  // or Pbind
+
+	~setPattern = { |phrase, parm, pattern|
+		var pat = ~phrases[phrase];
+		if(pat.isNil) {
+			pat = PbindProxy.new;
+			~phrases[phrase] = Pchain(pat, ~defaults);
+		} {
+			pat = pat.patterns.first;
+		};
+		~clock.schedAbs(~clock.nextBar - 0.001, e {
+			if(parm.notNil) {
+				pat.set(parm, pattern);
+			} {
+				// composite pattern
+				~phraseSeq = pattern;
+				if(~isPlaying) { ~reschedule.() };
+			};
+			nil
+		});
+	};
+
+	~asPattern = {
+		Psym(BPStream(\phraseSeq), ~phrases);
+		// PnNilSafe(Plazy {
+		// 	~phrases[\main]
+		// }, inf, 20)
+	};
+
+	~reschedule = { |quant(-1)|
+		var oldStreamPlayer = ~eventStreamPlayer,
+		newStreamPlayer = BP(~collIndex).asEventStreamPlayer;
+		~clock.schedAbs(~clock.nextTimeOnGrid(quant) - 0.001, { oldStreamPlayer.stop });
+		~clock.play(newStreamPlayer.refresh, quant);
+	};
+} => PR(\abstractLiveCode);
 )
