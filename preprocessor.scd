@@ -268,7 +268,7 @@ Proto {
 	~cases = [
 		{ |code|
 			var i;
-			if(code[1] == $") { i = 1 } { i = 0 };
+			if(code[0] == $") { i = 1 } { i = 0 };
 			// ".(".includes(code[i])  // want to use '.' as a segment char too
 			code[i] == $(
 		} -> \compositePattern,
