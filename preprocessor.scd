@@ -125,14 +125,14 @@ Proto {
 	~process = { |code|
 		var result;
 		block { |break|
-			~statements.keysValuesDo { |key, value|
-				if(~replaceRegexpMacros.(value).matchRegexp(code)) {
-					if((result = key.envirGet).notNil) {
+			~statements.do { |assn|
+				if(~replaceRegexpMacros.(assn.value).matchRegexp(code)) {
+					if((result = assn.key.envirGet).notNil) {
 						result = result.value(code);
 					} {
 						// result = PR(key).copy.process(code);
 						// for testing:
-						~instance = PR(key).copy;
+						~instance = PR(assn.key).copy;
 						result = ~instance.process(code);
 					};
 					break.(result);
@@ -153,10 +153,12 @@ Proto {
 		spc: " 	"  // space, tab, return
 	);
 
-	~statements = (
-		clPatternSet: "^ *`id(\\.|`id)* = .*",
-		clStartStop: "^([/`spc]*`id)+[`spc]*[+-]"
-	);
+	~statements = [
+		\clPatternSet -> "^ *`id(\\.|`id)* = .*",
+		\clXferPattern -> "^ *`id(\\.`id)? ->>",  // harder match should come first
+		\clCopyPattern -> "^ *`id(\\.`id)? ->",
+		\clStartStop -> "^([/`spc]*`id)+[`spc]*[+-]"
+	];
 
 	// support functions
 
@@ -784,6 +786,72 @@ Proto {
 		result.debug("clStartStop result");
 	};
 }.import((chucklibLiveCode: #[tokens, replaceRegexpMacros, removeRegexpDups, removeDupIndices]), #[tokens]) => PR(\clStartStop);
+
+Proto {
+	~clClass = BP;
+	~isMain = false;
+	~name = "patternCopy";
+	~eqCheckStr = "->";
+
+	~process = { |code|
+		~eqIndex = code.find(~eqCheckStr);
+		if(~eqIndex.isNil) {
+			Error("% statement has no '%': This should never happen".format(~name, ~eqCheckStr)).throw;
+		};
+		~parseIDs.(code);
+		~buildStatement.();
+	};
+
+	~idRegexp = {
+		PR(\chucklibLiveCode).replaceRegexpMacros("(`id)(\\.`id)? % (`id)".format(~eqCheckStr))
+	};
+	~parseIDs = { |code|
+		var ids = code.findRegexp(~idRegexp.().debug("idRegexp")), obj;
+		if(ids.size < 4) {
+			Error("%: Regexp did not find ids (%)".format(~name, ids)).throw;
+		} {
+			~objKey = ids[1][1].asSymbol;
+			if(BP.exists(~objKey)) {
+				obj = BP(~objKey);
+				~srcPhrase = ids[2][1];
+				if(~srcPhrase.size == 0) {
+					// current
+					~srcPhrase = obj.lastPhrase;  // potentially risky
+				} {
+					~srcPhrase = ~srcPhrase.drop(1).asSymbol;
+				};
+				if(obj.phrases[~srcPhrase].isNil) {
+					Error("%: Source phrase % doesn't exist".format(~name, ~srcPhrase.asCompileString)).throw;
+				};
+				~targetPhrase = ids[3][1].asSymbol;
+			};
+		};
+		currentEnvironment
+	};
+
+	~buildStatement = {
+		var objStr = "%(%)".format(~clClass, ~objKey.asCompileString);
+		"%.phrases[%] = %.phrases[%].deepCopy".format(
+			objStr, ~targetPhrase.asCompileString,
+			objStr, ~srcPhrase.asCompileString
+		);
+	};
+} => PR(\clCopyPattern);
+
+PR(\clCopyPattern).clone {
+	~name = "patternXfer";
+	~eqCheckStr = "->>";
+
+	~buildStatement = {
+		var objStr = "%(%)".format(~clClass, ~objKey.asCompileString),
+		target = ~targetPhrase.asCompileString;
+		"%.phrases[%] = %.phrases[%].deepCopy; %.setPattern('main', nil, %)".format(
+			objStr, target,
+			objStr, ~srcPhrase.asCompileString,
+			objStr, target
+		);
+	};
+} => PR(\clXferPattern);
 );
 
 (
@@ -797,6 +865,7 @@ Proto {
 	~beatsPerBar = { ~clock.beatsPerBar };
 	~division = 0.25;
 	~phraseSeq = \main;
+	~lastPhrase = \main;
 
 	~prep = {
 		if(~phrases.isNil) {
@@ -844,7 +913,7 @@ Proto {
 	~asPattern = {
 		Pchain(
 			BPStream(\postDefaults), //.trace(prefix: "postDefaults: "),
-			Psym(BPStream(\phraseSeq), ~phrases), //.trace(prefix: "phrase: "),
+			Psym(BPStream(\phraseSeq).collect { |phr| ~lastPhrase = phr }, ~phrases), //.trace(prefix: "phrase: "),
 			BPStream(\defaults) //.trace(prefix: "\n\ndefaults: ")
 		)
 		// PnNilSafe(Plazy {

@@ -5,6 +5,7 @@ Proto {
 	~valueForParm = { |event| ~map[event] };
 	~beatsPerBar = 4;
 	~division = 0.25;
+	~phrases = (main: PbindProxy(\dur, Rest(4)));
 	~setPattern = { |... args| args.asCompileString.debug("setPattern") };
 } => BP(\kik);
 
@@ -138,3 +139,17 @@ PR(\clPatternSet).copy.process("kik = \"1 3+4.\"");
 PR(\clPatternSet).copy.process("kik = \"0| |2.2. 2.|3\"");
 
 PR(\clPatternSet).copy.process("kik = \" 0.| |2.2. 2.|3\"");
+
+
+x = PR(\chucklibLiveCode).replaceRegexpMacros("(`id)(\\.`id)? -> (`id)");
+"fm -> m1".findRegexp(x);
+"fm.m0 -> m1".findRegexp(x);
+
+"fm.m0 -> m1.m2.m3".findRegexp(x);
+
+/kik.main -> m1
+/kik.main ->> m1
+
+"kik.main ->> m1".findRegexp(PR(\clXferPattern).copy.idRegexp)
+
+BP(\kik).listVars;
