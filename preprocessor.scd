@@ -466,7 +466,7 @@ Proto {
 	~valueForParm = { |event, obj, parm|
 		var degree, legato = 0.9;
 		if(event.isString) {
-			degree = (event[0].ascii - 48).wrap(1, 10);
+			degree = (event[0].ascii - 48).wrap(1, 10) - 1;
 			event.drop(1).do { |ch|
 				switch(ch)
 				{ $- } { degree = degree - 0.1 }
