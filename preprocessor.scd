@@ -269,7 +269,8 @@ Proto {
 		{ |code|
 			var i;
 			if(code[1] == $") { i = 1 } { i = 0 };
-			".(".includes(code[i])
+			// ".(".includes(code[i])  // want to use '.' as a segment char too
+			code[i] == $(
 		} -> \compositePattern,
 		{ |code| code.includes($|) } -> \patternWithDividers,
 		true -> \patternWithoutDividers
@@ -800,7 +801,9 @@ Proto {
 	~prep = {
 		if(~phrases.isNil) {
 			~phrases = (
-				main: Pchain(PbindProxy(\dur, Pfuncn { Rest(~clock.beatsPerBar) }), BPStream(\defaults))
+				main: // Pchain(
+					PbindProxy(\dur, Pfuncn { Rest(~clock.beatsPerBar) })
+					// , BPStream(\defaults))
 			);
 		};
 		~userprep.();
@@ -822,10 +825,10 @@ Proto {
 		var pat = ~phrases[phrase];
 		if(pat.isNil) {
 			pat = PbindProxy.new;
-			~phrases[phrase] = Pchain(pat, BPStream(\defaults));
-		} {
+			~phrases[phrase] = pat;
+		}/* {
 			pat = pat.patterns.first;
-		};
+		}*/;
 		~clock.schedAbs(~clock.nextBar - 0.001, e {
 			if(parm.notNil) {
 				pat.set(parm, pattern);
@@ -840,8 +843,9 @@ Proto {
 
 	~asPattern = {
 		Pchain(
-			BPStream(~postDefaults),
-			Psym(BPStream(\phraseSeq), ~phrases)
+			BPStream(\postDefaults), //.trace(prefix: "postDefaults: "),
+			Psym(BPStream(\phraseSeq), ~phrases), //.trace(prefix: "phrase: "),
+			BPStream(\defaults) //.trace(prefix: "\n\ndefaults: ")
 		)
 		// PnNilSafe(Plazy {
 		// 	~phrases[\main]
