@@ -458,7 +458,7 @@ Proto {
 			legatos = legatos.insert(0, legatos[0]);
 		};
 		legatos = legatos.collect { |lg, i|
-			if(lg == 0.4) { 0.15 / deltas[i].value } { lg }
+			if(lg == 0.4) { min(0.4, 0.15 / deltas[i].value) } { lg }
 		};
 		[deltas, levels, legatos]
 	};
