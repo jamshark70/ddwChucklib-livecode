@@ -800,7 +800,7 @@ Proto {
 	~prep = {
 		if(~phrases.isNil) {
 			~phrases = (
-				main: Pchain(PbindProxy(\dur, Pfuncn { Rest(~clock.beatsPerBar) }), ~defaults)
+				main: Pchain(PbindProxy(\dur, Pfuncn { Rest(~clock.beatsPerBar) }), BPStream(\defaults))
 			);
 		};
 		~userprep.();
@@ -816,12 +816,13 @@ Proto {
 	};
 
 	~defaults = ();  // or Pbind
+	~postDefaults = ();
 
 	~setPattern = { |phrase, parm, pattern|
 		var pat = ~phrases[phrase];
 		if(pat.isNil) {
 			pat = PbindProxy.new;
-			~phrases[phrase] = Pchain(pat, ~defaults);
+			~phrases[phrase] = Pchain(pat, BPStream(\defaults));
 		} {
 			pat = pat.patterns.first;
 		};
@@ -838,7 +839,10 @@ Proto {
 	};
 
 	~asPattern = {
-		Psym(BPStream(\phraseSeq), ~phrases);
+		Pchain(
+			BPStream(~postDefaults),
+			Psym(BPStream(\phraseSeq), ~phrases)
+		)
 		// PnNilSafe(Plazy {
 		// 	~phrases[\main]
 		// }, inf, 20)
