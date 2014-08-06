@@ -870,9 +870,7 @@ Proto {
 	~prep = {
 		if(~phrases.isNil) {
 			~phrases = (
-				main: // Pchain(
-					PbindProxy(\dur, Pfuncn { Rest(~clock.beatsPerBar) })
-					// , BPStream(\defaults))
+				main: PbindProxy(\dur, Pfuncn { Rest(~clock.beatsPerBar) })
 			);
 		};
 		~userprep.();
