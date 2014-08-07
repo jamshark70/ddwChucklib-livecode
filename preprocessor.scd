@@ -452,16 +452,26 @@ Proto {
 	};
 
 	~timesToDeltas = { |times, levels, legatos|
-		var deltas = (times ++ ~beatsPerBar).differentiate;
-		if(times.first == 0) {
-			deltas = deltas.drop(1);
+		var deltas;
+		if(levels.size == 0 or: { levels.every(_.isNil) }) {
+			"%(%): No recognized values for %. Substituting a rest.".format(
+				~clClass, ~objKey.asCompileString, ~parm
+			).warn;
+			deltas = [Rest(~beatsPerBar)];
+			levels = [1];
+			legatos = [1];
 		} {
-			deltas[0] = Rest(times[0]);
-			levels = levels.insert(0, levels[0]);
-			legatos = legatos.insert(0, legatos[0]);
-		};
-		legatos = legatos.collect { |lg, i|
-			if(lg == 0.4) { min(0.4, 0.15 / deltas[i].value) } { lg }
+			deltas = (times ++ ~beatsPerBar).differentiate;
+			if(times.first == 0) {
+				deltas = deltas.drop(1);
+			} {
+				deltas[0] = Rest(times[0]);
+				levels = levels.insert(0, levels[0]);
+				legatos = legatos.insert(0, legatos[0]);
+			};
+			legatos = legatos.collect { |lg, i|
+				if(lg == 0.4) { min(0.4, 0.15 / deltas[i].value) } { lg }
+			};
 		};
 		[deltas, levels, legatos]
 	};
@@ -909,9 +919,21 @@ Proto {
 	};
 
 	~asPattern = {
+		var emptyCountdown = 10, lastTime = 0;
 		Pchain(
 			BPStream(\postDefaults), //.trace(prefix: "postDefaults: "),
-			Psym(BPStream(\phraseSeq).collect { |phr| ~lastPhrase = phr }, ~phrases), //.trace(prefix: "phrase: "),
+			Psym(
+				BPStream(\phraseSeq).collect { |phr|
+					if(thisThread.beats > lastTime) {
+						lastTime = thisThread.beats;
+						~lastPhrase = phr;
+					} {
+						"BP(%): Empty phrase %, stopping".format(~collIndex.asCompileString, phr);
+						nil
+					}
+				},
+				~phrases
+			), //.trace(prefix: "phrase: "),
 			BPStream(\defaults) //.trace(prefix: "\n\ndefaults: ")
 		)
 		// PnNilSafe(Plazy {
