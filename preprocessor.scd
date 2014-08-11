@@ -816,7 +816,7 @@ Proto {
 		PR(\chucklibLiveCode).replaceRegexpMacros("(`id)(\\.`id)? % (`id)".format(~eqCheckStr))
 	};
 	~parseIDs = { |code|
-		var ids = code.findRegexp(~idRegexp.().debug("idRegexp")), obj;
+		var ids = code.findRegexp(~idRegexp.()), obj;
 		if(ids.size < 4) {
 			Error("%: Regexp did not find ids (%)".format(~name, ids)).throw;
 		} {
