@@ -304,10 +304,14 @@ Proto {
 		// code = code.drop(1).drop(-1);
 		if(code.first != $() {
 			code = code.drop(1) ++ $);
+		} {
+			code = code.drop(1);
 		};
 		stream = CollStream(code);
 		group = PR(\clCompGrouping).copy.process(stream);
-		group.clumpOperators.repeats_(inf).asPatString;
+		group.clumpOperators;
+		if(group.repeats.isNil) { group.repeats = inf };
+		group.asPatString;
 	};
 	~unquoteString = { |str, pos = 0, delimiter = $"|
 		var i = str.indexOf(delimiter), j, escaped = false;
@@ -538,7 +542,7 @@ Proto {
 		if(stream.isNil) { stream = CollStream.new };
 		stream << "P" << ~type << "(";
 		~itemString.(stream);
-		stream << ", " << ~repeats << ")";
+		stream << ", " << (~repeats ? 1) << ")";
 		stream.collection;
 	};
 	~itemString = { |stream|
@@ -565,14 +569,14 @@ Proto {
 					PR(\clCompGrouping).copy.prep(item).clumpOperators;
 				} {
 					item = item[0];
-					if(item.isKindOf(Proto) and: { item.type == \group }) {
+					if(item.isKindOf(Proto) /*and: { item.type == \group }*/) {
 						item.clumpOperators;
 					} {
 						if(item.isString) { ~processRepeats.(item)/*.asSymbol*/ } { item }
 					}
 				};
 			}
-			{ item.isKindOf(Proto) and: { item.type == \group } } {
+			{ item.isKindOf(Proto) /*and: { item.type == \group }*/ } {
 				item.clumpOperators;
 			}
 			{ item }
@@ -633,7 +637,7 @@ Proto {
 		} {
 			stream <<< ~items;
 		};
-		stream << ", " << ~repeats << ")";
+		stream << ", " << (~repeats ? 1) << ")";
 		stream.collection;
 	};
 }.import((clCompSequence: #[itemString])) => PR(\clCompRpt);
@@ -646,7 +650,7 @@ Proto {
 
 Proto {
 	~type = \group;
-	~repeats = 1;
+	// ~repeats = 1;
 	~process = { |stream|
 		var ch, continue = true, str = String.new, rpt;
 		~items = Array();
@@ -717,7 +721,9 @@ Proto {
 					if(item.size > 1) {
 						PR(\clCompSequence).copy.prep(item).clumpOperators;
 					} {
-						if(item[0].isString) { item[0].asSymbol } { item[0] }
+						if(item[0].isString) { item[0].asSymbol } {
+							if(item[0].isKindOf(Proto)) { item[0].clumpOperators } { item[0] }
+						}
 						// item[0]
 					};
 				}
@@ -954,5 +960,7 @@ Proto {
 		~clock.schedAbs(~clock.nextTimeOnGrid(quant) - 0.001, { oldStreamPlayer.stop });
 		~clock.play(newStreamPlayer.refresh, quant);
 	};
-} => PR(\abstractLiveCode);
+
+	~reset = { ~makeStreamForKey.(\phraseSeq) };
+}.import((abstractProcess: #[makeStreamForKey])) => PR(\abstractLiveCode);
 )

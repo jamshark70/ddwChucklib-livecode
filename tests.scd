@@ -153,3 +153,36 @@ x = PR(\chucklibLiveCode).replaceRegexpMacros("(`id)(\\.`id)? -> (`id)");
 "kik.main ->> m1".findRegexp(PR(\clXferPattern).copy.idRegexp)
 
 BP(\kik).listVars;
+
+x = PR(\clPatternSet).copy.process("kik = (x)");
+x = PR(\clPatternSet).copy.process("kik = (x)*1");
+
+// ok
+x = PR(\clPatternSet).copy;
+x.process("kik = (x.(a|b))");
+x.listVars
+
+// ok?
+x = PR(\clPatternSet).copy;
+x.process("kik = (x|a.b)*1");
+
+
+x = PR(\clCompGrouping).copy;
+x.process(CollStream("x.(a|b))"));
+x.clumpOperators;
+x.listVars
+x.asPatString;
+
+x = PR(\clCompGrouping).copy;
+x.process(CollStream("x|(a.b))"));
+x.clumpOperators;
+x.listVars;
+x.asPatString;
+
+x.items[2].listVars
+x.items.items[1].clumpOperators
+x.items.items[1].listVars;
+
+x.items.listVars
+x.items.items[1].clumpOperators
+x.items.items[1].listVars;
