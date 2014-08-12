@@ -261,6 +261,10 @@ Proto {
 			~parm = test.asSymbol;
 			~isMain = (~parm == ~clClass.new(~objKey)[\defaultParm]);
 		};
+		// if the target object doesn't exist, we would already have thrown an error
+		// so no need to check again
+		~isPitch = ~clClass.new(~objKey).v.tryPerform(\parmIsPitch, ~parm) ?? { false };
+		currentEnvironment
 	};
 
 	// cases:
@@ -402,8 +406,8 @@ Proto {
 		result = Array.new;
 		// seg.asCompileString.debug(">> divideEvents");
 		while { (ch = stream.next).notNil } {
-			if(ch.isDecDigit) {
-				~isPitch = true;
+			if(~isPitch and: { ch.isDecDigit }) {
+				// ~isPitch = true;
 				str = String.with(ch);
 				while { (ch = stream.next).notNil and: { "+-',~_.".includes(ch) } } {
 					str = str.add(ch);
@@ -893,6 +897,9 @@ Proto {
 	~valueForParm = { |event, parm|
 		var dict = ~parmMap[parm];
 		if(dict.notNil) { dict[event] };  // else nil
+	};
+	~parmIsPitch = { |parm|
+		~parmMap[parm].notNil and: { ~parmMap[parm][\isPitch] == true }
 	};
 
 	~defaults = ();  // or Pbind
