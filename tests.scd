@@ -186,3 +186,7 @@ x.items.items[1].listVars;
 x.items.listVars
 x.items.items[1].clumpOperators
 x.items.items[1].listVars;
+
+
+x = PR(\clPatternSet).copy;
+x.process("bs = (main.rest)");

@@ -299,6 +299,7 @@ Proto {
 	~compositePattern = { |code|
 		var stream, group;
 		~isMain = false;
+		~isPitch = false;
 		~parm = nil;
 		code = ~unquoteString.(code);
 		// code = code.drop(1).drop(-1);
