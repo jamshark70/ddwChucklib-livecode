@@ -38,6 +38,9 @@ PR(\chucklibLiveCode).instance.listVars;
 
 /kik..parm2 = "x x xx x";
 
+/kik = "x||x xx|";
+
+/kik = "|x|x xx|";
 
 
 \clParseIntoStatements.eval("x = x + 1; y = y + 1");

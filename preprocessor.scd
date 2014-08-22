@@ -343,23 +343,27 @@ Proto {
 		pat = pat[0][1];
 		pat = pat[1 .. pat.size-2].split($|).collectAs(~divideEvents, Array);
 		~parseBeatsPerBar.(code, pat);
-		pat.do { |seg, i|
-			division = ~beatsPerSeg.wrapAt(i) / seg.size;
-			seg.do { |event, i|
-				value = ~valueForParm.(event, obj, ~parm);
-				case
-				{ value.isArray } {
-					levels = levels.add(value[0]);
-					times = times.add(time + (division * i));
-					legatos = legatos.add(value[1]);
-				}
-				{ value.notNil } {
-					levels = levels.add(value);
-					times = times.add(time + (division * i));
-					legatos = legatos.add(0.98);
+		pat.do { |seg, segI|
+			if(seg.size >= 1) {
+				division = ~beatsPerSeg.wrapAt(segI) / seg.size;
+				seg.do { |event, i|
+					value = ~valueForParm.(event, obj, ~parm);
+					case
+					{ value.isArray } {
+						levels = levels.add(value[0]);
+						times = times.add(time + (division * i));
+						legatos = legatos.add(value[1]);
+					}
+					{ value.notNil } {
+						levels = levels.add(value);
+						times = times.add(time + (division * i));
+						legatos = legatos.add(0.98);
+					};
 				};
+				time = time + (division * seg.size);
+			} {
+				time = time + ~beatsPerSeg.wrapAt(segI);
 			};
-			time = time + (division * seg.size);
 		};
 		#deltas, levels, legatos = ~timesToDeltas.(times, levels, legatos);
 		~deltas = deltas;
@@ -432,6 +436,7 @@ Proto {
 		var obj = ~clClass.new(~objKey),
 		quoteI = code.indexOf($"), div, total,
 		matchChar = code.first ?? { matchOverride ?? { 1.asAscii } };
+		// pat.debug(">> parseBeatsPerBar");
 		case { matchChar.isDecDigit } {
 			~beatsPerBar = code[.. quoteI - 1].interpret; // allows math for bpb
 			~beatsPerSeg = [~beatsPerBar / pat.size];
@@ -457,7 +462,8 @@ Proto {
 			~beatsPerBar = ~clClass.new(~objKey).beatsPerBar; // pat.size;
 			~beatsPerSeg = [~beatsPerBar / pat.size];
 		};  // default case
-		~beatsPerBar
+		// ~beatsPerSeg.debug("beatsPerSeg");
+		~beatsPerBar // .debug("<< parseBeatsPerBar -- bpb");
 	};
 
 	~timesToDeltas = { |times, levels, legatos|
