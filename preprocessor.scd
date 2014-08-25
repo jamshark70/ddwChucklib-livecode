@@ -335,35 +335,34 @@ Proto {
 	~patternWithDividers = { |code|
 		var obj = ~clClass.new(~objKey),
 		time = 0, division, value,
-		levels = Array.new, times = Array.new, legatos = Array.new, deltas,
+		levels = List.new, times = List.new, legatos = List.new, deltas, i,
 		pat = code.findRegexp("\".*\"");
 		if(pat.size == 0 or: { pat.first.size <= 0 }) {
 			Error("clPatternSet: Couldn't find pattern string").throw
 		};
 		pat = pat[0][1];
 		pat = pat[1 .. pat.size-2].split($|).collectAs(~divideEvents, Array);
+		~segments = pat;
 		~parseBeatsPerBar.(code, pat);
+		i = 0;
 		pat.do { |seg, segI|
 			if(seg.size >= 1) {
 				division = ~beatsPerSeg.wrapAt(segI) / seg.size;
 				seg.do { |event, i|
 					value = ~valueForParm.(event, obj, ~parm);
-					case
-					{ value.isArray } {
-						levels = levels.add(value[0]);
-						times = times.add(time + (division * i));
-						legatos = legatos.add(value[1]);
-					}
-					{ value.notNil } {
-						levels = levels.add(value);
-						times = times.add(time + (division * i));
-						legatos = legatos.add(0.98);
+					if(value.size > 0) {
+						division = division / value.size;
+						value.do { |item|
+							~prAddEntries.(item, levels, times, legatos, time, division, i);
+							i = i + 1;
+						};
+					} {
+						~prAddEntries.(value, levels, times, legatos, time, division, i);
+						i = i + 1;
 					};
 				};
-				time = time + (division * seg.size);
-			} {
-				time = time + ~beatsPerSeg.wrapAt(segI);
 			};
+			time = time + ~beatsPerSeg.wrapAt(segI);
 		};
 		#deltas, levels, legatos = ~timesToDeltas.(times, levels, legatos);
 		~deltas = deltas;
@@ -376,7 +375,7 @@ Proto {
 	~patternWithoutDividers = { |code|
 		var obj = ~clClass.new(~objKey),
 		time = 0, division, value,
-		levels = Array.new, times = Array.new, legatos = Array.new, deltas,
+		levels = List.new, times = List.new, legatos = List.new, deltas, i,
 		pat = code.findRegexp("\".*\"");
 		if(pat.size == 0 or: { pat.first.size <= 0 }) {
 			Error("clPatternSet: Couldn't find pattern string").throw
@@ -384,20 +383,21 @@ Proto {
 		pat = pat[0][1];
 		// pat = [pat[1 .. pat.size-2].collectAs(~divideEvents, Array)];
 		pat = [~divideEvents.(pat[1 .. pat.size-2])];
+		~segments = pat;
 		~parseBeatsPerBar.(code, pat, $/);
 		division = ~beatsPerSeg[0] / pat[0].size;
+		i = 0;
 		pat[0].do { |event, i|
 			value = ~valueForParm.(event, obj, ~parm);
-			case
-			{ value.isArray } {
-				levels = levels.add(value[0]);
-				times = times.add(time + (division * i));
-				legatos = legatos.add(value[1]);
-			}
-			{ value.notNil } {
-				levels = levels.add(value);
-				times = times.add(time + (division * i));
-				legatos = legatos.add(0.98);
+			if(value.size > 0) {
+				division = division / value.size;
+				value.do { |item|
+					~prAddEntries.(item, levels, times, legatos, time, division, i);
+					i = i + 1;
+				};
+			} {
+				~prAddEntries.(value, levels, times, legatos, time, division, i);
+				i = i + 1;
 			};
 		};
 		#deltas, levels, legatos = ~timesToDeltas.(times, levels, legatos);
@@ -406,6 +406,21 @@ Proto {
 		~times = times;
 		~legatos = legatos;
 		"Pstep(Pseq(%, 1), Pseq(%, 1), 1)".format(levels.asCompileString, deltas.asCompileString).postcs;
+	};
+
+	~prAddEntries = { |value, levels, times, legatos, time, division, i|
+		case
+		{ value.isKindOf(Association) } {
+			levels.add(value.key);
+			times.add(time + (division * i));
+			legatos.add(value.value);
+		}
+		{ value.notNil } {
+			levels.add(value);
+			times.add(time + (division * i));
+			legatos.add(0.98);
+		};
+		[levels, times, legatos]  //.debug("after prAddEntries");
 	};
 
 	~divideEvents = { |seg|
