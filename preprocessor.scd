@@ -585,25 +585,24 @@ Proto {
 		~items = ~splitArray.(~items, $.);
 		~items = ~items.collect { |item|
 			case
-			{ item.isString } { ~processRepeats.(item)/*.asSymbol*/ }
+			{ item.isString } { ~processRepeats.(item) }
 			{ item.isKindOf(Array) } {
 				if(item.size > 1) {
 					PR(\clCompGrouping).copy.prep(item).clumpOperators;
 				} {
 					item = item[0];
-					if(item.isKindOf(Proto) /*and: { item.type == \group }*/) {
+					if(item.isKindOf(Proto)) {
 						item.clumpOperators;
 					} {
-						if(item.isString) { ~processRepeats.(item)/*.asSymbol*/ } { item }
+						if(item.isString) { ~processRepeats.(item) } { item }
 					}
 				};
 			}
-			{ item.isKindOf(Proto) /*and: { item.type == \group }*/ } {
+			{ item.isKindOf(Proto) } {
 				item.clumpOperators;
 			}
 			{ item }
 		};
-		// ~items = PR(\clCompSequence).copy.prep(~items);
 		currentEnvironment
 	};
 	~splitArray = { |array, delimiter|
@@ -733,7 +732,6 @@ Proto {
 	};
 
 	~clumpOperators = {
-		// ~clumpRandomOps.();  // if no randomizers, adds an extra array layer for the sequence
 		if(~items.includes($|)) {
 			~items = ~splitArray.(~items, $|);
 			~items = ~items.collect { |item|
@@ -746,7 +744,6 @@ Proto {
 						if(item[0].isString) { item[0].asSymbol } {
 							if(item[0].isKindOf(Proto)) { item[0].clumpOperators } { item[0] }
 						}
-						// item[0]
 					};
 				}
 				{ item.isKindOf(Proto) and: { item.type == \group } } {
@@ -755,18 +752,10 @@ Proto {
 			};
 			~items = PR(\clCompRandom).copy.prep(~items);
 		} {
-			~items = PR(\clCompSequence).copy.prep(~items).clumpOperators; // [~items];
+			~items = PR(\clCompSequence).copy.prep(~items).clumpOperators;
 		};
 		currentEnvironment
 	};
-	// ~clumpRandomOps = {
-	// 	var split;
-	// 	if(~items.includes($|)) {
-	// 		split = ~splitArray.(~items, $|);
-	// 	} {
-	// 		~items = [~items]
-	// 	};
-	// };
 
 	~scanInt = { |stream|
 		var str = String.new, ch;
