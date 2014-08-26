@@ -520,7 +520,7 @@ Proto {
 				{ $_ } { legato = 0.9 }
 				{ $. } { legato = 0.4 }
 			};
-			[degree, legato]
+			degree -> legato  // Association identifies pitch above
 		} {
 			obj.valueForParm(event, parm);
 		};
