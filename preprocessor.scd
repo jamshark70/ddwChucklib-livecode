@@ -944,6 +944,7 @@ Proto {
 
 	~asPattern = {
 		var emptyCountdown = 10, lastTime = 0;
+		~reset.();
 		Pchain(
 			BPStream(\postDefaults), //.trace(prefix: "postDefaults: "),
 			Psym(
@@ -952,7 +953,7 @@ Proto {
 						lastTime = thisThread.beats;
 						~lastPhrase = phr;
 					} {
-						"BP(%): Empty phrase %, stopping".format(~collIndex.asCompileString, phr);
+						"BP(%): Empty phrase %, stopping".format(~collIndex.asCompileString, phr).warn;
 						nil
 					}
 				},
@@ -960,9 +961,6 @@ Proto {
 			), //.trace(prefix: "phrase: "),
 			BPStream(\defaults) //.trace(prefix: "\n\ndefaults: ")
 		)
-		// PnNilSafe(Plazy {
-		// 	~phrases[\main]
-		// }, inf, 20)
 	};
 
 	~reschedule = { |quant(-1)|
@@ -970,8 +968,13 @@ Proto {
 		newStreamPlayer = BP(~collIndex).asEventStreamPlayer;
 		~clock.schedAbs(~clock.nextTimeOnGrid(quant) - 0.001, { oldStreamPlayer.stop });
 		~clock.play(newStreamPlayer.refresh, quant);
+		currentEnvironment
 	};
 
-	~reset = { ~makeStreamForKey.(\phraseSeq) };
+	~reset = {
+		~makeStreamForKey.(\phraseSeq)
+		~makeStreamForKey.(\defaults);
+		~makeStreamForKey.(\postDefaults);
+	};
 }.import((abstractProcess: #[makeStreamForKey])) => PR(\abstractLiveCode);
 )
