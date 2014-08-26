@@ -905,6 +905,7 @@ Proto {
 			);
 		};
 		~userprep.();
+		~postParmMap.();
 		Environment.current
 	};
 	~freeCleanup = {
@@ -975,6 +976,15 @@ Proto {
 		~makeStreamForKey.(\phraseSeq);
 		~makeStreamForKey.(\defaults);
 		~makeStreamForKey.(\postDefaults);
+	};
+
+	~postParmMap = {
+		"BP(%)'s parameter map:\n".postf(~collIndex.asCompileString);
+		~parmMap.asSortedArray.do { |pair|
+			if(pair[0] == ~defaultParm) { "** ".post } { "   ".post };
+			"%: %\n".postf(*pair);
+		};
+		currentEnvironment
 	};
 }.import((abstractProcess: #[makeStreamForKey])) => PR(\abstractLiveCode);
 )
