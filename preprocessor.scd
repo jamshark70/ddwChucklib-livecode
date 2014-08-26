@@ -972,7 +972,7 @@ Proto {
 	};
 
 	~reset = {
-		~makeStreamForKey.(\phraseSeq)
+		~makeStreamForKey.(\phraseSeq);
 		~makeStreamForKey.(\defaults);
 		~makeStreamForKey.(\postDefaults);
 	};
