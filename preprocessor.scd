@@ -508,19 +508,27 @@ Proto {
 
 	~valueForParm = { |event, obj, parm|
 		var degree, legato = 0.9;
-		if(event.isString) {
-			degree = (event[0].ascii - 48).wrap(1, 10) - 1;
-			event.drop(1).do { |ch|
-				switch(ch)
-				{ $- } { degree = degree - 0.1 }
-				{ $+ } { degree = degree + 0.1 }
-				{ $, } { degree = degree - 7 }
-				{ $' } { degree = degree + 7 }
-				{ $~ } { legato = 1.01 }
-				{ $_ } { legato = 0.9 }
-				{ $. } { legato = 0.4 }
-			};
-			degree -> legato  // Association identifies pitch above
+		if(~isPitch) {
+			event = event.asString;
+			case
+			{ event[0].isDecDigit } {
+				degree = (event[0].ascii - 48).wrap(1, 10) - 1;
+				event.drop(1).do { |ch|
+					switch(ch)
+					{ $- } { degree = degree - 0.1 }
+					{ $+ } { degree = degree + 0.1 }
+					{ $, } { degree = degree - 7 }
+					{ $' } { degree = degree + 7 }
+					{ $~ } { legato = 1.01 }
+					{ $_ } { legato = 0.9 }
+					{ $. } { legato = 0.4 }
+				};
+				degree -> legato  // Association identifies pitch above
+			}
+			{ event[0] != $ } {
+				Rest(0) -> legato
+			}
+			{ obj.valueForParm(event, parm) };
 		} {
 			obj.valueForParm(event, parm);
 		};
