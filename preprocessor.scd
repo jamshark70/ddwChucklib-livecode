@@ -626,13 +626,19 @@ Proto {
 		result.add(subarray)
 	};
 	~processRepeats = { |str|
-		var i;
+		var starI, pctI;
 		if(str.first.isDecDigit) {
-			i = str.indexOf($*);
-			if(i.isNil) {
-				Error("Invalid item: Repeats without item to repeat").throw;
-			};
-			PR(\clCompRpt).copy.prep(str[i+1..].asSymbol, str[..i-1].asInteger);
+			i = str.indexOf($%);
+			if(i.notNil) {
+				"%: Weights are not valid in a sequence; ignoring".format(str).warn;
+				~processRepeats.(str[i+1..]);  // handle '*', or return symbol
+			} {
+				i = str.indexOf($*);
+				if(i.isNil) {
+					Error("Invalid item: Repeats without item to repeat").throw;
+				};
+				PR(\clCompRpt).copy.prep(str[i+1..].asSymbol, str[..i-1].asInteger);
+			}
 		} {
 			str.asSymbol
 		};
@@ -642,21 +648,49 @@ Proto {
 Proto {
 	~type = \rand;
 	~repeats = 1;
-	~prep = { |items|
+	~prep = { |items, hasWeights(false)|
 		~items = items;
+		~hasWeights = hasWeights;
+		if(hasWeights) { ~type = \wrand };  // I think I'm hacking more
 		currentEnvironment
 	};
 	~clumpOperators = { currentEnvironment };
-}.import((clCompSequence: #[asPatString, itemString])) => PR(\clCompRandom);
+	~itemString = { |stream|
+		var weights;
+		if(stream.isNil) { stream = CollStream.new };
+		stream << "[";
+		~items.do { |item, i|
+			if(i > 0) { stream << ", " };
+			if(item.isKindOf(Proto)) {
+				item.asPatString(stream);
+			} {
+				stream <<< item;
+			};
+		};
+		stream << "]";
+		if(~hasWeights) {
+			weights = ~items.collect({ |item| item.tryPerform(\weight) ? 1 }).normalizeSum;
+			stream << ", [";
+			weights.do { |w, i|
+				if(i > 0) { stream << ", " };
+				stream << w;
+			};
+			stream << "]"
+		};
+		stream.collection;
+	};
+}.import((clCompSequence: #[asPatString/*, itemString*/])) => PR(\clCompRandom);
 
 Proto {
 	~type = \n;
 	~repeats = 1;
-	~prep = { |items, repeats(1)|
+	~prep = { |items, repeats(1), weight|
 		~items = items;
 		~repeats = repeats;
+		~wt = weight;
 		currentEnvironment
 	};
+	~weight = { ~wt };  // avoid notUnderstood error if weight is nil
 	~clumpOperators = { currentEnvironment };
 	~asPatString = { |stream|
 		if(stream.isNil) { stream = CollStream.new };
@@ -671,6 +705,18 @@ Proto {
 	};
 }.import((clCompSequence: #[itemString])) => PR(\clCompRpt);
 
+Proto {
+	~prep = { |item, weight(1)|
+		~item = item;
+		~weight = weight;
+		currentEnvironment
+	};
+	~itemString = { ~item.asCompileString };
+	~asPatString = { |stream|
+		if(stream.isNil) { stream = CollStream.new };
+		stream <<< ~item
+	};
+} => PR(\clCompWeightedItem);
 
 // LATER
 // Proto {
@@ -679,6 +725,7 @@ Proto {
 
 Proto {
 	~type = \group;
+	~hasWeights = false;
 	// ~repeats = 1;
 	~process = { |stream|
 		var ch, continue = true, str = String.new, rpt;
@@ -699,17 +746,20 @@ Proto {
 				if(str.size > 0) { ~items = ~items.add(str) };
 				continue = false;
 			}
-			{ ch == $* } {
+			{ "*%".includes(ch) } {
 				rpt = tryNoTrace {
 					~scanInt.(stream);
 				} { |exc|
 					if(exc.what == \nonInt) { nil } { exc.throw }
 				};
 				if(rpt.notNil) {
-					~items = ~items.add(rpt ++ "*" ++ str);
-					str = String.new;
+					if(ch == $%) { ~hasWeights = true };
+					str = rpt ++ ch ++ str;
 				} {
-					"Composite pattern: Ignored invalid repeat string %".format(rpt).warn;
+					"Composite pattern: Ignored invalid % string %".format(
+						if(ch == $*) { "repeat" } { "weight" },
+						rpt
+					).warn;
 				};
 				// "\nCollStream state:".postln;
 				// stream.collection.postln;
@@ -744,12 +794,12 @@ Proto {
 			~items = ~splitArray.(~items, $|);
 			~items = ~items.collect { |item|
 				case
-				{ item.isString } { item.asSymbol }
+				{ item.isString } { ~processRepeats.(item) }
 				{ item.isKindOf(Array) } {
 					if(item.size > 1) {
 						PR(\clCompSequence).copy.prep(item).clumpOperators;
 					} {
-						if(item[0].isString) { item[0].asSymbol } {
+						if(item[0].isString) { ~processRepeats.(item[0])/*.asSymbol*/ } {
 							if(item[0].isKindOf(Proto)) { item[0].clumpOperators } { item[0] }
 						}
 					};
@@ -758,11 +808,67 @@ Proto {
 					item.clumpOperators;
 				}
 			};
-			~items = PR(\clCompRandom).copy.prep(~items);
+			~items = PR(\clCompRandom).copy.prep(~items, ~hasWeights);
 		} {
 			~items = PR(\clCompSequence).copy.prep(~items).clumpOperators;
 		};
 		currentEnvironment
+	};
+
+	/*
+	Logic tree:
+* Star
+** Nil
+*** Pct
+**** Nil
+     Error
+**** Non-nil
+     Parent clCompRandom will handle weight
+** Non-nil
+*** Pct
+**** Nil
+     Return clCompRpt
+**** Pct < Star
+     Pct = .. pct-1
+     Star = pct+1 .. star-1
+**** Pct > Star
+     Star = .. star-1
+     Pct = star+1 .. pct-1
+	*/
+
+	~processRepeats = { |str|
+		var starI, pctI, star, pct;
+		if(str.first.isDecDigit) {
+			starI = str.indexOf($*);
+			pctI = str.indexOf($%);
+			if(starI.isNil) {
+				if(pctI.isNil) {
+					Error("Invalid item: Repeats/weight without item").throw;
+				} {
+					// weight, but no repeats
+					PR(\clCompWeightedItem).copy.prep(str[pctI+1..].asSymbol, str[..pctI-1].asInteger)
+				}
+			} {
+				if(pctI.isNil) {
+					// repeats, but no weight: repeat object, but don't pass weight
+					PR(\clCompRpt).copy.prep(str[starI+1..].asSymbol, str[..starI-1].asInteger); // nil weights
+				} {
+					// repeats and weight: repeat object with both parms
+					if((pctI < starI)) {
+						pct = str[ .. pctI-1];
+						star = str[pctI+1 .. starI-1];
+						str = str[starI+1 ..];
+					} {
+						star = str[ .. starI-1];
+						pct = str[starI+1 .. pctI-1];
+						str = str[pctI+1 ..];
+					};
+					PR(\clCompRpt).copy.prep(str.asSymbol, star.asInteger, pct.asInteger);
+				};
+			};
+		} {
+			str.asSymbol
+		};
 	};
 
 	~scanInt = { |stream|

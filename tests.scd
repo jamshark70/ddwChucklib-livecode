@@ -182,6 +182,11 @@ x.clumpOperators;
 x.listVars;
 x.asPatString;
 
+x = PR(\clCompGrouping).copy;
+x.process(CollStream("x|(a*3.b))"));
+x.clumpOperators;
+x.asPatString;
+
 x.items[2].listVars
 x.items.items[1].clumpOperators
 x.items.items[1].listVars;
@@ -189,7 +194,32 @@ x.items.items[1].listVars;
 x.items.listVars
 x.items.items[1].clumpOperators
 x.items.items[1].listVars;
+x.items.items[1].items.listVars;
 
 
 x = PR(\clPatternSet).copy;
 x.process("bs = (main.rest)");
+
+
+// weighted rand
+x = PR(\clCompGrouping).copy;
+x.process(CollStream("x.(a%1|b%2))"));
+x.clumpOperators;
+x.asPatString;
+
+// the next 2 should be identical: %1*2 or *2%1 doesn't matter
+x = PR(\clCompGrouping).copy;
+x.process(CollStream("x*3.(a*2%1|b%2))"));
+x.clumpOperators;
+x.asPatString;
+
+x = PR(\clCompGrouping).copy;
+x.process(CollStream("x*3.(a%1*2|b%2))"));
+x.clumpOperators;
+x.asPatString;
+
+x = PR(\clCompGrouping).copy;
+x.process(CollStream("x.(a*2|b))"));
+x.clumpOperators;
+x.asPatString;
+
