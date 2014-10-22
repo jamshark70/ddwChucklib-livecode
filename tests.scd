@@ -223,3 +223,30 @@ x.process(CollStream("x.(a*2|b))"));
 x.clumpOperators;
 x.asPatString;
 
+
+x = PR(\clCompGrouping).copy;
+x.process(CollStream("'x.*')"));
+x.clumpOperators;
+x.asPatString;
+
+x = PR(\clCompGrouping).copy;
+x.process(CollStream("'x.*'*5.'y.*'*2)"));
+x.clumpOperators;
+x.asPatString;
+
+// seems working!
+a = (phrases: (a0: 0, a1: 1, b0: 10, b1: 11, b2: 12));
+
+a.use {
+	var x = PR(\clCompGrouping).copy;
+	x.process(CollStream("'a.*'|'b.*')*1000"));
+	x.clumpOperators;
+	~pat = x.asPatString.postln.interpret;
+	~str = ~pat.asStream;
+};
+
+a.str.next;
+
+a.phrases[\a2] = 2;
+
+a.str.next;

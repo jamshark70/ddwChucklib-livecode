@@ -626,7 +626,7 @@ Proto {
 		result.add(subarray)
 	};
 	~processRepeats = { |str|
-		var starI, pctI;
+		var starI, pctI, rpt;
 		if(str.first.isDecDigit) {
 			i = str.indexOf($%);
 			if(i.notNil) {
@@ -637,8 +637,23 @@ Proto {
 				if(i.isNil) {
 					Error("Invalid item: Repeats without item to repeat").throw;
 				};
-				PR(\clCompRpt).copy.prep(str[i+1..].asSymbol, str[..i-1].asInteger);
+				rpt = str[..i-1].asInteger;
+				str = ~processWildcard.(str[i+1..]);
+				PR(\clCompRpt).copy.prep(str, rpt);
 			}
+		} {
+			~processWildcard.(str) // .asSymbol
+		};
+	};
+	~processWildcard = { |str|
+		var i;
+		str = str.trim;
+		if(str[0] == $') {
+			i = str.find("'", offset: 1);
+			if(i.isNil) {
+				Error("%: No closing quote".format(str)).throw;
+			};
+			PR(\clCompWildcardItem).copy.prep(str[1 .. i-1]);
 		} {
 			str.asSymbol
 		};
@@ -718,6 +733,20 @@ Proto {
 	};
 } => PR(\clCompWeightedItem);
 
+Proto {
+	~weight = 1;
+	~prep = { |item/*, weight(1)*/|
+		~item = item;
+		// ~weight = weight;
+		currentEnvironment
+	};
+	~itemString = { ~item.asCompileString };
+	~asPatString = { |stream|
+		if(stream.isNil) { stream = CollStream.new };
+		stream << "Pfuncn({ ~phrases.keys.select { |key| %.matchRegexp(key.asString) }.choose }, 1)".format(~item.asCompileString);
+	};
+} => PR(\clCompWildcardItem);
+
 // LATER
 // Proto {
 // 	~clumpOperators = { currentEnvironment };
@@ -745,6 +774,14 @@ Proto {
 			{ ch == $) } {
 				if(str.size > 0) { ~items = ~items.add(str) };
 				continue = false;
+			}
+			{ ch == $' } {
+				while {
+					str = str ++ ch;
+					ch = stream.next;
+					ch.notNil and: { ch != $' }
+				};
+				if(ch.notNil) { str = str ++ ch };
 			}
 			{ "*%".includes(ch) } {
 				rpt = tryNoTrace {
@@ -846,12 +883,18 @@ Proto {
 					Error("Invalid item: Repeats/weight without item").throw;
 				} {
 					// weight, but no repeats
-					PR(\clCompWeightedItem).copy.prep(str[pctI+1..].asSymbol, str[..pctI-1].asInteger)
+					PR(\clCompWeightedItem).copy.prep(
+						~processWildcard.(str[pctI+1..]),
+						str[..pctI-1].asInteger
+					)
 				}
 			} {
 				if(pctI.isNil) {
 					// repeats, but no weight: repeat object, but don't pass weight
-					PR(\clCompRpt).copy.prep(str[starI+1..].asSymbol, str[..starI-1].asInteger); // nil weights
+					PR(\clCompRpt).copy.prep(
+						~processWildcard.(str[starI+1..]),
+						str[..starI-1].asInteger
+					); // nil weights
 				} {
 					// repeats and weight: repeat object with both parms
 					if((pctI < starI)) {
@@ -863,11 +906,11 @@ Proto {
 						pct = str[starI+1 .. pctI-1];
 						str = str[pctI+1 ..];
 					};
-					PR(\clCompRpt).copy.prep(str.asSymbol, star.asInteger, pct.asInteger);
+					PR(\clCompRpt).copy.prep(~processWildcard.(str), star.asInteger, pct.asInteger);
 				};
 			};
 		} {
-			str.asSymbol
+			~processWildcard.(str)
 		};
 	};
 
@@ -890,7 +933,7 @@ Proto {
 			Error("Composite pattern: Group should contain a Proto but doesn't").throw;
 		};
 	};
-}.import((clCompSequence: #[splitArray])) => PR(\clCompGrouping);
+}.import((clCompSequence: #[splitArray, processWildcard])) => PR(\clCompGrouping);
 
 
 Proto {
