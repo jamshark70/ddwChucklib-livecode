@@ -1082,6 +1082,7 @@ Proto {
 
 	~setPattern = { |phrase, parm, pattern|
 		var pat = ~phrases[phrase];
+		parm = ~parmMap[parm].tryPerform(\at, \alias) ?? { parm };
 		if(pat.isNil) {
 			pat = PbindProxy.new;
 			~phrases[phrase] = pat;
