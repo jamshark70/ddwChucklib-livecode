@@ -542,14 +542,14 @@ Proto {
 			~patString
 		);
 		if(~isMain) {
-			stmt = stmt ++ ";\n%(%).setPattern(%, %, Pseq(%, inf))".format(
+			stmt = stmt ++ ";\n%(%).setPattern(%, %, Pseq(%, 1))".format(
 				~clClass, ~objKey.asCompileString,
 				~phrase.asCompileString, \dur.asCompileString,
 				~deltas.asCompileString
 			)
 		};
 		if(~isPitch) {
-			stmt = stmt ++ ";\n%(%).setPattern(%, %, Pseq(%, inf))".format(
+			stmt = stmt ++ ";\n%(%).setPattern(%, %, Pseq(%, 1))".format(
 				~clClass, ~objKey.asCompileString,
 				~phrase.asCompileString, \legato.asCompileString,
 				~legatos.asCompileString
@@ -1057,9 +1057,10 @@ Proto {
 
 	~prep = {
 		if(~phrases.isNil) {
-			~phrases = (
-				main: PbindProxy(\dur, Pfuncn { Rest(~clock.beatsPerBar) })
-			);
+			~phrases = IdentityDictionary[
+				\main -> PbindProxy(\dur, Pfuncn { Rest(~clock.beatsPerBar) })
+			];
+			~phraseDurs = IdentityDictionary.new;
 		};
 		~userprep.();
 		~postParmMap.();
@@ -1086,11 +1087,13 @@ Proto {
 		if(pat.isNil) {
 			pat = PbindProxy.new;
 			~phrases[phrase] = pat;
-		}/* {
-			pat = pat.patterns.first;
-		}*/;
+		};
 		~clock.schedAbs(~clock.nextBar - 0.001, e {
 			if(parm.notNil) {
+				if(parm == \dur) {
+					// _.value is needed to convert Rests to durations
+					~phraseDurs[phrase] = pattern.list.sum(_.value);
+				};
 				pat.set(parm, pattern);
 			} {
 				// composite pattern
@@ -1106,18 +1109,26 @@ Proto {
 		~reset.();
 		Pchain(
 			BPStream(\postDefaults), //.trace(prefix: "postDefaults: "),
-			Psym(
-				BPStream(\phraseSeq).collect { |phr|
+			Prout { |inevent|
+				var phr, pat;
+				~makeStreamForKey.(\phraseSeq);
+				loop {
 					if(thisThread.beats > lastTime) {
 						lastTime = thisThread.beats;
 						~lastPhrase = phr;
 					} {
 						"BP(%): Empty phrase %, stopping".format(~collIndex.asCompileString, phr).warn;
 						nil
-					}
-				},
-				~phrases
-			), //.trace(prefix: "phrase: "),
+					};
+					phr = ~phraseSeqStream.next(inevent);
+					pat = ~phrases[phr];
+					// the pattern-wrapping here is not directly supported in Psym
+					if(~phraseDurs[phr].notNil) {
+						pat = Pfindur(~phraseDurs[phr], pat);
+					};
+					inevent = pat.embedInStream(inevent);
+				};
+			}, //.trace(prefix: "phrase: "),
 			BPStream(\defaults) //.trace(prefix: "\n\ndefaults: ")
 		)
 	};
