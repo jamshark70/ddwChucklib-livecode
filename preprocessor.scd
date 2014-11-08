@@ -1058,7 +1058,8 @@ Proto {
 	~prep = {
 		if(~phrases.isNil) {
 			~phrases = IdentityDictionary[
-				\main -> PbindProxy(\dur, Pfuncn { Rest(~clock.beatsPerBar) })
+				\main -> PbindProxy(\dur, Pfuncn { Rest(~clock.beatsPerBar) }),
+				\rest -> PbindProxy(\dur, Pfuncn { Rest(~clock.beatsPerBar) })
 			];
 			~phraseDurs = IdentityDictionary.new;
 		};
