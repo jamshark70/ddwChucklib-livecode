@@ -440,6 +440,51 @@ PR(\abstrMobileResp).clone {
 	};
 } => PR(\gcmap);
 
+PR(\gcmap).clone {
+	~gcDidRegister = false;
+	~userprep = { |path|
+		~mixer = ~specs[\mixer].value;
+		~gc = ~mixer.controls[~specs[\ctl]];
+		if(~gc.notNil) {
+			~cspec = (~specs[\spec] ?? { ~gc.spec }).asSpec;
+			BP(~oscInKey).setGUIValue(path[0], ~cspec.unmap(~gc.value));
+			~gc.addDependant(Environment.current);
+			NotificationCenter.register(~gc, \setMixerGui, currentEnvironment, e { |mcgui|
+				if(mcgui.notNil) {
+					~gc.register(~specs[\ctl], mcgui);
+					~gcDidRegister = true;
+				} {
+					~gc.register(nil, nil, 1);
+					~gcDidRegister = false;
+				};
+			});
+			if(~gc.mixerGui.notNil) {
+				NotificationCenter.notify(~gc, \setMixerGui, [~gc.mixerGui]);  // stupid ugly hack
+			};
+		};
+	};
+	~userfree = { |wasReassigned|
+		if(wasReassigned.not) {
+			~path.do { |p|
+				BP(~oscInKey).setGUIValue(p, 0);
+			};
+		};
+		if(~gcDidRegister) { ~gc.register(nil, nil, 1) };
+		~gc.removeDependant(Environment.current);
+		NotificationCenter.unregister(~gc, \setMixerGui, currentEnvironment);
+	};
+	~prAction = { |msg|
+		var value = ~cspec.map(msg[1]);
+		~gc.set(value);
+		~gc.update(~gc.bus, [value]);
+	};
+	// ~update = { |obj, what|
+	// 	if(what.isKindOf(Dictionary) and: { what[\what] == \value }) {
+	// 		BP(~oscInKey).setGUIValue(~path[0], ~cspec.unmap(~gc.value));
+	// 	};
+	// };
+} => PR(\mxmap);
+
 PR(\abstrMobileResp).clone {
 	~userprep = { |path|
 		path.do { |p| BP(~oscInKey).setGUIValue(p, 0) };
