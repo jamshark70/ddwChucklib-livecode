@@ -32,27 +32,27 @@ Proto {
 	~setValue = { |oscpath, value|
 		if(~sendAddr.notNil) {
 			~sendAddr.sendMsg(oscpath, value);
-			~respond.([oscpath, value], SystemClock.beats, NetAddr.localAddr, NetAddr.langPort);
 		};
+		~respond.([oscpath, value], SystemClock.beats, NetAddr.localAddr, NetAddr.langPort);
 	};
 	~setGUIValue = { |oscpath, value|
 		if(~sendAddr.notNil) {
 			~sendAddr.sendMsg(oscpath, value);
-			~respond.([oscpath, value], SystemClock.beats, NetAddr.localAddr, NetAddr.langPort, true);
 		};
+		~respond.([oscpath, value], SystemClock.beats, NetAddr.localAddr, NetAddr.langPort, true);
 	};
 	// for multiple-value controls (rare case)
 	~setValues = { |oscpath ... values|
 		if(~sendAddr.notNil) {
 			~sendAddr.sendMsg(oscpath, *values);
-			~respond.([oscpath] ++ values, SystemClock.beats, NetAddr.localAddr, NetAddr.langPort);
 		};
+		~respond.([oscpath] ++ values, SystemClock.beats, NetAddr.localAddr, NetAddr.langPort);
 	};
 	~setGUIValues = { |oscpath ... values|
 		if(~sendAddr.notNil) {
 			~sendAddr.sendMsg(oscpath, *values);
-			~respond.([oscpath] ++ values, SystemClock.beats, NetAddr.localAddr, NetAddr.langPort, true);
 		};
+		~respond.([oscpath] ++ values, SystemClock.beats, NetAddr.localAddr, NetAddr.langPort, true);
 	};
 
 	~respond = { |msg, time, replyAddr, recvPort, guiOnly(false)|
