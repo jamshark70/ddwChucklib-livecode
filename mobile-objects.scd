@@ -292,7 +292,7 @@ Proto {
 Proto {
 	~windowSize = 15;
 	~sendWait = 0.08;
-	~sourceBP = \oscIn04;
+	~sourceBP = \touch;
 	~prep = {
 		// why this? take advantage of address filtering in the BP
 		~resp = NotificationCenter.register(BP(~sourceBP).v, '/accxyz', Environment.current, e { |msg|
@@ -328,8 +328,9 @@ Proto {
 
 // musical action responders
 Proto {
+	~oscInKey = \touch;
 	~prep = { |path, specs|
-		var oscin = BP(\oscIn04).v;
+		var oscin = BP(~oscInKey).v;
 		~path = path.asArray;
 		~specs = specs;
 		~rdepth = 0;
@@ -357,7 +358,7 @@ Proto {
 		~resp.do(_.remove);
 	};
 	~setLabels = { |labels|
-		var oscin = BP(\oscIn04).v;
+		var oscin = BP(~oscInKey).v;
 		if(labels.isNil) { labels = ~specs[\label].asArray };
 		if(labels.isString) { labels = [labels] };
 		~path.do { |p, i| oscin.setLabel(p, labels.wrapAt(i)) };
@@ -366,7 +367,7 @@ Proto {
 
 PR(\abstrMobileResp).clone {
 	~userprep = { |path|
-		var oscin = BP(\oscIn04).v, playing = 0;
+		var oscin = BP(~oscInKey).v, playing = 0;
 		~udepth = 0;
 		BP(~specs[\bp]).do { |bp|
 			bp.addDependant(Environment.current);
@@ -377,7 +378,7 @@ PR(\abstrMobileResp).clone {
 		~prepHook.(path);
 	};
 	~userfree = { |wasReassigned|
-		var oscin = BP(\oscIn04).v;
+		var oscin = BP(~oscInKey).v;
 		BP(~specs[\bp]).do { |bp|
 			bp.removeDependant(Environment.current);
 		};
@@ -399,12 +400,12 @@ PR(\abstrMobileResp).clone {
 			// { what == \free } { ~free.() }
 			{ #[schedFailed, stop, couldNotPrepare, couldNotStream].includes(what) } {
 				~path.do { |p|
-					BP(\oscIn04).setGUIValue(p, 0);
+					BP(~oscInKey).setGUIValue(p, 0);
 				}
 			}
 			{ what == \play } {
 				~path.do { |p|
-					BP(\oscIn04).setGUIValue(p, 1);
+					BP(~oscInKey).setGUIValue(p, 1);
 				}
 			};
 			~udepth = ~udepth - 1;
@@ -418,13 +419,13 @@ PR(\abstrMobileResp).clone {
 	~userprep = { |path|
 		~gc = ~specs[\gc].value;
 		~cspec = ~specs[\spec].asSpec;
-		BP(\oscIn04).setGUIValue(path[0], ~cspec.unmap(~gc.value));
+		BP(~oscInKey).setGUIValue(path[0], ~cspec.unmap(~gc.value));
 		~gc.addDependant(Environment.current);
 	};
 	~userfree = { |wasReassigned|
 		if(wasReassigned.not) {
 			~path.do { |p|
-				BP(\oscIn04).setGUIValue(p, 0);
+				BP(~oscInKey).setGUIValue(p, 0);
 			};
 		};
 		~gc.removeDependant(Environment.current);
@@ -434,20 +435,20 @@ PR(\abstrMobileResp).clone {
 	};
 	~update = { |obj, what|
 		if(what.isKindOf(Dictionary) and: { what[\what] == \value }) {
-			BP(\oscIn04).setGUIValue(~path[0], ~cspec.unmap(~gc.value));
+			BP(~oscInKey).setGUIValue(~path[0], ~cspec.unmap(~gc.value));
 		};
 	};
 } => PR(\gcmap);
 
 PR(\abstrMobileResp).clone {
 	~userprep = { |path|
-		path.do { |p| BP(\oscIn04).setGUIValue(p, 0) };
+		path.do { |p| BP(~oscInKey).setGUIValue(p, 0) };
 	};
 	~prAction = { |msg, time, addr, recvPort|
 		~specs[\action].value(msg, time, addr, recvPort);
 		if(~specs[\switchOff] == true) {
 			{
-				~path.do { |p| BP(\oscIn04).setGUIValue(p, 0) };
+				~path.do { |p| BP(~oscInKey).setGUIValue(p, 0) };
 			}.defer(0.3);
 		};
 	};
