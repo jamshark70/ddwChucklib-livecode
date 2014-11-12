@@ -418,7 +418,7 @@ PR(\abstrMobileResp).clone {
 PR(\abstrMobileResp).clone {
 	~userprep = { |path|
 		~gc = ~specs[\gc].value;
-		~cspec = ~specs[\spec].asSpec;
+		~cspec = (~specs[\spec] ?? { ~gc.spec }).asSpec;
 		BP(~oscInKey).setGUIValue(path[0], ~cspec.unmap(~gc.value));
 		~gc.addDependant(Environment.current);
 	};
@@ -449,6 +449,7 @@ PR(\gcmap).clone {
 			~cspec = (~specs[\spec] ?? { ~gc.spec }).asSpec;
 			BP(~oscInKey).setGUIValue(path[0], ~cspec.unmap(~gc.value));
 			~gc.addDependant(Environment.current);
+			~gc.bus.addDependant(Environment.current);  // to sync with 'watch'... grr, bad hacks
 			NotificationCenter.register(~gc, \setMixerGui, currentEnvironment, e { |mcgui|
 				if(mcgui.notNil) {
 					~gc.register(~specs[\ctl], mcgui);
@@ -470,6 +471,7 @@ PR(\gcmap).clone {
 			};
 		};
 		if(~gcDidRegister) { ~gc.register(nil, nil, 1) };
+		~gc.bus.removeDependant(Environment.current);
 		~gc.removeDependant(Environment.current);
 		NotificationCenter.unregister(~gc, \setMixerGui, currentEnvironment);
 	};
@@ -478,11 +480,15 @@ PR(\gcmap).clone {
 		~gc.set(value);
 		~gc.update(~gc.bus, [value]);
 	};
-	// ~update = { |obj, what|
-	// 	if(what.isKindOf(Dictionary) and: { what[\what] == \value }) {
-	// 		BP(~oscInKey).setGUIValue(~path[0], ~cspec.unmap(~gc.value));
-	// 	};
-	// };
+	~update = { |obj, what|
+		case
+		{ what.isKindOf(Dictionary) and: { what[\what] == \value } } {
+			BP(~oscInKey).setGUIValue(~path[0], ~cspec.unmap(~gc.value));
+		}
+		{ obj.isKindOf(Bus) } {
+			BP(~oscInKey).setGUIValue(~path[0], ~cspec.unmap(what[0]));
+		}
+	};
 } => PR(\mxmap);
 
 PR(\abstrMobileResp).clone {
