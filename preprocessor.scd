@@ -155,6 +155,7 @@ Proto {
 
 	~statements = [
 		\clPatternSet -> "^ *`id(\\.|`id)* = .*",
+		\clGenerator -> "^ *`id(\\.|`id)* \\*.*",
 		\clXferPattern -> "^ *`id(\\.`id)? ->>",  // harder match should come first
 		\clCopyPattern -> "^ *`id(\\.`id)? ->",
 		\clStartStop -> "^([/`spc]*`id)+[`spc]*[+-]"
@@ -1040,6 +1041,212 @@ PR(\clCopyPattern).clone {
 		);
 	};
 } => PR(\clXferPattern);
+);
+
+(
+Proto {
+	~subdiv = 0.25;
+	~numVariants = 1;
+	~numToAdd = nil;
+	~isPitch = false;
+	~beatsPerBarSpec = "";
+	~itemIsFunc = false;
+
+	~process = { |code|
+		var stream = CollStream(code),
+		ch, bp;
+
+		~idString = ~parseIDs.(stream);
+		if(BP.exists(~idString[0].asSymbol).not) {
+			Error("Generator statement failed: BP('%') does not exist.".format(~idString[0])).throw;
+		};
+		bp = BP(~idString[0].asSymbol);
+		~isPitch = bp.parmIsPitch(~idString[2] ?? { bp.defaultParm });
+
+		while { (ch = stream.next).notNil and: { ch != $" } } {
+			case
+			{ ch == $* } {
+				~numVariants = ~parseInt.(stream);
+			}
+			{ ch == $+ and: { ~numToAdd.isNil } } {
+				~numToAdd = ~parseInt.(stream);
+				ch = stream.next;
+				if(ch.notNil and: { ch.isSpace.not }) {
+					~item = ~parseItem.(stream, ch);
+				};
+			}
+			{ ch == $/ } {
+				~subdiv = ~parseResolution.(stream);
+			}
+			{ ch.notNil and: { ch != $" } } {
+				stream.pos = stream.pos - 1;
+				~beatsPerBarSpec = ~skipUpToCond.(stream, { |ch| ch == $" });
+			};
+			~skipUpToCond.(stream);
+		};
+		if(ch != $") {
+			Error("Generator statement: no pattern string found: %".format(code)).throw;
+		};
+		~string = ~skipUpToCond.(stream, { |ch| ch == $" });
+		~template = ~expandString.(~string);
+		~variants = Array.fill(~numVariants, { |i|
+			var variant = ~makeVariant.(~template);
+			~issueCommand.(variant, i);
+			variant
+		});
+		~postVariants.(~variants);
+
+		"nil"  // return a dummy statement to interpret
+	};
+
+	~parseIDs = { |stream|
+		var str = String.new, ch;
+		while { (ch = stream.next).notNil and: { " *".includes(ch).not } } {
+			str = str ++ ch;
+		};
+		case { ch.isSpace } {
+			~skipUpToCond.(stream);
+		}
+		{ ch == $* } {
+			stream.pos = stream.pos - 1;
+		}
+		{ ch.isNil } { Error("Incomplete generator statement: %".format(stream.collection)).throw };
+		str.split($.)  // need access to phrase name, easiest
+	};
+
+	~parseInt = { |stream|
+		var str = String.new, ch;
+		while { (ch = stream.next).notNil and: { ch.isDecDigit } } {
+			str = str ++ ch;
+		};
+		if(ch.notNil) { stream.pos = stream.pos - 1 };
+		str.asInteger
+	};
+
+	~parseResolution = { |stream|
+		var str = String.new, ch;
+		while { (ch = stream.next).notNil and: { ".0123456789/e".includes(ch) } } {
+			str = str ++ ch;
+		};
+		if(ch.notNil) { stream.pos = stream.pos - 1 };
+		str.interpret
+	};
+
+	~parseItem = { |stream, ch|
+		var str = String.with(ch), funcID;
+		case { ch == $' } {
+			str = ~skipUpToCond.(stream, { |ch| ch == $' });  // should return the thing
+			stream.next;
+			str
+		}
+		{ ch == $\\ } {
+			~itemIsFunc = true;
+			funcID = ~skipUpToCond.(stream, { |ch| ch.isAlphaNum.not and: { ch != $_ } });
+			ch = stream.next;
+			if(ch == $() {
+				~funcArgs = ~skipUpToCond.(stream, { |ch| ch == $) });
+				~funcArgs = "[%]".format(~funcArgs).interpret;
+				stream.next;
+			} {
+				~funcArgs = #[];
+			};
+			Func(funcID.asSymbol)
+		}
+		{ str };
+	};
+
+	// expand a segment if it's shorter than the subdivided beat, and evenly divides
+	// otherwise assume that you gave the number of slots you want
+	~expandString = { |string|
+		var segs = string.split($|).collectAs(~divideEvents, Array),
+		perSeg = ~subdiv.reciprocal, quotient, spaces, new;
+		segs.collect { |seg|
+			if(seg.size == 0) { seg = [$ ] };
+			quotient = perSeg / seg.size;
+			if((quotient.round >= 1) and: { (quotient absdif: quotient.round) < 0.01 }) {
+				spaces = quotient.round - 1;
+				new = Array(perSeg);
+				seg.do { |item|
+					new.add(item);
+					spaces.do { new.add($ ) };
+				};
+				new
+			} { seg }
+		};
+	};
+
+	~makeVariant = { |template|
+		var avail = Array(template.collect(_.size).sum),
+		prevItem;
+		template = template.collect(_.copy);
+		template.do { |seg, i|
+			seg.do { |item, j|
+				if(template[i][j] == $ ) { avail.add([i, j]) };
+			};
+		};
+		avail = avail.scramble.keep(~numToAdd ?? { 1 });
+		avail.do { |indexPair|
+			if(~itemIsFunc) {
+				prevItem = ~scanBackward.(template, *indexPair);
+				template[indexPair[0]][indexPair[1]] = ~item.eval(prevItem, *~funcArgs);
+			} {
+				template[indexPair[0]][indexPair[1]] = ~item;
+			};
+		};
+		~segmentsAsString.(template)
+	};
+
+	~segmentsAsString = { |segments|
+		segments.collect(_.join).join("|");
+	};
+
+	~scanBackward = { |template, segIndex, itemIndex|
+		var thing;
+		block { |break|
+			while { segIndex >= 0 } {
+				while { itemIndex >= 0 } {
+					thing = template[segIndex][itemIndex];
+					if(thing.notNil and: { thing != $  }) {
+						break.(thing);
+					} {
+						itemIndex = itemIndex - 1;
+					};
+				};
+				segIndex = segIndex - 1;
+				itemIndex = template[segIndex].size - 1;
+			};
+		};
+	};
+
+	~issueCommand = { |variant, i|
+		var id = ~idString.copy.put(1, ~idString[1] ++ i).join("."),
+		cmd = "% = %\"%\"".format(id, ~beatsPerBarSpec, variant);
+
+		// hack? Unsafe if the implementation in Func(\chucklibLiveCode) changes
+		try {
+			PR(\chucklibLiveCode)/*.copy?*/.process(cmd).interpret;
+		} { |err|
+			"Could not process variant % of %: %".format(i, ~numVariants, err.errorString).warn;
+		};
+	};
+
+	~postVariants = { |variants|
+		"Added:".postln;
+		variants.do { |variant, i|
+			"% = \"%\"\n".postf(~idString[1] ++ i, variant);
+		};
+	};
+
+	~skipUpToCond = { |stream, boolFunc({ |ch| ch.isSpace.not })|
+		var str = String.new, ch;
+		// boolFunc.asCompileString.debug(">> skipUpToCond");
+		while { (ch = stream.next)/*.debug("ch")*/.notNil and: { boolFunc.(ch).not/*.debug("loop test")*/ } } {
+			str = str ++ ch;
+		};
+		if(ch.notNil) { stream.pos = stream.pos - 1 };
+		str  // .debug("<< skipUpToCond");
+	};
+}.import((clPatternSet: #[divideEvents])) => PR(\clGenerator);
 );
 
 (

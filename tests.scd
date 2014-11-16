@@ -250,3 +250,53 @@ a.str.next;
 a.phrases[\a2] = 2;
 
 a.str.next;
+
+
+
+x = PR(\clGenerator).copy.process("sn.a *10 /1/2 +3 \"abc\"");
+x.listVars
+x.idString.join(".")
+
+x = PR(\clGenerator).copy.process("sn.a *10 /1/2 +3'.' \"abc\"");
+
+x = PR(\clGenerator).copy.process("sn.a *10 /1/2 +3. \"abc\"");
+
+x = PR(\clGenerator).copy.process("sn.a *10 /1/2 +\\stepwise \"abc\"");
+x = PR(\clGenerator).copy.process("sn.a *10 /1/2 +\\stepwise(1, 2) \"abc\"");
+x.listVars
+
+"abc".split($|)
+
+[[1, 2, 3], [4, 5, 6]].reduce('++')
+
+
+x = PR(\clGenerator).copy.process("sn.a *0 +3 \"|-||-\"");
+x.listVars;
+x.template[0].size
+
+x = PR(\clGenerator).copy.process("sn.a *0 +3 \"|-|| -\"");
+
+x = PR(\clGenerator).copy.process("sn.a *0 +3 \"|-| ..|\"");
+
+x = PR(\clGenerator).copy.process("sn.a *0 +3 +\"|-| ..|\"");
+x = PR(\clGenerator).copy.process("sn.a *0 +3 5/4\"|-| ..|\"");
+x.listVars
+
+x = PR(\clGenerator).copy.process("sn.a *2 +3. \"|-||-\"");
+x.listVars
+
+x.template[0][0].asCompileString
+
+{ |... args| args.postln; $. } => Func(\testfunc);
+
+x = PR(\clGenerator).copy.process("sn.a *2 +3. \"|-||-\"");
+
+x = PR(\clGenerator).copy.process("sn.a *2 +3\\testfunc(1, 3) \"|-||-\"");
+x.scanBackward(x.template, 1, 3).asCompileString;
+
+x.segmentsAsString(x.variants[1]).asCompileString;
+
+
+x = PR(\clGenerator).copy.process("sn.a *2 +3'1.' \"1_| 1.||\"");
+
+x = PR(\clGenerator).copy.process("bs.a *2 +3'1.' \"1_| 1.||\"");
