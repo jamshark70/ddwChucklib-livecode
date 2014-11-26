@@ -470,6 +470,8 @@ Proto {
 		}
 		// divide BP's bar length equally by segments (may create overlapping subdivisions)
 		// now the default case is the same as / so, comment out for now
+		// NOTE: clGenerator now uses / where a beatsPerBar string may occur
+		// so one or the other must change if this is ever re-implemented
 		// { matchChar == $/ } {
 		// 	~beatsPerBar = ~clClass.new(~objKey).beatsPerBar;
 		// 	~beatsPerSeg = [~beatsPerBar / pat.size];
@@ -1074,10 +1076,11 @@ Proto {
 	~isPitch = false;
 	~beatsPerBarSpec = "";
 	~itemIsFunc = false;
+	~reachedStringTest = { |ch| ch.isAlpha or: { "/\"".includes(ch) } };
 
 	~process = { |code|
 		var stream = CollStream(code),
-		ch, bp;
+		ch, bp, srcBP, srcParm;
 
 		~idString = ~parseIDs.(stream);
 		if(BP.exists(~idString[0].asSymbol).not) {
@@ -1086,7 +1089,7 @@ Proto {
 		bp = BP(~idString[0].asSymbol);
 		~isPitch = bp.parmIsPitch(~idString[2] ?? { bp.defaultParm });
 
-		while { (ch = stream.next).notNil and: { ch != $" } } {
+		while { (ch = stream.next).notNil and: { ~reachedStringTest.(ch).not } } {
 			case
 			{ ch == $* } {
 				~numVariants = ~parseInt.(stream);
@@ -1101,16 +1104,37 @@ Proto {
 			{ ch == $/ } {
 				~subdiv = ~parseResolution.(stream);
 			}
-			{ ch.notNil and: { ch != $" } } {
+			{ ch.notNil and: { ~reachedStringTest.(ch).not } } {
 				stream.pos = stream.pos - 1;
-				~beatsPerBarSpec = ~skipUpToCond.(stream, { |ch| ch == $" });
+				~beatsPerBarSpec = ~skipUpToCond.(stream, ~reachedStringTest);
 			};
 			~skipUpToCond.(stream);
 		};
-		if(ch != $") {
+		if(ch.isNil or: { ~reachedStringTest.(ch).not }) {
 			Error("Generator statement: no pattern string found: %".format(code)).throw;
 		};
-		~string = ~skipUpToCond.(stream, { |ch| ch == $" });
+		if(ch == $") {
+			~string = ~skipUpToCond.(stream, { |ch| ch == $" });
+		} {
+			// it's either /bp.phrase.parm or phrase.parm
+			~hasBPname = (ch == $/);
+			if(~hasBPname.not) {
+				stream.pos = stream.pos - 1;
+			};
+			~srcIDs = ~parseIDs.(stream, false);  // no error on 'nil' at end
+			if(~hasBPname) {
+				if(BP.exists(~srcIDs[0].asSymbol)) {
+					srcBP = BP(~srcIDs[0].asSymbol);
+					~srcIDs = ~srcIDs.drop(1);
+				} {
+					Error("Generator statement: Source BP(%) not found".format(~srcIDs[0])).throw;
+				};
+			} {
+				srcBP = bp;
+			};
+			srcParm = ~srcIDs[1] ?? { ~idString[2] };
+			~string = srcBP.phraseStringAt(~srcIDs[0].asSymbol, if(srcParm.notNil) { srcParm.asSymbol });
+		};
 		~template = ~expandString.(~string);
 		~variants = Array.fill(~numVariants, { |i|
 			var variant = ~makeVariant.(~template);
@@ -1122,18 +1146,23 @@ Proto {
 		"nil"  // return a dummy statement to interpret
 	};
 
-	~parseIDs = { |stream|
+	~parseIDs = { |stream, errorOnNil(true)|
 		var str = String.new, ch;
 		while { (ch = stream.next).notNil and: { " *".includes(ch).not } } {
 			str = str ++ ch;
 		};
-		case { ch.isSpace } {
+		case
+		{ ch.isNil } {
+			if(errorOnNil) {
+				Error("Incomplete generator statement: %".format(stream.collection)).throw
+			};
+		}
+		{ ch.isSpace } {
 			~skipUpToCond.(stream);
 		}
 		{ ch == $* } {
 			stream.pos = stream.pos - 1;
-		}
-		{ ch.isNil } { Error("Incomplete generator statement: %".format(stream.collection)).throw };
+		};
 		str.split($.)  // need access to phrase name, easiest
 	};
 
