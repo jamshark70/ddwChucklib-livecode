@@ -286,7 +286,7 @@ Proto {
 	~parsePattern = { |code|
 		var case;
 
-		code = code[~eqIndex + 1 ..].trim;
+		~inString = code = code[~eqIndex + 1 ..].trim;
 		// code.asCompileString.debug("code");
 
 		// cases
@@ -537,20 +537,20 @@ Proto {
 	// CODE GENERATION
 
 	~buildStatement = {
-		var stmt = "%(%).setPattern(%, %, %)".format(
+		var stmt = "%(%).setPattern(%, %, %, %)".format(
 			~clClass, ~objKey.asCompileString,
 			~phrase.asCompileString, ~parm.asCompileString,
-			~patString
+			~patString, ~inString
 		);
 		if(~isMain) {
-			stmt = stmt ++ ";\n%(%).setPattern(%, %, Pseq(%, 1))".format(
+			stmt = stmt ++ ";\n%(%).setPattern(%, %, Pseq(%, 1), \"\")".format(
 				~clClass, ~objKey.asCompileString,
 				~phrase.asCompileString, \dur.asCompileString,
 				~deltas.asCompileString
 			)
 		};
 		if(~isPitch) {
-			stmt = stmt ++ ";\n%(%).setPattern(%, %, Pseq(%, 1))".format(
+			stmt = stmt ++ ";\n%(%).setPattern(%, %, Pseq(%, 1), \"\")".format(
 				~clClass, ~objKey.asCompileString,
 				~phrase.asCompileString, \legato.asCompileString,
 				~legatos.asCompileString
@@ -1019,10 +1019,26 @@ Proto {
 	};
 
 	~buildStatement = {
-		var objStr = "%(%)".format(~clClass, ~objKey.asCompileString);
-		"%.phrases[%] = %.phrases[%].deepCopy".format(
+		var objStr = "%(%)".format(~clClass, ~objKey.asCompileString),
+		stmt, obj;
+		stmt = "%.phrases[%] = %.phrases[%].deepCopy".format(
 			objStr, ~targetPhrase.asCompileString,
 			objStr, ~srcPhrase.asCompileString
+		);
+		if(~clClass.exists(~objKey)) {
+			obj = ~clClass.new(~objKey);
+			obj.phrases[~srcPhrase].pairs.pairsDo { |key, value|
+				stmt = "%;\n%".format(stmt, ~copyPhraseStringCmd.(key, objStr));
+			};
+		};
+		stmt
+	};
+
+	~copyPhraseStringCmd = { |key, objStr|
+		key = key.asCompileString;
+		"%.prSetPhraseString(%, %, %.phraseStringAt(%, %))".format(
+			objStr, ~targetPhrase.asCompileString, key,
+			objStr, ~srcPhrase.asCompileString, key
 		);
 	};
 } => PR(\clCopyPattern);
@@ -1033,12 +1049,19 @@ PR(\clCopyPattern).clone {
 
 	~buildStatement = {
 		var objStr = "%(%)".format(~clClass, ~objKey.asCompileString),
-		target = ~targetPhrase.asCompileString;
-		"%.phrases[%] = %.phrases[%].deepCopy; %.setPattern('main', nil, %)".format(
+		target = ~targetPhrase.asCompileString,
+		obj, stmt;
+		stmt = "%.phrases[%] = %.phrases[%].deepCopy; %.setPattern('main', nil, %)".format(
 			objStr, target,
 			objStr, ~srcPhrase.asCompileString,
 			objStr, target
 		);
+		if(~clClass.exists(~objKey)) {
+			obj = ~clClass.new(~objKey);
+			obj.phrases[~srcPhrase].pairs.pairsDo { |key, value|
+				stmt = "%;\n%".format(stmt, ~copyPhraseStringCmd.(key, objStr));
+			};
+		};
 	};
 } => PR(\clXferPattern);
 );
@@ -1269,6 +1292,7 @@ Proto {
 				\rest -> PbindProxy(\dur, Pfuncn { Rest(~clock.beatsPerBar) })
 			];
 			~phraseDurs = IdentityDictionary.new;
+			~phraseStrings = MultiLevelIdentityDictionary.new;
 		};
 		~userprep.();
 		~postParmMap.();
@@ -1289,7 +1313,14 @@ Proto {
 	~defaults = ();  // or Pbind
 	~postDefaults = ();
 
-	~setPattern = { |phrase, parm, pattern|
+	~phraseStringAt = { |phrase, parm(~defaultParm)|
+		~phraseStrings.at(phrase, parm);
+	};
+	~prSetPhraseString = { |phrase, parm(~defaultParm), string|
+		~phraseStrings.put(phrase, parm, string);
+		currentEnvironment
+	};
+	~setPattern = { |phrase, parm, pattern, inString|
 		var pat = ~phrases[phrase];
 		parm = ~parmMap[parm].tryPerform(\at, \alias) ?? { parm };
 		if(pat.isNil) {
@@ -1303,6 +1334,7 @@ Proto {
 					~phraseDurs[phrase] = pattern.list.sum(_.value);
 				};
 				pat.set(parm, pattern);
+				~prSetPhraseString.(phrase, parm, inString);
 			} {
 				// composite pattern
 				~phraseSeq = pattern;
