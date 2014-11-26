@@ -310,9 +310,10 @@ Proto {
 			code = code.drop(1);
 		};
 		stream = CollStream(code);
-		group = PR(\clCompGrouping).copy.process(stream);
+		~group = group = PR(\clCompGrouping).copy.process(stream);
 		group.clumpOperators;
 		if(group.repeats.isNil) { group.repeats = inf };
+		~inString = "\"\"";
 		group.asPatString;
 	};
 	~unquoteString = { |str, pos = 0, delimiter = $"|
