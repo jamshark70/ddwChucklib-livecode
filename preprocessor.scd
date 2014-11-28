@@ -965,7 +965,11 @@ Proto {
 						};
 					};
 					if(row.last[1].first == $+) { method = \play } { method = \stop };
-					keys = row.drop(-1).flop[1].collect(_.asSymbol).select { |key| BP.exists(key) };
+					if(row.any { |pair| pair[1] == "all" }) {
+						keys = BP.keys.as(Array);
+					} {
+						keys = row.drop(-1).flop[1].collect(_.asSymbol).select { |key| BP.exists(key) };
+					};
 					result = result ++ "BP(%).%(%)".format(
 						keys.asCompileString,
 						method, quant
