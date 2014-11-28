@@ -154,6 +154,7 @@ Proto {
 	);
 
 	~statements = [
+		\clPassThru -> "^ *`id\\(.*\\)",
 		\clPatternSet -> "^ *`id(\\.|`id)* = .*",
 		\clGenerator -> "^ *`id(\\.|`id)* \\*.*",
 		\clXferPattern -> "^ *`id(\\.`id)? ->>",  // harder match should come first
@@ -1301,6 +1302,72 @@ Proto {
 	};
 }.import((clPatternSet: #[divideEvents])) => PR(\clGenerator);
 );
+
+// pass code through to the BP
+Proto {
+	~clClass = BP;
+	~process = { |code|
+		~parseIDs.(code);
+		~getCode.(code);
+		"%(%).%".format(~clClass, ~objKey.asCompileString, ~codeToPass);
+	};
+
+	~parseIDs = { |code|
+		var i, ids, test;
+		~parenIndex = code.indexOf($();
+		// everything before ~parenIndex should be the ID string
+		ids = code[.. ~parenIndex - 1].split($.).collect(_.trim);  // wslib dependency
+		ids = Pseq(ids).asStream;
+
+		// class (I expect this won't be used often)
+		test = ids.next;
+		if(test.first.isUpper) {
+			~clClass = test.asSymbol.asClass;
+			test = ids.next;
+		};
+
+		// chucklib object key
+		~objKey = test.asSymbol;  // really? what about array types?
+		if(~clClass.exists(~objKey).not) {
+			Error("clPassThru: %(%) does not exist.".format(~clClass.name, ~objKey.asCompileString)).throw;
+		};
+		// ignore the rest -- not looking at phrases or parms
+	};
+
+	~getCode = { |code|
+		~codeToPass = ~stringInMatchingBrackets.(code[~parenIndex..]).drop(1).drop(-1);
+	};
+
+	// algorithm is not correct: brackets may be closed out of order
+	~stringInMatchingBrackets = { |str|
+		var stream = CollStream(str), ch, paren = 0, brackets = 0, braces = 0, hitBracket = false;
+		str = String.new;
+		ch = stream.next;
+		while { ch.notNil } {
+			str = str ++ ch;
+			case
+			{ ch == $( } { paren = paren + 1; hitBracket = true }
+			{ ch == $) } { paren = paren - 1; hitBracket = true }
+			{ ch == $[ } { brackets = brackets + 1; hitBracket = true }
+			{ ch == $] } { brackets = brackets - 1; hitBracket = true }
+			{ ch == ${ } { braces = braces + 1; hitBracket = true }
+			{ ch == $} } { braces = braces - 1; hitBracket = true };
+			if(hitBracket and: { max(max(paren, brackets), braces) == 0 }) {
+				ch = nil;
+			} {
+				ch = stream.next
+			};
+		};
+		if(max(max(paren, brackets), braces) == 0) {
+			str
+		} {
+			Error("clPassThru: Brackets were not closed properly: %".format(stream.collection)).throw;
+		};
+	};
+} => PR(\clPassThru);
+
+
+// livecode-able process prototype
 
 (
 Proto {
