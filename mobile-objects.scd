@@ -512,6 +512,27 @@ protect {
 		};
 	} => PR(\trigact);
 
+	Proto {
+		~prep = {
+			~maps = IdentityDictionary.new;
+		};
+		~freeCleanup = {
+			~maps.keysDo { |key| ~unmapMobile.(key) };
+		};
+
+		~mapMobile = { |type, path, specs|
+			var new;
+			if(PR.exists(type)) {
+				new = PR(type).copy.prep(path, specs);
+				~maps[path] = ~maps[path].add(new);
+			};
+		};
+
+		~unmapMobile = { |path|
+			~maps[path].do { |obj| obj.free };
+		};
+	} => PR(\mapStorage);
+
 } {
 	AbstractChuckArray.defaultSubType = saveSubtype;
 };
