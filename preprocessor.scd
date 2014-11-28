@@ -1088,6 +1088,9 @@ Proto {
 		if(BP.exists(~idString[0].asSymbol).not) {
 			Error("Generator statement failed: BP('%') does not exist.".format(~idString[0])).throw;
 		};
+		if(~idString[1].isNil) {
+			Error("Generator statement failed: No phrase prefix given.").throw;
+		};
 		bp = BP(~idString[0].asSymbol);
 		~isPitch = bp.parmIsPitch(~idString[2] ?? { bp.defaultParm });
 
@@ -1103,7 +1106,7 @@ Proto {
 					~item = ~parseItem.(stream, ch);
 				};
 			}
-			{ ch == $/ } {
+			{ ch == $% } {
 				~subdiv = ~parseResolution.(stream);
 			}
 			{ ch.notNil and: { ~reachedStringTest.(ch).not } } {
