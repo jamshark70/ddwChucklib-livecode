@@ -450,8 +450,8 @@ protect {
 		~gcDidRegister = false;
 		~userprep = { |path|
 			~mixer = ~specs[\mixer];
-			if(~mixer.isKindOf(MixerControl).not) { ~mixer = ~mixer.value };
-			~gc = ~mixer.controls[~specs[\ctl]];
+			if(~mixer.isKindOf(MixerChannel).not) { ~mixer = ~mixer.value };
+			~gc = ~mixer.controls[~specs[\ctl] ?? { \level }];
 			if(~gc.notNil) {
 				~cspec = (~specs[\spec] ?? { ~gc.spec }).asSpec;
 				BP(~oscInKey).setGUIValue(path[0], ~cspec.unmap(~gc.value));
