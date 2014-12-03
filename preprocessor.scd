@@ -159,7 +159,8 @@ Proto {
 		\clGenerator -> "^ *`id(\\.|`id)* \\*.*",
 		\clXferPattern -> "^ *`id(\\.`id)? ->>",  // harder match should come first
 		\clCopyPattern -> "^ *`id(\\.`id)? ->",
-		\clStartStop -> "^([/`spc]*`id)+[`spc]*[+-]"
+		\clStartStop -> "^([/`spc]*`id)+[`spc]*[+-]",
+		\clPatternToDoc -> "^ *`id(\\.|`id)*[`spc]*$"
 	];
 
 	// support functions
@@ -1372,6 +1373,48 @@ Proto {
 		};
 	};
 } => PR(\clPassThru);
+
+Proto {
+	~clClass = BP;
+	~process = { |code|
+		var pos;
+
+		~eqIndex = code.size;  // hack: no '=' in this command syntax
+		~parseIDs.(code);
+		try {
+			~string = ~clClass.new(~objKey).phraseStringAt(~phrase, ~parm);
+		} { |err|
+			Error("% while looking up pattern string".format(err.errorString.asCompileString)).throw;
+		};
+
+		if(~stepForward.isNil) {
+			~checkStepForward.();
+		};
+
+		pos = Document.current.selectionStart + Document.current.selectionSize;
+		if(~stepForward and: { Document.current.string(pos - 1, 1) == "\n" }) { pos = pos - 1 };
+		Document.current.string_(" = %;".format(~string.quote), pos, 0);
+
+		""  // the result is the side effect: don't run any code
+	};
+
+	~checkStepForward = {
+		var path = Platform.userConfigDir +/+ "sc_ide_conf.yaml",
+		file = File(path, "r"),
+		line;
+		if(file.isOpen) {
+			while { (line = file.getLine).notNil and: { line.contains("stepForwardEvaluation").not } };
+			if(line.isNil) {
+				~stepForward = false
+			} {
+				~stepForward = line.split($ ).last.interpret;
+				PR(\clPatternToDoc).stepForward = ~stepForward;  // save for next time
+			};
+		} {
+			Error("Could not open config file at %".format(path.asCompileString)).throw;
+		};
+	}
+}.import((clPatternSet: #[parseIDs])) => PR(\clPatternToDoc);
 
 
 // livecode-able process prototype
