@@ -1403,7 +1403,9 @@ Proto {
 		file = File(path, "r"),
 		line;
 		if(file.isOpen) {
-			while { (line = file.getLine).notNil and: { line.contains("stepForwardEvaluation").not } };
+			protect {
+				while { (line = file.getLine).notNil and: { line.contains("stepForwardEvaluation").not } };
+			} { file.close };
 			if(line.isNil) {
 				~stepForward = false
 			} {
