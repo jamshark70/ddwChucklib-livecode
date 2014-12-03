@@ -1468,8 +1468,8 @@ Proto {
 		currentEnvironment
 	};
 	~setPattern = { |phrase, parm, pattern, inString|
-		var pat = ~phrases[phrase];
-		parm = ~parmMap[parm].tryPerform(\at, \alias) ?? { parm };
+		var pat = ~phrases[phrase],
+		storeParm = ~parmMap[parm].tryPerform(\at, \alias) ?? { parm };
 		if(pat.isNil) {
 			pat = PbindProxy.new;
 			~phrases[phrase] = pat;
@@ -1480,7 +1480,7 @@ Proto {
 					// _.value is needed to convert Rests to durations
 					~phraseDurs[phrase] = pattern.list.sum(_.value);
 				};
-				pat.set(parm, pattern);
+				pat.set(storeParm, pattern);
 				~prSetPhraseString.(phrase, parm, inString);
 			} {
 				// composite pattern
