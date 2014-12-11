@@ -1030,7 +1030,9 @@ Proto {
 	~buildStatement = {
 		var objStr = "%(%)".format(~clClass, ~objKey.asCompileString),
 		stmt, obj;
-		stmt = "%.phrases[%] = %.phrases[%].deepCopy".format(
+		stmt = "%.phrases[%] = %.phrases[%].deepCopy; %.phraseDurs[%] = %.phraseDurs[%]".format(
+			objStr, ~targetPhrase.asCompileString,
+			objStr, ~srcPhrase.asCompileString,
 			objStr, ~targetPhrase.asCompileString,
 			objStr, ~srcPhrase.asCompileString
 		);
@@ -1387,14 +1389,17 @@ Proto {
 			Error("% while looking up pattern string".format(err.errorString.asCompileString)).throw;
 		};
 
-		if(~stepForward.isNil) {
-			~checkStepForward.();
+		if(~string.isNil) {
+			"Requested pattern hasn't been created".warn;
+		} {
+			if(~stepForward.isNil) {
+				~checkStepForward.();
+			};
+
+			pos = Document.current.selectionStart + Document.current.selectionSize;
+			if(~stepForward and: { Document.current.string(pos - 1, 1) == "\n" }) { pos = pos - 1 };
+			Document.current.string_(" = %;".format(~string.quote), pos, 0);
 		};
-
-		pos = Document.current.selectionStart + Document.current.selectionSize;
-		if(~stepForward and: { Document.current.string(pos - 1, 1) == "\n" }) { pos = pos - 1 };
-		Document.current.string_(" = %;".format(~string.quote), pos, 0);
-
 		""  // the result is the side effect: don't run any code
 	};
 
@@ -1440,7 +1445,11 @@ Proto {
 				\main -> PbindProxy(\dur, Pfuncn { Rest(~clock.beatsPerBar) }),
 				\rest -> PbindProxy(\dur, Pfuncn { Rest(~clock.beatsPerBar) })
 			];
-			~phraseDurs = IdentityDictionary.new;
+			~phraseDurs = IdentityDictionary[
+				// function is allowed here b/c Pfindur will evaluate it
+				\main -> { ~clock.beatsPerBar },
+				\rest -> { ~clock.beatsPerBar },
+			];
 			~phraseStrings = MultiLevelIdentityDictionary.new;
 		};
 		~userprep.();
