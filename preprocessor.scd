@@ -1241,7 +1241,7 @@ Proto {
 
 	~makeVariant = { |template|
 		var avail = Array(template.collect(_.size).sum),
-		prevItem;
+		prevItem, nextItem;
 		template = template.collect(_.copy);
 		template.do { |seg, i|
 			seg.do { |item, j|
@@ -1252,7 +1252,8 @@ Proto {
 		avail.do { |indexPair|
 			if(~itemIsFunc) {
 				prevItem = ~scanBackward.(template, *indexPair);
-				template[indexPair[0]][indexPair[1]] = ~item.eval(prevItem, *~funcArgs);
+				nextItem = ~scanForward.(template, *indexPair);
+				template[indexPair[0]][indexPair[1]] = ~item.eval(prevItem, nextItem, *~funcArgs);
 			} {
 				template[indexPair[0]][indexPair[1]] = ~item;
 			};
@@ -1278,6 +1279,24 @@ Proto {
 				};
 				segIndex = segIndex - 1;
 				itemIndex = template[segIndex].size - 1;
+			};
+		};
+	};
+
+	~scanForward = { |template, segIndex, itemIndex|
+		var thing;
+		block { |break|
+			while { segIndex < template.size } {
+				while { itemIndex < template[segIndex].size } {
+					thing = template[segIndex][itemIndex];
+					if(thing.notNil and: { thing != $  }) {
+						break.(thing);
+					} {
+						itemIndex = itemIndex + 1;
+					};
+				};
+				segIndex = segIndex + 1;
+				itemIndex = 0;
 			};
 		};
 	};
