@@ -518,18 +518,7 @@ Proto {
 			event = event.asString;
 			case
 			{ event[0].isDecDigit } {
-				degree = (event[0].ascii - 48).wrap(1, 10) - 1;
-				event.drop(1).do { |ch|
-					switch(ch)
-					{ $- } { degree = degree - 0.1 }
-					{ $+ } { degree = degree + 0.1 }
-					{ $, } { degree = degree - 7 }
-					{ $' } { degree = degree + 7 }
-					{ $~ } { legato = 1.01 }
-					{ $_ } { legato = 0.9 }
-					{ $. } { legato = 0.4 }
-				};
-				degree -> legato  // Association identifies pitch above
+				~decodePitch.(event)
 			}
 			{ event[0] != $ } {
 				Rest(0) -> legato
@@ -538,6 +527,42 @@ Proto {
 		} {
 			obj.valueForParm(event, parm);
 		};
+	};
+
+
+	~decodePitch = { |pitchStr|
+		var degree, legato = 0.9;
+		pitchStr = pitchStr.asString;
+		case
+		{ pitchStr[0].isDecDigit } {
+			degree = (pitchStr[0].ascii - 48).wrap(1, 10) - 1;
+			pitchStr.drop(1).do { |ch|
+				switch(ch)
+				{ $- } { degree = degree - 0.1 }
+				{ $+ } { degree = degree + 0.1 }
+				{ $, } { degree = degree - 7 }
+				{ $' } { degree = degree + 7 }
+				{ $~ } { legato = 1.01 }
+				{ $_ } { legato = 0.9 }
+				{ $. } { legato = 0.4 }
+			};
+			degree -> legato  // Association identifies pitch above
+		}
+	};
+
+	// pitchNum is a scale degree, assuming 0 as neutral-octave tonic
+	// accidentals encoded by +/- 0.1
+	// currently assuming 7 notes per octave -- will have to fix this
+	~encodePitch = { |pitchNum|
+		var natural = pitchNum.round,
+		octave = natural div: 7,
+		class = natural - (octave * 7),
+		octaveChar = if(octave < 0) { $, } { $' },
+		accidentalChar = if(pitchNum < natural) { $- } { $+ },
+		str = (class + 1).asString;
+		(pitchNum absdif: natural * 10).do { str = str ++ accidentalChar };
+		octave.abs.do { str = str ++ octaveChar };
+		str
 	};
 	// CODE GENERATION
 

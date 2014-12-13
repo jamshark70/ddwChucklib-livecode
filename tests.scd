@@ -300,3 +300,11 @@ x.segmentsAsString(x.variants[1]).asCompileString;
 x = PR(\clGenerator).copy.process("sn.a *2 +3'1.' \"1_| 1.||\"");
 
 x = PR(\clGenerator).copy.process("bs.a *2 +3'1.' \"1_| 1.||\"");
+
+
+x = PR(\clPatternSet).copy;
+
+x.decodePitch("4+.");
+x.encodePitch(3.1);
+x.encodePitch(2.9);
+x.encodePitch(10.1);
