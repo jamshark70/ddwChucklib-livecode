@@ -11,7 +11,7 @@ protect {
 		~sendPort = 9000;
 		~prep = {
 			~respFunc = e { |msg, time, replyAddr, recvPort|
-				if(replyAddr.matches(~addr)) {
+				if(replyAddr.matches(~addr) or: { msg[0] == '/ping' }) {
 					// if(msg[0] != '/accxyz') { msg.debug("raw") };
 					~respond.(msg, time, replyAddr, recvPort)
 				};
@@ -73,7 +73,7 @@ protect {
 			if(guiOnly.not) {
 				NotificationCenter.notify(currentEnvironment, msg[0], args);
 			};
-			if(msg[0] == '/ping' and: { ~addr.isNil }) {
+			if(msg[0] == '/ping' /*and: { ~addr.isNil }*/) {
 				~addr = replyAddr;
 				~sendAddr = NetAddr(~addr.ip, ~sendPort);
 			};
