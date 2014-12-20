@@ -1006,7 +1006,7 @@ Proto {
 		} {
 			Error("clStartStop: Regexp problem").throw;
 		};
-		result.debug("clStartStop result");
+		result  // .debug("clStartStop result");
 	};
 }.import((chucklibLiveCode: #[tokens, replaceRegexpMacros, removeRegexpDups, removeDupIndices]), #[tokens]) => PR(\clStartStop);
 
