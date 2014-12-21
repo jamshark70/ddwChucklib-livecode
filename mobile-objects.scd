@@ -9,6 +9,7 @@ protect {
 		~addr = nil;  // address to match
 		~pingSetsAddr = true;  // auto filter on /ping receipt
 		~sendPort = 9000;
+		~pingDebug = true;
 		~prep = {
 			~respFunc = e { |msg, time, replyAddr, recvPort|
 				if(replyAddr.matches(~addr) or: { msg[0] == '/ping' }) {
@@ -74,6 +75,7 @@ protect {
 				NotificationCenter.notify(currentEnvironment, msg[0], args);
 			};
 			if(msg[0] == '/ping' /*and: { ~addr.isNil }*/) {
+				if(~pingDebug) { replyAddr.debug("/ping: set mobile IP") };
 				~addr = replyAddr;
 				~sendAddr = NetAddr(~addr.ip, ~sendPort);
 			};
@@ -361,6 +363,7 @@ protect {
 			};
 			~userfree.(wasReassigned);
 			~resp.do(_.remove);
+			NotificationCenter.notify(currentEnvironment, \didFree);
 		};
 		~setLabels = { |labels|
 			var oscin = BP(~oscInKey).v;
@@ -532,6 +535,142 @@ protect {
 			~maps[path].do { |obj| obj.free };
 		};
 	} => PR(\mapStorage);
+
+	BP(\osc).free;
+	Proto {
+		~oscKey = \touch;
+		~event = ();  // dummy, to prevent bindVC from breaking
+
+		~prep = {
+			~keys = BP(~oscKey).saveKeys.collect(_.asString).select { |key| "23".includes(key[1]) };
+			~faderKeys = ~keys.select { |key| key[3] == $f }.collectAs(_.asSymbol, Array).sort;
+			~toggleKeys = ~keys.select { |key| key[3] == $t }.collectAs(_.asSymbol, Array).sort;
+			~maps = IdentityDictionary.new;
+		};
+		~freeCleanup = {
+			~maps.do(_.free);
+		};
+		// don't do mixers this way
+		~bindGenericGlobalControl = { |thing, adverb, parms|
+			// prefer Tab3 for gcs
+			var index = ~getIndexFromAdverb.(adverb, #[8, 0], \fader),
+			newMap = PR(\gcmap).copy.prep(~faderKeys[index], (gc: thing, label: thing.name));
+			~maps[~faderKeys[index]] = newMap;
+			~setNotification.(newMap, ~faderKeys[index]);
+		};
+		~bindVC = { |vc, adverb, parms|
+			var gcs = parms.tryPerform(\at, \gcs) ?? { vc.v.globalControlsByCreation }, num = gcs.size;
+			// need custom adverb logic
+			adverb = adverb.asString;
+			if(adverb.every(_.isDecDigit)) {
+				adverb = adverb.asInteger
+			} {
+				if(parms.tryPerform(\at, \over) == true) {
+					adverb = 8;
+				} {
+					Error("Searching not implemented yet").throw;
+				}
+			};
+			if(adverb.notNil) {
+				block { |break|
+					gcs.do { |gc, i|
+						i = i + adverb;
+						if(i >= ~faderKeys.size) {
+							"VC(%) has controls that couldn't be assigned".format(vc.collIndex).warn;
+							break.(i);
+						};
+						~bindGenericGlobalControl.(gc, i, parms);
+					};
+				};
+			};
+		};
+		~bindMixerChannel = { |mixer, adverb, parms|
+			var index = ~getIndexFromAdverb.(adverb, 0, \fader),
+			newMap;
+			// volume fader
+			~maps[~faderKeys[index]].free;
+			newMap = PR(\mxmap).copy.prep(~faderKeys[index],
+				(mixer: mixer, ctl: \level, label: mixer.name.asString + "level"));
+			~maps[~faderKeys[index]] = newMap;
+			~setNotification.(newMap, ~faderKeys[index]);
+			// mute button
+			if(parms.tryPerform(\at, \setMute) != false) {
+				~maps[~toggleKeys[index]].free;
+				newMap = PR(\abstrMobileResp).copy.prep(~toggleKeys[index],
+					(label: "M"));
+				newMap.prAction = { |msg| mixer.mute(msg[1] > 0) };
+				~maps[~toggleKeys[index]] = newMap;
+				~setNotification.(newMap, ~toggleKeys[index]);
+			};
+		};
+		// both mixer and play/stop
+		~bindBP = { |bp, adverb, parms|
+			var index = ~getIndexFromAdverb.(adverb, 0, \fader),
+			mixer = bp[\chan],
+			newMap;
+			if(mixer.isNil) {
+				mixer = bp.event[\voicer];  // mixer as temp here
+				if(mixer.notNil) { mixer = mixer.asMixer };  // mixer is really a Voicer at the start of this!
+			};
+			if(parms.isNil) {
+				parms = (setMute: false)
+			} {
+				parms = parms.copy.put(\setMute, false);
+			};
+			if(mixer.notNil) {
+				~bindMixerChannel.(mixer, index, parms);
+			};
+			newMap = PR(\bptrig).copy.prep(~toggleKeys[index],
+				(bp: bp.collIndex, label: bp.collIndex));
+			~maps[~toggleKeys[index]] = newMap;
+			~setNotification.(newMap, ~toggleKeys[index]);
+		};
+		~bindNil = { |aNil, adverb|
+			var index;
+			tryNoTrace {
+				index = ~getIndexFromAdverb.(adverb, #[], \fader);
+			} { |err|
+				// catch and ignore 'bad index' errors
+				if(err.errorString.contains("bad index").not) { err.throw };
+			};
+			if(index.isInteger) {
+				~maps[~toggleKeys[index]].copy.free;
+				~maps[~faderKeys[index]].copy.free;
+			} {
+				"Nothing to remove, or bad index".warn
+			};
+		};
+		~getIndexFromAdverb = { |adverb, offsetsToTry = #[0], type(\fader)|
+			var coll = (type ++ "Keys").asSymbol.envirGet;
+			if(coll.isNil) {
+				Error("BP(%): Wrong type %".format(~collIndex.asCompileString, type.asCompileString)).throw;
+			};
+			adverb = adverb.asString;
+			if(adverb.every(_.isDecDigit)) {
+				adverb = adverb.asInteger;
+			} {
+				adverb = block { |break|
+					offsetsToTry.asArray.do { |offset|
+						(offset .. coll.size - 1).do { |i|
+							if(~maps[coll[i]].isNil) { break.(i) };
+						};
+					};
+					nil
+				};
+			};
+			if(adverb.isNil or: { adverb.inclusivelyBetween(0, coll.size).not }) {
+				Error("BP(%): No available OSC %s or bad index".format(~collIndex.asCompileString, type)).throw;
+			} {
+				adverb
+			};
+		};
+		~setNotification = { |mapObj, key|
+			NotificationCenter.register(mapObj, \didFree, currentEnvironment, e {
+				NotificationCenter.unregister(mapObj, \didFree, currentEnvironment);
+				~maps[key] = nil;
+			});
+		};
+	} => PR(\chuckOSC);
 
 } {
 	AbstractChuckArray.defaultSubType = saveSubtype;
