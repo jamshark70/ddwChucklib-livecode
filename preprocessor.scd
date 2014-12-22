@@ -154,6 +154,7 @@ Proto {
 	);
 
 	~statements = [
+		\clMake -> "^ *make\\(.*\\)",
 		\clPassThru -> "^ *`id\\(.*\\)",
 		\clPatternSet -> "^ *`id(\\.|`id)* = .*",
 		\clGenerator -> "^ *`id(\\.|`id)* \\*.*",
@@ -171,21 +172,24 @@ Proto {
 	// ~replaceRegexpMacros.("`id(.`id)+ = .*").matchRegexp("kik.k1 = 'xxxx'");
 
 	~replaceRegexpMacros = { |regexp|
-		var key;
+		var key, matches;
 		// should replace from right to left -- don't break indices
-		~removeDupIndices.(regexp.findRegexp("`[a-z0-9]+")).reverseDo { |found|
-			// allow escaping "\`"
-			if(found[0] == 0 or: { regexp[found[0]-1] != $\\ }) {
-				key = found[1].drop(1).asSymbol;
-				if(~tokens[key].notNil) {
-					// replace only one instance: before match ++ replacement ++ after match
-					regexp = "%%%".format(
-						if(found[0] > 0) { regexp[.. found[0] - 1] } { "" },
-						~tokens[key],
-						if(found[0] + found[1].size < regexp.size) {
-							regexp[found[0] + found[1].size ..]
-						} { "" }
-					);
+		matches = regexp.findRegexp("`[a-z0-9]+");
+		if(matches.notEmpty) {
+			~removeDupIndices.(matches).reverseDo { |found|
+				// allow escaping "\`"
+				if(found[0] == 0 or: { regexp[found[0]-1] != $\\ }) {
+					key = found[1].drop(1).asSymbol;
+					if(~tokens[key].notNil) {
+						// replace only one instance: before match ++ replacement ++ after match
+						regexp = "%%%".format(
+							if(found[0] > 0) { regexp[.. found[0] - 1] } { "" },
+							~tokens[key],
+							if(found[0] + found[1].size < regexp.size) {
+								regexp[found[0] + found[1].size ..]
+							} { "" }
+						);
+					};
 				};
 			};
 		};
@@ -1419,6 +1423,50 @@ Proto {
 		};
 	};
 } => PR(\clPassThru);
+
+Proto {
+	~clClass = BP;
+	~process = { |code|
+		~parseIDs.(code);
+		~writeCode.();
+	};
+	~parseIDs = { |code|
+		var match = code.findRegexp("\\([A-Za-z0-9_]+(/[A-Za-z0-9_]+)*\\)");
+		if(match.size == 0) {
+			Error("clMake: Invalid IDs in parentheses").throw;
+		};
+		match = match[0][1];
+		match = match[1 .. match.size - 2].split($/);
+		~ids = Array(match.size);
+		match.do { |str|
+			str = str.trim;
+			if(str.size > 0) { ~ids.add(str.asSymbol) };
+		};
+		~ids
+	};
+	~writeCode = {
+		var out = CollStream.new;
+		~ids.do { |id, i|
+			if(out.pos > 0) {
+				out << ";\n";
+			};
+			if(Fact.exists(id)) {
+				out << "Fact(%) => %(%)".format(
+					id.asCompileString,
+					~classForFactoryType.(id),
+					(Fact(id).v[\defaultName] ?? { id }).asCompileString
+				);
+			};
+		};
+		out.collection;
+	};
+	~classForFactoryType = { |key|
+		switch(Fact(key).type)
+		{ \bp } { BP }
+		{ \vc } { VC }
+		{ \voicer } { VC }
+	};
+} => PR(\clMake);
 
 Proto {
 	~clClass = BP;
