@@ -10,6 +10,7 @@ protect {
 		~pingSetsAddr = true;  // auto filter on /ping receipt
 		~sendPort = 9000;
 		~pingDebug = true;
+		~keepAlive = true;
 		~prep = {
 			~respFunc = e { |msg, time, replyAddr, recvPort|
 				if(replyAddr.matches(~addr) or: { msg[0] == '/ping' }) {
@@ -21,12 +22,27 @@ protect {
 			~data = IdentityDictionary.new;  // save all incoming data by oscpath
 			if(~labels.isNil) { ~labels = IdentityDictionary.new };
 			~setDataKeys.();
+			if(~keepAlive) { ~startAliveThread.() };
 			Environment.current
 		};
 		~freeCleanup = {
+			~stopAliveThread.();
 			thisProcess.removeOSCRecvFunc(~respFunc);
 			NotificationCenter.notify(currentEnvironment, \modelWasFreed);
 		};
+		~startAliveThread = {
+			~stopAliveThread.();
+			~aliveThread = Routine {
+				loop {
+					if(~addr.notNil) {
+						~addr.sendMsg("/alive");
+					};
+					10.wait;
+				};
+			};
+			currentEnvironment
+		};
+		~stopAliveThread = { ~aliveThread.stop; };
 
 		~setLabel = { |oscpath, label|
 			if(label.isNil) { label = "" /*oscpath.asString.split($/).last*/ };
