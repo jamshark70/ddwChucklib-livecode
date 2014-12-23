@@ -157,6 +157,7 @@ Proto {
 		\clMake -> "^ *make\\(.*\\)",
 		\clFuncCall -> "^ *`id\\.\\(.*\\)",
 		\clPassThru -> "^ *`id\\(.*\\)",
+		\clChuck -> "^ *`id *=>.*",
 		\clPatternSet -> "^ *`id(\\.|`id)* = .*",
 		\clGenerator -> "^ *`id(\\.|`id)* \\*.*",
 		\clXferPattern -> "^ *`id(\\.`id)? ->>",  // harder match should come first
@@ -1365,6 +1366,7 @@ Proto {
 // pass code through to the BP
 Proto {
 	~clClass = BP;
+	~endIDChar = $(;
 	~process = { |code|
 		~parseIDs.(code);
 		~getCode.(code);
@@ -1373,7 +1375,7 @@ Proto {
 
 	~parseIDs = { |code|
 		var i, ids, test;
-		~parenIndex = code.indexOf($();
+		~parenIndex = code.indexOf(~endIDChar);
 		// everything before ~parenIndex should be the ID string
 		ids = code[.. ~parenIndex - 1].split($.).collect(_.trim);  // wslib dependency
 		ids = Pseq(ids).asStream;
@@ -1424,6 +1426,21 @@ Proto {
 		};
 	};
 } => PR(\clPassThru);
+
+PR(\clPassThru).clone {
+	~endIDChar = $=;
+	~process = { |code|
+		~parseIDs.(code);
+		~getCode.(code);
+		"%(%) =>%".format(~clClass, ~objKey.asCompileString, ~codeToPass).debug("clChuck");
+		// "%.eval(%)".format(~objKey.asCompileString, ~codeToPass);
+	};
+	~getCode = { |code|
+		var i = code.find("=>");
+		if(i.isNil) { Error("No '=>' in clChuck statement; this should never happen").throw };
+		~codeToPass = code[i+2..];
+	};
+} => PR(\clChuck);
 
 PR(\clPassThru).clone {
 	~clClass = Func;
@@ -1485,7 +1502,7 @@ Proto {
 				// };
 			};
 		};
-		out.collection.debug("goddamn it why isn't it working?");
+		out.collection
 	};
 	~classForFactoryType = { |key|
 		switch(Fact(key).type)
