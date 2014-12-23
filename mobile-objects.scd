@@ -566,6 +566,10 @@ protect {
 		~freeCleanup = {
 			~maps.do(_.free);
 		};
+		~empty = { |indices|
+			if(indices.isNil) { indices = 16 };
+			indices.do { |i| ~bindNil.(nil, i) };
+		};
 		// don't do mixers this way
 		~bindGenericGlobalControl = { |thing, adverb, parms|
 			// prefer Tab3 for gcs
@@ -636,6 +640,7 @@ protect {
 			if(mixer.notNil) {
 				~bindMixerChannel.(mixer, index, parms);
 			};
+			~maps[~toggleKeys[index]].free;
 			newMap = PR(\bptrig).copy.prep(~toggleKeys[index],
 				(bp: bp.collIndex, label: bp.collIndex));
 			~maps[~toggleKeys[index]] = newMap;
@@ -650,8 +655,8 @@ protect {
 				if(err.errorString.contains("bad index").not) { err.throw };
 			};
 			if(index.isInteger) {
-				~maps[~toggleKeys[index]].copy.free;
-				~maps[~faderKeys[index]].copy.free;
+				~maps[~toggleKeys[index]].free;
+				~maps[~faderKeys[index]].free;
 			} {
 				"Nothing to remove, or bad index".warn
 			};
