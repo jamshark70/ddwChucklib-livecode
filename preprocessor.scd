@@ -155,6 +155,7 @@ Proto {
 
 	~statements = [
 		\clMake -> "^ *make\\(.*\\)",
+		\clFuncCall -> "^ *`id\\.\\(.*\\)",
 		\clPassThru -> "^ *`id\\(.*\\)",
 		\clPatternSet -> "^ *`id(\\.|`id)* = .*",
 		\clGenerator -> "^ *`id(\\.|`id)* \\*.*",
@@ -1424,6 +1425,15 @@ Proto {
 	};
 } => PR(\clPassThru);
 
+PR(\clPassThru).clone {
+	~clClass = Func;
+	~process = { |code|
+		~parseIDs.(code);
+		~getCode.(code);
+		"%.eval(%)".format(~objKey.asCompileString, ~codeToPass);
+	};
+} => PR(\clFuncCall);
+
 Proto {
 	~clClass = BP;
 	~process = { |code|
@@ -1456,9 +1466,26 @@ Proto {
 					~classForFactoryType.(id),
 					(Fact(id).v[\defaultName] ?? { id }).asCompileString
 				);
+				// if(Fact(id).v[\defaultBP].notNil) {
+				// 	if(BP.exists(Fact(id).v[\defaultBP])) {
+				// 		out << ";\n%(%) => BP(%)".format(
+				// 			~classForFactoryType.(id),
+				// 			(Fact(id).v[\defaultName] ?? { id }).asCompileString,
+				// 			Fact(id).v[\defaultBP].asCompileString
+				// 		)
+				// 	} {
+				// 		"%(%) should go into BP(%), but it doesn't exists. Remember to => manually"
+				// 		.format(
+				// 			~classForFactoryType.(id),
+				// 			(Fact(id).v[\defaultName] ?? { id }).asCompileString,
+				// 			Fact(id).v[\defaultBP].asCompileString
+				// 		)
+				// 		.warn;
+				// 	};
+				// };
 			};
 		};
-		out.collection;
+		out.collection.debug("goddamn it why isn't it working?");
 	};
 	~classForFactoryType = { |key|
 		switch(Fact(key).type)
