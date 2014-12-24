@@ -573,9 +573,9 @@ protect {
 		// don't do mixers this way
 		~bindGenericGlobalControl = { |thing, adverb, parms|
 			// prefer Tab3 for gcs
-			var index = ~getIndexFromAdverb.(adverb, #[8, 0], \fader),
-			newMap = PR(\gcmap).copy.prep(~faderKeys[index], (gc: thing, label: thing.name));
+			var index = ~getIndexFromAdverb.(adverb, #[8, 0], \fader), newMap;
 			~maps[~faderKeys[index]].free;
+			newMap = PR(\gcmap).copy.prep(~faderKeys[index], (gc: thing, label: thing.name));
 			~maps[~faderKeys[index]] = newMap;
 			~setNotification.(newMap, ~faderKeys[index]);
 		};
