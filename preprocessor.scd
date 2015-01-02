@@ -158,7 +158,7 @@ Proto {
 		\clFuncCall -> "^ *`id\\.\\(.*\\)",
 		\clPassThru -> "^ *`id\\(.*\\)",
 		\clChuck -> "^ *`id *=>.*",
-		\clPatternSet -> "^ *`id(\\.|`id)* = .*",
+		\clPatternSet -> "^ *`id(\\.|`id|`id\\*[0-9]+)* = .*",
 		\clGenerator -> "^ *`id(\\.|`id)* \\*.*",
 		\clXferPattern -> "^ *`id(\\.`id)? ->>",  // harder match should come first
 		\clCopyPattern -> "^ *`id(\\.`id)? ->",
@@ -235,7 +235,7 @@ Proto {
 	};
 
 	~parseIDs = { |code|
-		var i, ids, test;
+		var i, ids, test, temp;
 		// everything before ~eqIndex should be the ID string
 		ids = code[.. ~eqIndex - 1].split($.).collect(_.trim);  // wslib dependency
 		ids = Pseq(ids).asStream;
@@ -258,7 +258,18 @@ Proto {
 		if(test.size == 0) {
 			~phrase = \main;
 		} {
-			~phrase = test.asSymbol;
+			i = test.indexOf($*);
+			if(i.notNil) {
+				temp = test[i+1 .. ];
+				if(temp.notEmpty and: temp.every(_.isDecDigit)) {
+					~numToApply = temp.asInteger;
+				} {
+					"%: Invalid apply number".format(test).warn;
+				};
+				~phrase = test[ .. i-1].asSymbol;
+			} {
+				~phrase = test.asSymbol;  // really? what about array types?
+			};
 		};
 		test = ids.next;
 
@@ -573,26 +584,42 @@ Proto {
 	// CODE GENERATION
 
 	~buildStatement = {
-		var stmt = "%(%).setPattern(%, %, %, %)".format(
+		var stmt = CollStream.new;
+		if(~numToApply.notNil) {
+			~numToApply.do { |i|
+				if(i > 0) { stmt << ";\n" };
+				~buildOneStatement.(stmt, i);
+			};
+		} { ~buildOneStatement.(stmt) };
+		stmt.collection
+	};
+
+	~buildOneStatement = { |stream, i|
+		var phrase;
+		if(i.notNil) {
+			phrase = (~phrase ++ i).asSymbol.asCompileString
+		} {
+			phrase = ~phrase.asCompileString;
+		};
+		stream << "%(%).setPattern(%, %, %, %)".format(
 			~clClass, ~objKey.asCompileString,
-			~phrase.asCompileString, ~parm.asCompileString,
+			phrase, ~parm.asCompileString,
 			~patString, ~inString
 		);
 		if(~isMain) {
-			stmt = stmt ++ ";\n%(%).setPattern(%, %, Pseq(%, 1), \"\")".format(
+			stream << ";\n%(%).setPattern(%, %, Pseq(%, 1), \"\")".format(
 				~clClass, ~objKey.asCompileString,
-				~phrase.asCompileString, \dur.asCompileString,
+				phrase, \dur.asCompileString,
 				~deltas.asCompileString
 			)
 		};
 		if(~isPitch) {
-			stmt = stmt ++ ";\n%(%).setPattern(%, %, Pseq(%, 1), \"\")".format(
+			stream << ";\n%(%).setPattern(%, %, Pseq(%, 1), \"\")".format(
 				~clClass, ~objKey.asCompileString,
-				~phrase.asCompileString, \legato.asCompileString,
+				phrase, \legato.asCompileString,
 				~legatos.asCompileString
 			)
 		};
-		stmt;
 	};
 }.import((chucklibLiveCode: #[tokens, replaceRegexpMacros, removeRegexpDups, removeDupIndices]), #[tokens]) => PR(\clPatternSet);
 

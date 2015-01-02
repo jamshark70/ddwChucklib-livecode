@@ -308,3 +308,6 @@ x.decodePitch("4+.");
 x.encodePitch(3.1);
 x.encodePitch(2.9);
 x.encodePitch(10.1);
+
+
+PR(\chucklibLiveCode).replaceRegexpMacros("^ *`id(\\.|`id|`id\\*[0-9]+)* = .*")
