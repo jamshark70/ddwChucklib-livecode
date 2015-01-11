@@ -160,8 +160,8 @@ Proto {
 		\clChuck -> "^ *`id *=>.*",
 		\clPatternSet -> "^ *`id(\\.|`id|`id\\*[0-9]+)* = .*",
 		\clGenerator -> "^ *`id(\\.|`id)* \\*.*",
-		\clXferPattern -> "^ *`id(\\.`id)? ->>",  // harder match should come first
-		\clCopyPattern -> "^ *`id(\\.`id)? ->",
+		\clXferPattern -> "^ *`id(\\.`id)?(\\*`int)? ->>",  // harder match should come first
+		\clCopyPattern -> "^ *`id(\\.`id)?(\\*`int)? ->",
 		\clStartStop -> "^([/`spc]*`id)+[`spc]*[+-]",
 		\clPatternToDoc -> "^ *`id(\\.|`id)*[`spc]*$"
 	];
@@ -1059,10 +1059,11 @@ Proto {
 	};
 
 	~idRegexp = {
-		PR(\chucklibLiveCode).replaceRegexpMacros("(`id)(%.`id)? % (`id)".format($\\, ~eqCheckStr))
+		PR(\chucklibLiveCode).replaceRegexpMacros("(`id)(%.`id|%.`id%*`int)? % (`id)"
+			.format($\\, $\\, $\\, ~eqCheckStr))
 	};
 	~parseIDs = { |code|
-		var ids = code.findRegexp(~idRegexp.()), obj;
+		var ids = code.findRegexp(~idRegexp.()), obj, i;
 		if(ids.size < 4) {
 			Error("%: Regexp did not find ids (%)".format(~name, ids)).throw;
 		} {
@@ -1074,40 +1075,65 @@ Proto {
 					// current
 					~srcPhrase = obj.lastPhrase;  // potentially risky
 				} {
-					~srcPhrase = ~srcPhrase.drop(1).asSymbol;
+					~srcPhrase = ~srcPhrase.drop(1);
+					i = ~srcPhrase.indexOf($*);
+					if(i.notNil) {  // discard number, if it exists
+						~srcPhrase = ~srcPhrase[0 .. i-1];
+					};
+					~srcPhrase = ~srcPhrase.asSymbol;
 				};
 				if(obj.phrases[~srcPhrase].isNil) {
 					Error("%: Source phrase % doesn't exist".format(~name, ~srcPhrase.asCompileString)).throw;
 				};
-				~targetPhrase = ids[3][1].asSymbol;
+				if(ids[3][1].size > 0) {
+					~numToCopy = ids[3][1].asInteger;
+				};
+				~targetPhrase = ids[4][1].asSymbol;
 			};
 		};
 		currentEnvironment
 	};
 
 	~buildStatement = {
-		var objStr = "%(%)".format(~clClass, ~objKey.asCompileString),
-		stmt, obj;
+		var objStr = "%(%)".format(~clClass, ~objKey.asCompileString);
+		if(~numToCopy.isNil) {
+			~buildOneStatement.(objStr, nil);
+		} {
+			Array.fill(~numToCopy, { |i|
+				~buildOneStatement.(objStr, i)
+			}).join(";\n")
+		}
+	};
+
+	~buildOneStatement = { |objStr, index|
+		var stmt, obj, srcPhrase, targetPhrase;
+		if(index.isNil) {
+			srcPhrase = ~srcPhrase.asCompileString;
+			targetPhrase = ~targetPhrase.asCompileString;
+		} {
+			srcPhrase = "'%'".format(~srcPhrase ++ index);
+			targetPhrase = "'%'".format(~targetPhrase ++ index);
+		};
 		stmt = "%.phrases[%] = %.phrases[%].deepCopy; %.phraseDurs[%] = %.phraseDurs[%]".format(
-			objStr, ~targetPhrase.asCompileString,
-			objStr, ~srcPhrase.asCompileString,
-			objStr, ~targetPhrase.asCompileString,
-			objStr, ~srcPhrase.asCompileString
+			objStr, targetPhrase,
+			objStr, srcPhrase,
+			objStr, targetPhrase,
+			objStr, srcPhrase
 		);
 		if(~clClass.exists(~objKey)) {
 			obj = ~clClass.new(~objKey);
 			obj.phrases[~srcPhrase].pairs.pairsDo { |key, value|
-				stmt = "%;\n%".format(stmt, ~copyPhraseStringCmd.(key, objStr));
+				stmt = "%;\n%".format(stmt, ~copyPhraseStringCmd.(key, objStr, srcPhrase, targetPhrase));
 			};
 		};
 		stmt
 	};
 
-	~copyPhraseStringCmd = { |key, objStr|
+	~copyPhraseStringCmd = { |key, objStr, srcPhrase, targetPhrase|
 		key = key.asCompileString;
 		"%.prSetPhraseString(%, %, %.phraseStringAt(%, %))".format(
-			objStr, ~targetPhrase.asCompileString, key,
-			objStr, ~srcPhrase.asCompileString, key
+			objStr, targetPhrase, key,
+			objStr, srcPhrase, key
 		);
 	};
 } => PR(\clCopyPattern);

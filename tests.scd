@@ -311,3 +311,47 @@ x.encodePitch(10.1);
 
 
 PR(\chucklibLiveCode).replaceRegexpMacros("^ *`id(\\.|`id|`id\\*[0-9]+)* = .*")
+
+
+// *n for copy/xfer
+
+PR(\chucklibLiveCode).v.listVars
+
+r = PR(\chucklibLiveCode).replaceRegexpMacros("(`id)(%.`id)? % (`id)".format($\\, "->"));
+r = PR(\chucklibLiveCode).replaceRegexpMacros("(`id)(%.`id|%.`id%*`int)? % (`id)".format($\\, $\\, $\\, "->"));
+
+"/bs.m -> n".findRegexp(r);
+"/bs -> n".findRegexp(r);
+"/bs.m*4 -> n".findRegexp(r);
+
+/make(tablaBP)
+/tb.m = "!|11|1#| 1";
+
+x = PR(\clCopyPattern).copy;
+x.parseIDs("/tb.m -> n");
+x.listVars;
+
+x = PR(\clCopyPattern).copy;
+x.parseIDs("/tb.m*2 -> n");
+x.listVars;
+
+PR(\clCopyPattern).copy.process("/tb.m -> n");
+PR(\clCopyPattern).copy.process("/tb.m*2 -> n");
+
+/bars.(\tb, 2);
+/tb.m0 = "!|11|1#| 1";
+/tb.m1 = "  33|3 23| 23 |3#  ";
+/tb+8
+
+/tb.m*2 -> n
+
+/tb(phrases)
+
+/tb.n0 = "!|3333|13 3| #";
+/tb.n1 = "  33|3 23| 23 |3#  ";
+
+/setm.(\tb, 2, \n);
+
+/setm.(\tb, 2, \m);
+
+/tb-8
