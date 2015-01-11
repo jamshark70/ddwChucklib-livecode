@@ -355,3 +355,12 @@ PR(\clCopyPattern).copy.process("/tb.m*2 -> n");
 /setm.(\tb, 2, \m);
 
 /tb-8
+
+/tb(phraseSeq.asCompileString)
+
+/tb = (m0.m1);
+
+PR(\clXferPattern).copy.process("tb.m*2 ->> n");
+
+/tb.m*2 ->> n
+

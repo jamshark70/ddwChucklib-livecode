@@ -1142,22 +1142,48 @@ PR(\clCopyPattern).clone {
 	~name = "patternXfer";
 	~eqCheckStr = "->>";
 
+	~superBuildStatement = ~buildStatement;
+
+	// do the same as super.buildStatement, but add the phrase pattern
 	~buildStatement = {
-		var objStr = "%(%)".format(~clClass, ~objKey.asCompileString),
-		target = ~targetPhrase.asCompileString,
-		obj, stmt;
-		stmt = "%.phrases[%] = %.phrases[%].deepCopy; %.setPattern('main', nil, %)".format(
-			objStr, target,
-			objStr, ~srcPhrase.asCompileString,
-			objStr, target
-		);
-		if(~clClass.exists(~objKey)) {
-			obj = ~clClass.new(~objKey);
-			obj.phrases[~srcPhrase].pairs.pairsDo { |key, value|
-				stmt = "%;\n%".format(stmt, ~copyPhraseStringCmd.(key, objStr));
+		var stmt = ~superBuildStatement.(),
+		obj = ~clClass.new(~objKey),
+		phraseSeq = obj.phraseSeq.asCompileString;  // should work with composite patterns
+		if(~numToCopy.isNil) {
+			phraseSeq = phraseSeq.replace(~srcPhrase.asCompileString, ~targetPhrase.asCompileString);
+		} {
+			// going in reverse order should make sure e.g. m11 gets replaced before m1
+			// this is still borderline risky; it may replace other syntax accidentally
+			~numToCopy.reverseDo { |i|
+				phraseSeq = phraseSeq.replace(
+					~srcPhrase ++ i,
+					~targetPhrase ++ i
+				);
 			};
 		};
+		"%;\n%(%).setPattern('main', nil, %)".format(
+			stmt,
+			~clClass, ~objKey.asCompileString,
+			phraseSeq  // it's already a compileString
+		)
 	};
+
+	// ~buildStatement = {
+	// 	var objStr = "%(%)".format(~clClass, ~objKey.asCompileString),
+	// 	target = ~targetPhrase.asCompileString,
+	// 	obj, stmt;
+	// 	stmt = "%.phrases[%] = %.phrases[%].deepCopy; %.setPattern('main', nil, %)".format(
+	// 		objStr, target,
+	// 		objStr, ~srcPhrase.asCompileString,
+	// 		objStr, target
+	// 	);
+	// 	if(~clClass.exists(~objKey)) {
+	// 		obj = ~clClass.new(~objKey);
+	// 		obj.phrases[~srcPhrase].pairs.pairsDo { |key, value|
+	// 			stmt = "%;\n%".format(stmt, ~copyPhraseStringCmd.(key, objStr));
+	// 		};
+	// 	};
+	// };
 } => PR(\clXferPattern);
 );
 
