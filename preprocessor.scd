@@ -1059,7 +1059,7 @@ Proto {
 	};
 
 	~idRegexp = {
-		PR(\chucklibLiveCode).replaceRegexpMacros("(`id)(\\.`id)? % (`id)".format(~eqCheckStr))
+		PR(\chucklibLiveCode).replaceRegexpMacros("(`id)(%.`id)? % (`id)".format($\\, ~eqCheckStr))
 	};
 	~parseIDs = { |code|
 		var ids = code.findRegexp(~idRegexp.()), obj;
