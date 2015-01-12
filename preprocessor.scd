@@ -1167,23 +1167,6 @@ PR(\clCopyPattern).clone {
 			phraseSeq  // it's already a compileString
 		)
 	};
-
-	// ~buildStatement = {
-	// 	var objStr = "%(%)".format(~clClass, ~objKey.asCompileString),
-	// 	target = ~targetPhrase.asCompileString,
-	// 	obj, stmt;
-	// 	stmt = "%.phrases[%] = %.phrases[%].deepCopy; %.setPattern('main', nil, %)".format(
-	// 		objStr, target,
-	// 		objStr, ~srcPhrase.asCompileString,
-	// 		objStr, target
-	// 	);
-	// 	if(~clClass.exists(~objKey)) {
-	// 		obj = ~clClass.new(~objKey);
-	// 		obj.phrases[~srcPhrase].pairs.pairsDo { |key, value|
-	// 			stmt = "%;\n%".format(stmt, ~copyPhraseStringCmd.(key, objStr));
-	// 		};
-	// 	};
-	// };
 } => PR(\clXferPattern);
 );
 
