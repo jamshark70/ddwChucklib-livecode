@@ -1082,11 +1082,19 @@ Proto {
 					};
 					~srcPhrase = ~srcPhrase.asSymbol;
 				};
-				if(obj.phrases[~srcPhrase].isNil) {
-					Error("%: Source phrase % doesn't exist".format(~name, ~srcPhrase.asCompileString)).throw;
-				};
 				if(ids[3][1].size > 0) {
 					~numToCopy = ids[3][1].asInteger;
+				};
+				if(~numToCopy.isNil) {
+					if(obj.phrases[~srcPhrase].isNil) {
+						Error("%: Source phrase % doesn't exist".format(~name, ~srcPhrase.asCompileString)).throw;
+					};
+				} {
+					if((0 .. ~numToCopy-1).any { |i| obj.phrases[(~srcPhrase ++ i).asSymbol].isNil }) {
+						Error("%: Not prepared for % bars of source phrases %".format(
+							~name, ~numToCopy, ~srcPhrase.asCompileString
+						)).throw;
+					};
 				};
 				~targetPhrase = ids[4][1].asSymbol;
 			};
@@ -1122,7 +1130,7 @@ Proto {
 		);
 		if(~clClass.exists(~objKey)) {
 			obj = ~clClass.new(~objKey);
-			obj.phrases[~srcPhrase].pairs.pairsDo { |key, value|
+			obj.phrases[srcPhrase.drop(1).drop(-1).asSymbol].pairs.pairsDo { |key, value|
 				stmt = "%;\n%".format(stmt, ~copyPhraseStringCmd.(key, objStr, srcPhrase, targetPhrase));
 			};
 		};
