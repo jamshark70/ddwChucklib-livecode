@@ -364,3 +364,13 @@ PR(\clXferPattern).copy.process("tb.m*2 ->> n");
 
 /tb.m*2 ->> n
 
+
+// pass quant with composite pattern
+e = PR(\clPatternSet).copy;
+e.process("tb = (m0.m1)(-2)");
+e.listVars
+
+e[\stream].dump
+e[\stream].collection[6..]
+
+PR(\clPatternSet).listMethods

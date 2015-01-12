@@ -329,7 +329,9 @@ Proto {
 			code = code.drop(1);
 		};
 		stream = CollStream(code);
+		~stream = stream;
 		~group = group = PR(\clCompGrouping).copy.process(stream);
+		~quant = ~getQuantFrom.(stream);
 		group.clumpOperators;
 		if(group.repeats.isNil) { group.repeats = inf };
 		~inString = "\"\"";
@@ -352,7 +354,15 @@ Proto {
 			str[i + 1 .. j - 1];
 		};
 	};
-
+	~getQuantFrom = { |stream|
+		var ch, str;
+		while { (ch = stream.next).notNil and: { ch.isSpace } };  // skip spaces
+		if(ch == $() {
+			stream.pos = stream.pos - 1;
+			str = ~stringInMatchingBrackets.(stream);
+			str  // return value: string, to plug into generated statement
+		} { nil }
+	};
 	~patternWithDividers = { |code|
 		var obj = ~clClass.new(~objKey),
 		time = 0, division, value,
@@ -601,10 +611,10 @@ Proto {
 		} {
 			phrase = ~phrase.asCompileString;
 		};
-		stream << "%(%).setPattern(%, %, %, %)".format(
+		stream << "%(%).setPattern(%, %, %, %, %)".format(
 			~clClass, ~objKey.asCompileString,
 			phrase, ~parm.asCompileString,
-			~patString, ~inString
+			~patString, ~inString, ~quant
 		);
 		if(~isMain) {
 			stream << ";\n%(%).setPattern(%, %, Pseq(%, 1), \"\")".format(
@@ -1018,7 +1028,7 @@ Proto {
 					} {
 						quant = quant.trim;
 						if(quant.size == 0) {  // ok, no quant given
-							quant = -1;
+							quant = nil;
 						} {
 							"clStartStop: % is not a valid quant indicator".format(row.last).warn;
 						};
@@ -1472,6 +1482,11 @@ Proto {
 	// algorithm is not correct: brackets may be closed out of order
 	~stringInMatchingBrackets = { |str|
 		var stream = CollStream(str), ch, paren = 0, brackets = 0, braces = 0, hitBracket = false;
+		if(str.isKindOf(Stream)) {
+			stream = str;
+		} {
+			stream = CollStream(str);
+		};
 		str = String.new;
 		ch = stream.next;
 		while { ch.notNil } {
@@ -1520,6 +1535,9 @@ PR(\clPassThru).clone {
 		"%.eval(%)".format(~objKey.asCompileString, ~codeToPass);
 	};
 } => PR(\clFuncCall);
+
+// hack: should define in a different order
+PR(\clPatternSet).v.import((clPassThru: #[stringInMatchingBrackets]));
 
 Proto {
 	~clClass = BP;
@@ -1684,14 +1702,14 @@ Proto {
 		~phraseStrings.put(phrase, parm, string);
 		currentEnvironment
 	};
-	~setPattern = { |phrase, parm, pattern, inString|
+	~setPattern = { |phrase, parm, pattern, inString, newQuant|
 		var pat = ~phrases[phrase],
 		storeParm = ~parmMap[parm].tryPerform(\at, \alias) ?? { parm };
 		if(pat.isNil) {
 			pat = PbindProxy.new;
 			~phrases[phrase] = pat;
 		};
-		~clock.schedAbs(~clock.nextBar - 0.001, e {
+		~clock.schedAbs(BP(~collIndex).eventSchedTime - 0.001, e {
 			if(parm.notNil) {
 				if(parm == \dur) {
 					// _.value is needed to convert Rests to durations
@@ -1702,6 +1720,7 @@ Proto {
 			} {
 				// composite pattern
 				~phraseSeq = pattern;
+				if(newQuant.notNil) { ~quant = newQuant.asTimeSpec };
 				if(~isPlaying) { ~reschedule.() };
 			};
 			nil
