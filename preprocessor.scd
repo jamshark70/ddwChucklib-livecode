@@ -1709,22 +1709,22 @@ Proto {
 			pat = PbindProxy.new;
 			~phrases[phrase] = pat;
 		};
-		~clock.schedAbs(BP(~collIndex).eventSchedTime - 0.001, e {
-			if(parm.notNil) {
-				if(parm == \dur) {
-					// _.value is needed to convert Rests to durations
-					~phraseDurs[phrase] = pattern.list.sum(_.value);
-				};
-				pat.set(storeParm, pattern);
-				~prSetPhraseString.(phrase, parm, inString);
-			} {
+		if(parm.notNil) {
+			if(parm == \dur) {
+				// _.value is needed to convert Rests to durations
+				~phraseDurs[phrase] = pattern.list.sum(_.value);
+			};
+			pat.set(storeParm, pattern);
+			~prSetPhraseString.(phrase, parm, inString);
+		} {
+			~clock.schedAbs(BP(~collIndex).eventSchedTime - 0.001, e {
 				// composite pattern
 				~phraseSeq = pattern;
 				if(newQuant.notNil) { ~quant = newQuant.asTimeSpec };
 				if(~isPlaying) { ~reschedule.() };
-			};
-			nil
-		});
+				nil
+			});
+		};
 	};
 
 	~asPattern = {
