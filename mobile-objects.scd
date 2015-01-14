@@ -459,9 +459,11 @@ protect {
 			~gc.set(~cspec.map(msg[1]));
 		};
 		~update = { |obj, what|
-			if(what.isKindOf(Dictionary) and: { what[\what] == \value }) {
+			switch(what.tryPerform(\at, \what))
+			{ \value } {
 				BP(~oscInKey).setGUIValue(~path[0], ~cspec.unmap(~gc.value));
-			};
+			}
+			{ \modelWasFreed } { ~free.() }
 		};
 	} => PR(\gcmap);
 
@@ -508,8 +510,12 @@ protect {
 		};
 		~update = { |obj, what|
 			case
-			{ what.isKindOf(Dictionary) and: { what[\what] == \value } } {
-				BP(~oscInKey).setGUIValue(~path[0], ~cspec.unmap(~gc.value));
+			{ what.isKindOf(Dictionary) } {
+				switch(what.tryPerform(\at, \what))
+				{ \value } {
+					BP(~oscInKey).setGUIValue(~path[0], ~cspec.unmap(~gc.value));
+				}
+				{ \modelWasFreed } { ~free.() }
 			}
 			{ obj.isKindOf(Bus) } {
 				BP(~oscInKey).setGUIValue(~path[0], ~cspec.unmap(what[0]));
@@ -595,12 +601,14 @@ protect {
 			if(adverb.notNil) {
 				block { |break|
 					gcs.do { |gc, i|
-						i = i + adverb;
-						if(i >= ~faderKeys.size) {
-							"VC(%) has controls that couldn't be assigned".format(vc.collIndex).warn;
-							break.(i);
+						if(gc.allowGUI) {
+							if(adverb >= ~faderKeys.size) {
+								"VC(%) has controls that couldn't be assigned".format(vc.collIndex).warn;
+								break.(i);
+							};
+							~bindGenericGlobalControl.(gc, adverb, parms);
+							adverb = adverb + 1;
 						};
-						~bindGenericGlobalControl.(gc, i, parms);
 					};
 				};
 			};
