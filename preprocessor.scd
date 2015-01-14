@@ -1710,12 +1710,15 @@ Proto {
 			~phrases[phrase] = pat;
 		};
 		if(parm.notNil) {
-			if(parm == \dur) {
-				// _.value is needed to convert Rests to durations
-				~phraseDurs[phrase] = pattern.list.sum(_.value);
-			};
-			pat.set(storeParm, pattern);
-			~prSetPhraseString.(phrase, parm, inString);
+			~clock.schedAbs(BP(~collIndex).eventSchedTime(-1) - 0.001, e {
+				if(parm == \dur) {
+					// _.value is needed to convert Rests to durations
+					~phraseDurs[phrase] = pattern.list.sum(_.value);
+				};
+				pat.set(storeParm, pattern);
+				~prSetPhraseString.(phrase, parm, inString);
+				nil
+			});
 		} {
 			~clock.schedAbs(BP(~collIndex).eventSchedTime - 0.001, e {
 				// composite pattern
