@@ -1644,6 +1644,7 @@ Proto {
 		} {
 			Error("Could not open config file at %".format(path.asCompileString)).throw;
 		};
+		~stepForward
 	}
 }.import((clPatternSet: #[parseIDs])) => PR(\clPatternToDoc);
 
