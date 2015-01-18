@@ -521,7 +521,7 @@ Proto {
 				~clClass, ~objKey.asCompileString, ~parm
 			).warn;
 			deltas = [Rest(~beatsPerBar)];
-			levels = [1];
+			levels = [~valueForParm.(\rest, ~clClass.new(~objKey), ~parm) ?? 1];
 			legatos = [1];
 		} {
 			deltas = (times ++ ~beatsPerBar).differentiate;
@@ -1734,6 +1734,7 @@ Proto {
 	~asPattern = {
 		var emptyCountdown = 10, lastTime = 0;
 		~reset.();
+		~playHook.();
 		Pchain(
 			BPStream(\postDefaults), //.trace(prefix: "postDefaults: "),
 			Prout { |inevent|
