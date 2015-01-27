@@ -611,18 +611,18 @@ Proto {
 		} {
 			phrase = ~phrase.asCompileString;
 		};
+		if(~isMain) {
+			stream << "%(%).setPattern(%, %, Pseq(%, 1), \"\")".format(
+				~clClass, ~objKey.asCompileString,
+				phrase, \dur.asCompileString,
+				~deltas.asCompileString
+			) << ";\n"
+		};
 		stream << "%(%).setPattern(%, %, %, %, %)".format(
 			~clClass, ~objKey.asCompileString,
 			phrase, ~parm.asCompileString,
 			~patString, ~inString, ~quant
 		);
-		if(~isMain) {
-			stream << ";\n%(%).setPattern(%, %, Pseq(%, 1), \"\")".format(
-				~clClass, ~objKey.asCompileString,
-				phrase, \dur.asCompileString,
-				~deltas.asCompileString
-			)
-		};
 		if(~isPitch) {
 			stream << ";\n%(%).setPattern(%, %, Pseq(%, 1), \"\")".format(
 				~clClass, ~objKey.asCompileString,
@@ -1546,7 +1546,7 @@ Proto {
 		~writeCode.();
 	};
 	~parseIDs = { |code|
-		var match = code.findRegexp("\\([A-Za-z0-9_]+(/[A-Za-z0-9_]+)*\\)");
+		var match = code.findRegexp("\\([A-Za-z0-9_:]+(/[A-Za-z0-9_:]+)*\\)");
 		if(match.size == 0) {
 			Error("clMake: Invalid IDs in parentheses").throw;
 		};
@@ -1555,7 +1555,23 @@ Proto {
 		~ids = Array(match.size);
 		match.do { |str|
 			str = str.trim;
-			if(str.size > 0) { ~ids.add(str.asSymbol) };
+			if(str.size > 0) {
+				if(str.includes($:)) {
+					str = str.split($:).keep(2).collect { |item| item.trim.asSymbol };
+					if(Fact.exists(str[0])) {
+						~ids.add(Association(*str));  // factKey -> bpKey
+					} {
+						Error("clMake: Fact(%) does not exist".format(str[0].asCompileString)).throw;
+					};
+				} {
+					str = str.asSymbol;
+					if(Fact.exists(str)) {
+						~ids.add(Association(str, Fact(str).v[\defaultName] ?? { str }));
+					} {
+						Error("clMake: Fact(%) does not exist".format(str.asCompileString)).throw;
+					};
+				};
+			};
 		};
 		~ids
 	};
@@ -1565,11 +1581,11 @@ Proto {
 			if(out.pos > 0) {
 				out << ";\n";
 			};
-			if(Fact.exists(id)) {
+			if(Fact.exists(id.key)) {
 				out << "Fact(%) => %(%)".format(
-					id.asCompileString,
-					~classForFactoryType.(id),
-					(Fact(id).v[\defaultName] ?? { id }).asCompileString
+					id.key.asCompileString,
+					~classForFactoryType.(id.key),
+					id.value.asCompileString
 				);
 				// if(Fact(id).v[\defaultBP].notNil) {
 				// 	if(BP.exists(Fact(id).v[\defaultBP])) {

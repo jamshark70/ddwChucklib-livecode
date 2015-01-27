@@ -374,3 +374,7 @@ e[\stream].dump
 e[\stream].collection[6..]
 
 PR(\clPatternSet).listMethods
+
+
+e = PR(\clMake).copy;
+e.process("make(cricketBP:cl/cricketBP)")
