@@ -421,7 +421,7 @@ protect {
 			if(~udepth < 50) {
 				~udepth = ~udepth + 1;
 				case
-				// { what == \free } { ~free.() }
+				{ what == \free } { ~free.() }
 				{ #[schedFailed, stop, couldNotPrepare, couldNotStream].includes(what) } {
 					~path.do { |p|
 						BP(~oscInKey).setGUIValue(p, 0);
