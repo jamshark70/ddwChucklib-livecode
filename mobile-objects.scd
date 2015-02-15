@@ -136,6 +136,8 @@ protect {
 		~ltRed = ~red.blend(~white, 0.7);
 
 		~buttonExtent = Point(25, 25);
+		~labelHeight = 16;
+		~labelFont = Font.default.copy.pixelSize_(11);
 		~sliderWidth = 200;
 		~xyExtent = Point(140, 145);
 		~gap = Point(5, 5);
@@ -210,10 +212,11 @@ protect {
 	Proto {
 		~windowName = "TouchOSC";
 		~minExtent = Point(150, 0);
-		~font = Font.default.copy.size_(14);
+		~font = { ~model[\labelFont] ?? { Font.default.copy.size_(14) } };
 
 		~prep = { |model|
 			if(model.notNil) { ~model = model };
+			~font = ~font.value;
 			~notification = NotificationCenter.register(~model, \any, Environment.current, e { |msg|
 				~respond.(~model, msg);  // args[0] == msg
 			});
@@ -297,7 +300,7 @@ protect {
 			} {
 				label = "" // oscpath.asString.split($/).last;
 			};
-			~labels[oscpath] = StaticText(parent, view.bounds.setExtent(view.bounds.width, 20))
+			~labels[oscpath] = StaticText(parent, view.bounds.setExtent(view.bounds.width, ~model.labelHeight))
 			.align_(\center)
 			.font_(~font)
 			.string_(label);
