@@ -107,6 +107,14 @@ protect {
 			};
 			~saveKeys = new;
 		};
+		~viewChanged = { |path, value|
+			if(value.size > 0) {
+				~setValues.(path, *value)
+			} {
+				~setValue.(path, value)
+			};
+			currentEnvironment
+		};
 	} => PR(\abstractTouch);
 
 	// this has GUI stuff in it -- maybe revisit
@@ -267,8 +275,15 @@ protect {
 				view[\view] = view[\class].new(parent, view[\bounds]);
 				view[\init].value(view.view);
 				view[\spec] = view[\spec].asSpec;
-				view.view.action = e { |vw|
-					~model.tryPerform(\viewChanged, oscpath, view[\spec].map(vw.value));
+				if(view[\class] == Slider2D) {
+					view.view.action = e { |vw|
+						// this is not exactly right
+						~model.tryPerform(\viewChanged, oscpath, view[\spec].map([vw.x, vw.y]));
+					};
+				} {
+					view.view.action = e { |vw|
+						~model.tryPerform(\viewChanged, oscpath, view[\spec].map(vw.value));
+					};
 				};
 				~views[oscpath] = view;
 				~viewHook.(oscpath, view, parent);
