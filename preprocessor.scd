@@ -1705,21 +1705,22 @@ Proto {
 				);
 			}
 			{ $* } {
-				~registers[regId].do { |stmt|
-					func = PR(\chucklibLiveCode).process(stmt).compile;
-					tryNoTrace { func.value } { |err| err.reportError };
+				outcode = CollStream.new;
+				~registers[regId].do { |stmt, i|
+					if(i > 0) { outcode << ";\n" };
+					outcode << PR(\chucklibLiveCode).process(stmt);
 				};
 				if(~autoResetDefault and: { regId == ~default }) {
 					~clear.(~default);
 				};
-				"\"Register % fired\".postln".format(regId.asCompileString);
+				outcode.collection
 			}
 			{ $? } {
 				"Register %\n".postf(regId.asCompileString);
 				~registers[regId].do { |stmt|
 					stmt.postln;
 				};
-				nil
+				"nil"
 			}
 		} {
 			Error("Invalid register command '%'".format(cmd)).throw;
