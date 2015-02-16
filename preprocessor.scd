@@ -1,5 +1,5 @@
 this.preProcessor = { |code|
-	if(code.first == $/) {
+	if("/+".includes(code.first)) {
 		\chucklibLiveCode.eval(code)
 	} {
 		code
@@ -10,8 +10,15 @@ this.preProcessor = { |code|
 { |code|
 	code = \clParseIntoStatements.eval(code);
 	code.do { |stmt, i|
-		if(stmt.first == $/ and: { stmt[1] != $/ }) {
+		case
+		{ stmt.first == $/ and: { stmt[1] != $/ } } {
 			code[i] = PR(\chucklibLiveCode)/*.copy?*/.process(stmt.drop(1));
+		}
+		{ stmt.first == $+ } {
+			if(BP.exists(\clRegister).not) {
+				PR(\clRegister) => BP(\clRegister);
+			};
+			code[i] = BP(\clRegister).process(stmt.drop(1));
 		};
 	};
 	code.join(";\n");
@@ -1664,6 +1671,64 @@ Proto {
 	}
 }.import((clPatternSet: #[parseIDs])) => PR(\clPatternToDoc);
 
+
+// command registers: save groups of commands, for bigger textural shifts
+Proto {
+	~default = \default;
+	~autoResetDefault = true;
+	~prep = {
+		~registers = IdentityDictionary.new;
+	};
+	~process = { |code|
+		var cmdIndex = code.detectIndex { |ch| (ch.isAlpha or: { ch.isDecDigit or: { ch == $_ } }).not },
+		cmd, regId, func, outcode;
+		if(cmdIndex.notNil) {
+			regId = code[..cmdIndex - 1].trim;
+			if(regId.isEmpty) { regId = ~default };
+			regId = regId.asSymbol;
+			cmd = code[cmdIndex];
+			switch(cmd)
+			{ $/ } {
+				if(~registers[regId].isNil) {
+					~clear.(regId);
+				};
+				"BP(%).registers[%].add(%)".format(
+					~collIndex.asCompileString,
+					regId.asCompileString,
+					code[cmdIndex + 1 .. ].asCompileString
+				);
+			}
+			{ $! } {
+				"BP(%).clear(%)".format(
+					~collIndex.asCompileString,
+					regId.asCompileString
+				);
+			}
+			{ $* } {
+				~registers[regId].do { |stmt|
+					func = PR(\chucklibLiveCode).process(stmt).compile;
+					tryNoTrace { func.value } { |err| err.reportError };
+				};
+				if(~autoResetDefault and: { regId == ~default }) {
+					~clear.(~default);
+				};
+				"\"Register % fired\".postln".format(regId.asCompileString);
+			}
+			{ $? } {
+				"Register %\n".postf(regId.asCompileString);
+				~registers[regId].do { |stmt|
+					stmt.postln;
+				};
+				nil
+			}
+		} {
+			Error("Invalid register command '%'".format(cmd)).throw;
+		};
+	};
+	~clear = { |key|
+		~registers[key] = List.new;
+	};
+} => PR(\clRegister);
 
 // livecode-able process prototype
 
