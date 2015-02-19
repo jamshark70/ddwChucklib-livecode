@@ -378,3 +378,49 @@ PR(\clPatternSet).listMethods
 
 e = PR(\clMake).copy;
 e.process("make(cricketBP:cl/cricketBP)")
+
+
+
+// this should work.
+/drone = ((a0.a1)%3|(b0.b1)%1);
+
+x = PR(\clCompGrouping).copy;
+x.process(CollStream("x.(a%1|b%2))"));
+
+x = PR(\clCompGrouping).copy;
+x.process(CollStream("x.(y|z)*2)"));
+x.clumpOperators;
+x.asPatString;
+
+x = PR(\clCompGrouping).copy;
+x.process(CollStream("(a0.a1)%3|(b0.b1)%1)"));
+x.clumpOperators;
+x.asPatString;
+
+x = PR(\clCompGrouping).copy;
+x.process(CollStream("a0%3|b0%1)"));
+x.clumpOperators;
+x.asPatString;
+
+x = PR(\clCompGrouping).copy;
+x.process(CollStream("(a0|a1)%3|b0%1)"));
+x.listVars
+
+x.items[0].listVars
+
+x.clumpOperators;
+x.asPatString;
+
+x = PR(\clCompGrouping).copy;
+x.process(CollStream("(a0.a1)%3|(b0.b1)%1)"));
+x.listVars
+x.items[0].listVars
+
+x.clumpOperators;
+x.asPatString;
+
+p = PR(\clPatternSet).copy;
+p.process("drone = ((a0.a1)%3|(b0.b1)%1)");
+p.listVars
+p.group.listVars
+p.group.items[0][0].listVars

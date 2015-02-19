@@ -850,6 +850,9 @@ Proto {
 			{ ch == $( } {
 				if(str.size > 0) { ~items = ~items.add(str) };
 				~items = ~items.add(PR(\clCompGrouping).copy.process(stream));
+				if(~items.last.tryPerform(\weight).notNil) {
+					~hasWeights = true;
+				};
 				str = String.new;
 			}
 			{ ch == $) } {
@@ -893,16 +896,22 @@ Proto {
 		if(continue) {
 			Error("Composite pattern: Unclosed () group").throw;
 		} {
-			ch = stream.next;
-			if(ch == $*) {
-				~repeats = tryNoTrace {
+			while { ch = stream.next; "*%".includes(ch) } {
+				rpt = tryNoTrace {
 					~scanInt.(stream).asInteger;
 				} { |exc|
-					if(exc.what == \nonInt) { 1 } { exc.throw };
+					if(exc.what == \nonInt) { nil } { exc.throw };
 				};
-			} {
-				stream.pos = stream.pos - 1;
+				if(ch == $*) {
+					~repeats = rpt ?? { 1 };
+				} {
+					if(rpt.notNil) {
+						~weight = rpt;
+					};
+				};
 			};
+			stream.pos = stream.pos - 1;
+		// };
 		};
 		currentEnvironment
 	};
