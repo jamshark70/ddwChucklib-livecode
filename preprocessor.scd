@@ -837,8 +837,9 @@ Proto {
 	~type = \group;
 	~hasWeights = false;
 	// ~repeats = 1;
-	~process = { |stream|
+	~process = { |stream, checkDoubleStar = true|
 		var ch, continue = true, str = String.new, rpt;
+		if(checkDoubleStar) { ~checkDoubleStar.(stream) };
 		~items = Array();
 		while { continue and: { (ch = stream.next).notNil } } {
 			case
@@ -849,7 +850,7 @@ Proto {
 			}
 			{ ch == $( } {
 				if(str.size > 0) { ~items = ~items.add(str) };
-				~items = ~items.add(PR(\clCompGrouping).copy.process(stream));
+				~items = ~items.add(PR(\clCompGrouping).copy.process(stream, false));
 				if(~items.last.tryPerform(\weight).notNil) {
 					~hasWeights = true;
 				};
@@ -914,6 +915,35 @@ Proto {
 		// };
 		};
 		currentEnvironment
+	};
+
+	~checkDoubleStar = { |stream|
+		var str = stream.collection, regex, id, num, index;
+		regex = str.findRegexp("([A-Za-z0-9_]+)\\*\\*([0-9]+)");
+		if(regex.notNil) {
+			// based on the above regexp, all matches should come in groups of three:
+			// 0. The full matching string, e.g. "key**num"
+			// 1. The first paren group (the key), e.g. "key"
+			// 2. The second paren group (num)
+			// It should be impossible to have multiple matches for either of the paren groups.
+			// clump(3) clusters them.
+			// reverseDo means that I don't have adjust indices.
+			// This generates syntax like '^key0', which will be further expanded later!
+			regex.clump(3).reverseDo { |triplet|
+				id = triplet[1][1];
+				num = triplet[2][1].asInteger;
+				index = triplet[0][0];
+				str = "%(%)%".format(
+					if(index > 0) { str[ .. index - 1] } { "" },
+					Array.fill(num, { |i| "'^%%'".format(id, i) }).join("."),
+					if(index + triplet[0][1].size < str.size) {
+						str[index + triplet[0][1].size .. ]
+					} { "" }
+				);
+			};
+			stream.collection = str;
+		};
+		stream
 	};
 
 	~clumpOperators = {

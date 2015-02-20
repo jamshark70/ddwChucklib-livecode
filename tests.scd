@@ -424,3 +424,59 @@ p.process("drone = ((a0.a1)%3|(b0.b1)%1)");
 p.listVars
 p.group.listVars
 p.group.items[0][0].listVars
+
+
+
+// double-star in compGroups
+(
+~checkDoubleStar = { |stream|
+	var str = stream.collection, regex, id, num, index;
+	regex = str.findRegexp("([A-Za-z0-9_]+)\\*\\*([0-9]+)");
+	if(regex.notNil) {
+		regex.clump(3).reverseDo { |triplet|
+			id = triplet[1][1];
+			num = triplet[2][1].asInteger;
+			index = triplet[0][0];
+			str = "%(%)%".format(
+				if(index > 0) { str[ .. index - 1] } { "" },
+				Array.fill(num, { |i| "'^%%'".format(id, i) }).join("."),
+				if(index + triplet[0][1].size < (str.size)) {
+					str[index + triplet[0][1].size .. ]
+				} { "" }
+			);
+		};
+	};
+	stream.collection = str;
+};
+)
+
+x = CollStream("a.(b|c*2))");
+~checkDoubleStar.(x);
+x.collection;
+
+x = CollStream("a**3.(b|c**2))");
+~checkDoubleStar.(x);
+x.collection;
+
+x = CollStream("a**2.b**2)");
+~checkDoubleStar.(x);
+x.collection;
+
+x = CollStream("a**3x");
+~checkDoubleStar.(x);
+x.collection;
+
+y = PR(\clCompGrouping).copy;
+y.process(x);
+y.clumpOperators;
+y.asPatString;
+
+y = PR(\clCompGrouping).copy;
+y.process(CollStream("a**3.(b|c**2))"));
+y.clumpOperators;
+y.asPatString;
+
+y = PR(\clCompGrouping).copy;
+y.process(CollStream("a**2.b**2)"));
+y.clumpOperators;
+y.asPatString;
