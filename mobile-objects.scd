@@ -430,7 +430,11 @@ protect {
 		};
 		~prAction = { |msg|
 			if(msg[1] > 0) {
-				BP(~specs[\bp]).play(~specs[\quant]);
+				if(~specs[\once] ? false) {
+					BP(~specs[\bp]).do { |bp| bp.triggerOneEvent(~specs[\quant]) };
+				} {
+					BP(~specs[\bp]).play(~specs[\quant]);
+				};
 			} {
 				BP(~specs[\bp]).stop(~specs[\quant]);
 			};
@@ -440,7 +444,7 @@ protect {
 				~udepth = ~udepth + 1;
 				case
 				{ what == \free } { ~free.() }
-				{ #[schedFailed, stop, couldNotPrepare, couldNotStream].includes(what) } {
+				{ #[schedFailed, stop, couldNotPrepare, couldNotStream, oneEventPlayed].includes(what) } {
 					~path.do { |p|
 						BP(~oscInKey).setGUIValue(p, 0);
 					}
@@ -669,7 +673,7 @@ protect {
 			};
 			~maps[~toggleKeys[index]].free;
 			newMap = PR(\bptrig).copy.prep(~toggleKeys[index],
-				(bp: bp.collIndex, label: bp.collIndex));
+				(bp: bp.collIndex, label: bp.collIndex, once: parms[\once]));
 			~maps[~toggleKeys[index]] = newMap;
 			~setNotification.(newMap, ~toggleKeys[index]);
 		};
