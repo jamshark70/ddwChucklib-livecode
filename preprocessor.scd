@@ -111,7 +111,8 @@ this.preProcessor = { |code|
 // assumes we've already read the slash-star
 { |code|
 	var ch, ch2, continue = true;
-	while { (ch = code.next).notNil and: { continue } } {
+	while { (ch = ch2 ?? { code.next }).notNil and: { continue } } {
+		ch2 = nil;
 		switch(ch)
 		{ $/ } {
 			ch2 = code.next;
@@ -122,7 +123,6 @@ this.preProcessor = { |code|
 			if(ch2 == $/) { continue = false };
 		}
 	};
-	if(ch.notNil) { code.pos = code.pos - 1 };
 	code
 } => Func(\clParseDelimComment);
 );
