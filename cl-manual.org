@@ -21,7 +21,7 @@
 #+DATE: \today
 
 #+LATEX_HEADER: \setcounter{tocdepth}{2}
-#+LATEX_HEADER: \setcounter{secnumdepth}{3}
+#+LATEX_HEADER: \setcounter{secnumdepth}{4}
 
 #+LATEX_HEADER: \usepackage{fontspec}
 #+LATEX_HEADER: \setmainfont[Ligatures={Common,TeX}]{CharisSIL}
@@ -41,11 +41,11 @@
 commands extending the SuperCollider programming language. The
 commands manipulate musical processes in real time to facilitate
 live-coding performances. "Processes" in this sense refers to my
-/chucklib/ quark, introduced in /The SuperCollider Book/ (fn).
+/chucklib/ quark, introduced in /The SuperCollider Book/.[fn:5b6ef116]
 
 I began implementing /cll/ in August 2014, and it reached a stage
 where I could begin performing with it in March 2015. The public
-extensions are hosted on github (fn).
+extensions are hosted on github.[fn:8ae1bb90]
 
 /cll/ consists of two main parts:
 
@@ -177,19 +177,110 @@ PR(\abstractLiveCode).chuck(BP(\beep), nil, (
    )
 ));
 )
+
+// Use it, with cll statements:
+TempoClock.tempo = 2;
+
+/beep = "^|.. .| .- | .  ";  // "Set pattern"
+/beep+;  // start it
+
+/beep..pan = "<><><><>";
+
+/beep-;
+
+/beep(free);
 #+END_SRC
 
 ** Parameter map
+The parameter map =parmMap= is easiest to write as a set of nested [[Classes/Event][Events]]:
+
+#+BEGIN_SRC {SuperCollider} -i
+parmMap: (
+   parmName: (
+      char: value,
+      char: value,
+      char: value...
+   ),
+   parmName: (...)
+)
+#+END_SRC
+
+=parmName= keys should be Symbols. The keys of the inner dictionaries
+should be characters ([[Classes/Char][Char]]), because the elements of the pattern
+strings that represent "notes" are characters.
+
+The inner dictionaries may contain two other items, optionally:
+
+- =isPitch= :: If =true=, enables [[Pitch notation][pitch notation]] for this parameter.
+- =alias= :: An alternate name for this parameter, to use in the
+     pattern. For example, if the parameter should choose from a
+     number of SynthDefs, it would be inconvenient to type
+     =instrument= in the performance every time you need to control
+     it, whereas =def= would be faster. You can do this as follows:
+     #+BEGIN_SRC {SuperCollider} -i
+     parmMap: (
+        def: (
+           alias: \instrument,
+           $s: \sawtooth, $p: \pulse, $f: \fm
+        )
+     )
+
+     // Then you can set the "instrument" pattern:
+     /proc.phrase.def = "s";
+     #+END_SRC
+     Written this way, =def= in the /Set pattern/ statement will be
+     converted into =instrument= in the pattern.
+
+*** Array arguments in the parameter map
+Array arguments must be enclosed in one extra array layer. That is, if
+you want to send an array of three frequencies such as =[200, 300,
+400]=, this must be given in the parameter map as =[ [200, 300, 400] ]=.
+
+#+BEGIN_SRC {SuperCollider} -i
+parmMap: (
+   freqs: (
+      $2: [[200, 300, 400]],
+   ),
+   parmName: (...)
+)
+#+END_SRC
+
+Envelopes may be passed to arrayed Synth controls in the same way:
+=[Env.perc(0.01, 0.5).asArray]=.
+
+One other use of parameter map array is used to set disparate Event
+keys using one /cll/ parameter. =Pbind= allows multiple keys to be set
+at once by providing an array for a key. /cll/ supports this by using
+an array for the alias!
+
+#+BEGIN_SRC {SuperCollider} -i
+parmMap: (
+   filt: (
+      alias: [\ffreq, \rq],
+      $x: [[2000, 0.05]]
+   )
+)
+#+END_SRC
 
 ** Event processing
+Every event produced by a /cll/ process goes through three stages:
 
-** Phrase selection
+1. Insert all the items from =defaults=.
+2. Insert the values from the current phrase (defined by pattern strings).
+3. Insert any values from =postDefaults=. This may be a =Pbind=, and
+   it has access to all the values from 1 and 2 by =Pkey=.
 
-While a process is playing, it chooses phrase names from a
-phrase-selection pattern. The process looks up each phrase name in
-turn, and embeds the corresponding =PbindProxy= into the playing
-stream. Generally each phrase is exactly one bar long, although the
-length may be different.
+Thus, you can use =postDefaults= to derive values from items defined
+in the parameter map, or to check for invalid values.
+
+** Phrase sequence
+
+/cll/ "Set pattern" statements put musical information into any number
+of phrases. When you play the process, it chooses the phrases one by
+one using a pattern stored as =phraseSeq=. "Set pattern" has a compact
+way to express phrase sequences, allowing sequences, random selection
+(with or without weights) and wildcard matching. See [[Phrase selection][Phrase selection]]
+for details.
 
 This design supports musical contrast. The performer can create
 divergent materials under different phrase identifiers. Then, during
@@ -198,7 +289,7 @@ materials on the fly. Sudden textural changes require changing many
 phrase-selection pattern at once. For this, [[Register]] commands can save
 sequences of statements to reuse quickly and easily.
 
-** Importing the cll API into another process prototype
+** Importing the cll API into another process prototype		   :noexport:
 
 * Livecoding statement reference
 ** Statement types
@@ -263,6 +354,8 @@ This statement type subdivides into two functions: phrase /definition/
 and phrase /selection/.
 
 **** Phrase definition
+Most "Set pattern" statements follow this format:
+
 #+name: setpatternSyntax
 #+caption: Syntax template for the Set pattern statement.
 #+BEGIN_SRC {SuperCollider} -i
@@ -281,13 +374,76 @@ Syntax elements:
     is taken as a base note value. All items in the string are assumed
     to occupy this note value, making it easier to create
     fractional-length phrases. (If only =+= is given, the BP may
-    specify a subdivision; otherwise 0.25 is the default.)
+    specify =division=; otherwise 0.25 is the default.)
   - If =quant= is omitted entirely, the BP's =beatsPerBar= is
     used. Usually this is the =beatsPerBar= of the BP's assigned
     clock.
 - =string= :: Specifies parameter values and rhythms.
 
+*Note:* Both the phrase and parameter names are optional. That allows
+the following syntactic combinations:
 
+#+ATTR_LATEX: :align |l|l|
+|-------------------------------+--------------------------------------|
+| *Syntax*                      | *Behavior*                           |
+|-------------------------------+--------------------------------------|
+| \texttt{/proc = "string"}     | Set phrase "main," default parameter |
+|-------------------------------+--------------------------------------|
+| \texttt{/proc.x = "string"}   | Set phrase "x," default parameter    |
+|-------------------------------+--------------------------------------|
+| \texttt{/proc.x.y = "string"} | Set phrase "x," parameter "y"        |
+|-------------------------------+--------------------------------------|
+| \texttt{/proc..y = "string"}  | Set phrase "main," parameter "y"     |
+|-------------------------------+--------------------------------------|
+
+Of these, the last looks somewhat surprising. It makes sense if you
+think of the double-dot as a delimiter for an empty phrase name.
+
+**** Pattern string syntax
+Pattern strings place values at time points within the bar. The values
+come from the parameter map. Timing comes from the items' positions
+within the string, based on the general idea of equal division of the
+bar.
+
+Two characters are reserved: a space is a timing placeholder, and
+a vertical bar, \textbar, is a divider.
+
+If the string has no dividers, then the items within it (including
+placeholders) are equally spaced throughout the bar. If there are
+dividers, the measure's duration will be divided first: $n$ dividers
+produces $n+1$ units. Then, within each division, items will be
+equally spaced. The spacing is independent for each division. For
+example, in #6 below, the first division contains one item, but the
+second contains two. For all the divisions to have the same duration,
+then, =-= in the second division should be half as long as in the
+first.
+
+#+ATTR_LATEX: :align |c|l|l|
+|---+-------------------------------------------------------+------------|
+|   | *String*                                              | *Rhythm*   |
+|---+-------------------------------------------------------+------------|
+| 1 | \texttt{"--"}                                         | HH         |
+|---+-------------------------------------------------------+------------|
+| 2 | \texttt{"----"}                                       | QQQQ       |
+|---+-------------------------------------------------------+------------|
+| 3 | \texttt{"- --"}                                       | HQQ        |
+|---+-------------------------------------------------------+------------|
+| 4 | \texttt{"- --- -"}                                    | 7(QEEQE)   |
+|---+-------------------------------------------------------+------------|
+| 5 | \texttt{"-\textbar-\textbar-\textbar-"}               | QQQQ       |
+|---+-------------------------------------------------------+------------|
+| 6 | \texttt{"-\textbar--\textbar-\textbar-"}              | QEEQQ      |
+|---+-------------------------------------------------------+------------|
+| 7 | \texttt{"--\textbar \ -\ \ \textbar- --\textbar \ -"} | EE.E.ESE.E |
+|---+-------------------------------------------------------+------------|
+
+*Note:* It isn't exactly right to think of a space as a "rest."
+@@latex:\texttt{"- - "}@@ is not really two quarter notes separated by
+quarter rests; it's actually two half notes! If you need to silence
+notes explicitly, then you should define an item in the parameter map
+whose value is a =Rest= object.
+
+***** TODO Set pattern examples
 
 #+name: setpatternExamples
 #+caption: Set pattern examples.
@@ -296,6 +452,64 @@ Syntax elements:
 
 /kick
 #+END_SRC
+
+**** Timing of multiple parameters
+Each parameter can have its own timing, but a =Pbind= can play with
+only one rhythm, raising a potential conflict.
+
+The =Pbind= rhythm is determined by the pattern string for the
+=defaultParm= declared in the process. When you set the =defaultParm=
+to a pattern, the rhythm defined in that string is assigned to the
+=\dur= key, where it drives the process's timing. Other parameters
+encode timing into a =Pstep=, to preserve the values' positions within
+the bar. Think of these as "sample-and-hold" values, where the control
+value /changes/ at times given by its own rhythm, but is /sampled/
+only at the times given by the =defaultParm= rhythm.
+
+For example, here, the default parameter's rhythm is two half
+notes. At the same time, a filter parameter changes on beats 1, 2
+and 4. The process will play two events, on beats 1 and 3. On beat 1,
+the filter will use its =a= value; on beat 3, it will use the most
+recent value, which is =b=. /The filter will not change on beat 2/,
+because there is no event occurring on that beat!
+
+What about =c=? There is no event coming on or after beat 4, so =c=
+will be ignored in this case. But, if you add another note late in the
+bar, then it will pick up =c=, without any other change needed.
+
+#+BEGIN_SRC {SuperCollider} -i
+/x = "--";
+/x.filt = "ab c";  // "c" is not heard
+
+/x = "-|-  -";  // now "c" is heard on beat 4.5
+#+END_SRC
+
+**** Pitch notation
+If a parameter's map specifies =isPitch: true=, then it does not need
+to specify any other values and the following rules apply:
+
+- Scale degrees are given by decimal digits, where 1 is the tonic and
+  0 is the interval of a tenth above that (following the number row on
+  the keyboard).[fn:84cfcfa1]
+
+- @@latex:\texttt{+}@@ and @@latex:\texttt{-}@@ raise and lower the pitch by a semitone.
+
+- @@latex:\texttt{'}@@ and @@latex:\texttt{,}@@ displace the pitch by
+  an octave up or down, respectively. Multiple apostrophes or commas
+  displace by multiple octaves. (This syntax is borrowed from
+  LilyPond.)[fn:0fe09d88]
+
+- @@latex:\texttt{.}@@ indicates a staccato note.
+
+- @@latex:\texttt{\textunderscore}@@ indicates legato (sustain
+  duration slightly shorter than note duration).
+
+- @@latex:\texttt{\textasciitilde}@@ slurs this note into the next note.
+
+*Note:* Items in pitch sequences may include more than one character:
+ =3= is one note, as is =6+,~=.
+
+***** TODO Acid bassline
 
 **** Phrase selection
 
@@ -312,3 +526,15 @@ Syntax elements:
 
 * Extending cll
 ** Preprocessor architecture
+* Footnotes
+
+[fn:84cfcfa1] In SuperCollider pattern terms, =1= translates into degree 0.
+
+[fn:0fe09d88] Currently a diatonic scale (7 degrees) is assumed.
+
+[fn:5b6ef116] Harkins, H. James. (2011). "Composition for Live
+Performance with dewdrop\textunderscore lib and chucklib." In Wilson,
+S. / Cottle, D. / Collins N. [eds.] /The SuperCollider
+Book/. Cambridge, Mass.: MIT Press. pp. 589--612.
+
+[fn:8ae1bb90] http://github.com/jamshark70/chucklib-livecode
