@@ -1,0 +1,315 @@
+#+BIND: org-latex-listings-options (("style" "SuperCollider-IDE") ("basicstyle" "\\ttfamily\\small") ("captionpos" "b") ("tabsize" "3"))
+
+#+OPTIONS: ':t *:t -:t ::t <:t H:4 \n:nil ^:t arch:headline author:t
+#+OPTIONS: c:nil creator:comment d:(not "LOGBOOK") date:t e:t
+#+OPTIONS: email:nil f:t inline:t num:t p:nil pri:nil prop:nil stat:t
+#+OPTIONS: tags:t tasks:t tex:t timestamp:t toc:t todo:t |:t
+#+TITLE: Chucklib-Livecode Manual
+#+AUTHOR: H. James Harkins
+#+EMAIL: dlm@hjh-e431
+#+DESCRIPTION:
+#+KEYWORDS:
+#+LANGUAGE: en
+#+SELECT_TAGS: export
+#+EXCLUDE_TAGS: noexport
+#+CREATOR: Emacs 24.3.1 (Org mode 8.3beta)
+
+#+LATEX_CLASS: article
+#+LATEX_CLASS_OPTIONS:
+#+LATEX_HEADER:
+#+LATEX_HEADER_EXTRA:
+#+DATE: \today
+
+#+LATEX_HEADER: \setcounter{tocdepth}{2}
+#+LATEX_HEADER: \setcounter{secnumdepth}{3}
+
+#+LATEX_HEADER: \usepackage{fontspec}
+#+LATEX_HEADER: \setmainfont[Ligatures={Common,TeX}]{CharisSIL}
+#+LATEX_HEADER: \setmonofont{Inconsolata}
+
+#+LATEX_HEADER: \usepackage{caption}
+#+LATEX_HEADER: \captionsetup[lstlisting]{font={it,footnotesize},labelfont={it,footnotesize},singlelinecheck=false}
+
+#+LATEX_HEADER: \usepackage{sclang-prettifier}
+
+#+LATEX_HEADER: \hyphenation{Synth-Def Synth-Defs}
+
+* Introduction
+#+LATEX: \frenchspacing
+** Overview
+/Chucklib-livecode/ (/cll/ for short) is a system of extremely compact
+commands extending the SuperCollider programming language. The
+commands manipulate musical processes in real time to facilitate
+live-coding performances. "Processes" in this sense refers to my
+/chucklib/ quark, introduced in /The SuperCollider Book/ (fn).
+
+I began implementing /cll/ in August 2014, and it reached a stage
+where I could begin performing with it in March 2015. The public
+extensions are hosted on github (fn).
+
+/cll/ consists of two main parts:
+
+1. A chucklib /process prototype/ (PR) that implements the methods
+   that the musical processes need, in order to receive information
+   from live-coding statements.
+
+2. A /preprocessor/ installed into the SuperCollider interpreter. The
+   preprocessor translates the /cll/ command syntax into standard
+   SuperCollider code.
+
+This document will cover the process prototype first. You need to
+understand its structure in order to understand the commands.
+
+** Acknowledgments
+Thanks are due to:
+
+- James McCartney and all the other developers who contributed to
+  SuperCollider over the years. Without SuperCollider, none of this
+  would exist.
+
+- Alex McLean, for his work on the /Tidal/ live-coding language for
+  music.(fn) /Tidal/ demonstration videos online were the first to
+  capture my imagination about live coding, leading me in this
+  direction.
+
+- Thor Magnusson, whose /ixilang/ system provided the inspiration for
+  /cll/ syntax.
+
+* Process prototype
+** Data structure
+/cll/ organizes musical behavior, and musical content, hierarchically:
+
+- Chucklib /processes/ (BP) contain any number of /phrases/. Every
+  process has its own variable scope (i.e., independent
+  namespace). Activity in one process does not interfere with other
+  processes.
+- Each /phrase/ contains multiple /parameters/. (The phrase itself is
+  implemented as a [[Classes/PbindProxy][PbindProxy]], so that its contents can be changed at
+  any time.)
+- Each /parameter/ is defined by a pattern string, parsed and rendered
+  into SuperCollider pattern syntax by the /[[Set pattern][Set pattern]]/ statement.
+- Parameter values are defined by the /parameter map/ (=parmMap=).
+
+# The BP also keeps a copy of the strings, for easier editing later.
+
+/cll/ processes create two phrases by default:
+
+- =main= :: The default phrase, which plays if the user hasn't
+     specified a different phrase sequence. =main= is also the default
+     phrase that /Set pattern/ acts on---thus, a user can work with
+     single-bar loops using only =main=, and never specify a phrase
+     ID.
+- =rest= :: An empty phrase, which only occupies time.
+
+** PR(\textbackslash abstractLiveCode)
+To create a /cll/ process, "chuck" =PR(\abstractLiveCode)= into a BP
+("Bound Process"), with a parameter dictionary providing the
+details. Parameters to include in the dictionary:
+
+- =userprep= :: A function, called when the process is created. Use
+     this function to create any resources that the process will
+     require.
+- =userfree= :: A function, called when the process is
+     destroyed. Clean up any resources allocated in =userprep=.
+- =defaultParm= :: The name of the default parameter affected by /[[Set pattern][Set pattern]]/
+     statements. The default parameter also controls rhythm.
+- =parmMap= :: A nested dictionary of parameters, their allowed
+     values, and the characters that will identify these values in
+     pattern strings.
+- =defaults= :: An =Event= or event pattern providing default values
+     for the events that the process will play.
+- =postDefaults= :: (optional) An event pattern that can do further
+     calculations on the parameter values.
+
+This dictionary is not limited to these items. You may add any other
+data and functions that you need, to define complex behavior in terms
+of simpler functions and patterns.
+
+In @@latex:Listing \ref{instance1}@@, =userprep= loads a buffer and
+=userfree= releases it. By default, /Set pattern/ will operate on
+=amp=, and =parmMap= defines three values for it (soft, medium and
+loud). =parmMap= also provides some panning options. The =defaults=
+dictionary specifies the SynthDef to use (it may provide other synth
+defaults as well, not needed in this example), and =postDefaults=
+calculates the sounding duration of each note based on rhythm.
+
+Note the line =~defaults[\bufnum] = ~buf=: You may add values into
+=defaults= as part of =userprep=. That's necessary in this case
+because the buffer number is not known in advance. The only way to
+supply the buffer number as a default is to read the buffer first,
+and put it into the defaults dictionary only after that.
+
+#+name: instance1
+#+caption: A simple cll process.
+#+BEGIN_SRC {SuperCollider} -i
+(
+PR(\abstractLiveCode).chuck(BP(\beep), nil, (
+   userprep: {
+      ~buf = Buffer.read(
+         s, Platform.resourceDir +/+ "sounds/a11wlk01.wav",
+         4982, 10320
+      );
+      ~defaults[\bufnum] = ~buf;
+      SynthDef(\buf1, { |out, bufnum, pan, amp|
+         var sig = PlayBuf.ar(1, bufnum),
+         eg = EnvGen.kr(
+            Env.linen(0.02, BufDur.ir(bufnum) - 0.04, 0.02),
+            doneAction: 2
+         );
+         Out.ar(out, Pan2.ar(sig, pan, amp * eg));
+      }).add;
+   },
+   userfree: {
+      ~buf.free;
+   },
+   defaultParm: \amp,
+   parmMap: (
+      amp: ($.: 0.1, $-: 0.4, $^: 0.8),
+      pan: (
+         $<: -0.9, $>: 0.9,
+         $(: -0.4, $): 0.4,
+         $-: 0
+      )
+   ),
+   defaults: (instrument: \buf1),
+   postDefaults: Pbind(
+      \time, (Pkey(\dur) * 0.6 / Pfunc { ~clock.tempo }).clip(0.04, 0.2)
+   )
+));
+TempoClock.default => BP(\beep);
+)
+#+END_SRC
+
+** Parameter map
+
+** Event processing
+
+** Phrase selection
+
+While a process is playing, it chooses phrase names from a
+phrase-selection pattern. The process looks up each phrase name in
+turn, and embeds the corresponding =PbindProxy= into the playing
+stream. Generally each phrase is exactly one bar long, although the
+length may be different.
+
+This design supports musical contrast. The performer can create
+divergent materials under different phrase identifiers. Then, during
+the performance, she can change the phrase-selection pattern to switch
+materials on the fly. Sudden textural changes require changing many
+phrase-selection pattern at once. For this, [[Register]] commands can save
+sequences of statements to reuse quickly and easily.
+
+** Importing the cll API into another process prototype
+
+* Livecoding statement reference
+** Statement types
+/cll/ statements begin with a slash: =/=. Statements may be separated
+by semicolons and submitted as a batch.
+
+#+BEGIN_SRC {SuperCollider} -i
+// run one at a time
+/kick.fotf = "----";
+/snare.bt24 = " - -";
+
+// or as a batch
+/kick.fotf = "----"; /snare.bt24 = " - -";
+#+END_SRC
+
+/cll/ supports the following statements, in order of importance.
+
+#+ATTR_LATEX: :align |l|p{0.35\textwidth}|p{0.35\textwidth}|
+|--------------+-----------------------------------------------------------------+------------------------------------------|
+| *Type*       | *Function*                                                      | *Syntax outline*                         |
+|--------------+-----------------------------------------------------------------+------------------------------------------|
+| Set pattern  | Add new musical information into a process                      | \texttt{/proc.phrase.parm = "data"}      |
+|--------------+-----------------------------------------------------------------+------------------------------------------|
+| Start/stop   | Start or stop one or more procesess                             | \texttt{/proc/proc/proc+} or \texttt{-}  |
+|--------------+-----------------------------------------------------------------+------------------------------------------|
+| Generator    | Create several randomized patterns at once                      | \texttt{/proc.phrase.parm *n +ki "base"} |
+|--------------+-----------------------------------------------------------------+------------------------------------------|
+| Make         | Instantiate a process or voicer                                 | \texttt{/make(factory/factory)}          |
+|--------------+-----------------------------------------------------------------+------------------------------------------|
+| Func call    | Call a function in chucklib's \texttt{Func} collection          | \texttt{/funcname.(arguments)}           |
+|--------------+-----------------------------------------------------------------+------------------------------------------|
+| Passthrough  | Pass a method call to a \texttt{BP}                             | \texttt{/proc(method and arguments)}     |
+|--------------+-----------------------------------------------------------------+------------------------------------------|
+| Chuck        | Pass a chuck \texttt{=>} operation to a BP                      | \texttt{/proc => target }                |
+|--------------+-----------------------------------------------------------------+------------------------------------------|
+| Copy         | Copy a phrase or phrase set into a different name               | \texttt{/proc.phrase*n -> new}           |
+|--------------+-----------------------------------------------------------------+------------------------------------------|
+| Transfer     | Like "Copy," but also uses the new phrase for play              | \texttt{/proc.phrase*n ->> new}          |
+|--------------+-----------------------------------------------------------------+------------------------------------------|
+| Show pattern | Copies a phrase pattern's string into the document, for editing | \texttt{/proc.phrase.parm}               |
+|--------------+-----------------------------------------------------------------+------------------------------------------|
+
+*** types							   :noexport:
+    - [X] \clMake -> "^ *make\\(.*\\)",
+    - [X] \clFuncCall -> "^ *`id\\.\\(.*\\)",
+    - [X] \clPassThru -> "^ *`id\\(.*\\)",
+    - [X] \clChuck -> "^ *`id *=>.*",
+    - [X] \clPatternSet -> "^ *`id(\\.|`id|`id\\*[0-9]+)* = .*",
+    - [X] \clGenerator -> "^ *`id(\\.|`id)* \\*.*",
+    - [X] \clXferPattern -> "^ *`id(\\.`id)?(\\*`int)? ->>",  // harder match should come first
+    - [X] \clCopyPattern -> "^ *`id(\\.`id)?(\\*`int)? ->",
+    - [X] \clStartStop -> "^([/`spc]*`id)+[`spc]*[+-]",
+    - [X] \clPatternToDoc -> "^ *`id(\\.|`id)*[`spc]*$"
+
+** Statement details
+*** Set pattern
+/Set pattern/ is the primary interface for composing or improvising
+musical materials. As such, it's the most complicated of all the
+commands.
+
+This statement type subdivides into two functions: phrase /definition/
+and phrase /selection/.
+
+**** Phrase definition
+#+name: setpatternSyntax
+#+caption: Syntax template for the Set pattern statement.
+#+BEGIN_SRC {SuperCollider} -i
+/proc.phrase.parm = quant"string";
+#+END_SRC
+
+Syntax elements:
+
+- =proc= :: The BP's name.
+- =phrase= :: (optional) The phrase name. If not given, =main= is assumed.
+- =parm= :: (optional) The parameter name. The BP must define a
+     default parameter name, to use if this is omitted.
+- =quant= :: (optional) Determines the phrase's length, in beats.
+  - A number, or numeric math expression, specifies the number of beats.
+  - =+= followed by a number indicates "additive rhythm." The number
+    is taken as a base note value. All items in the string are assumed
+    to occupy this note value, making it easier to create
+    fractional-length phrases. (If only =+= is given, the BP may
+    specify a subdivision; otherwise 0.25 is the default.)
+  - If =quant= is omitted entirely, the BP's =beatsPerBar= is
+    used. Usually this is the =beatsPerBar= of the BP's assigned
+    clock.
+- =string= :: Specifies parameter values and rhythms.
+
+
+
+#+name: setpatternExamples
+#+caption: Set pattern examples.
+#+BEGIN_SRC {SuperCollider} -i
+/kick = "----";  // Set kick's 'main' phrase to four quarter notes
+
+/kick
+#+END_SRC
+
+**** Phrase selection
+
+*** Start/stop
+*** Generator
+*** Make
+*** Func call
+*** Passthrough
+*** Chuck
+*** Copy or transfer
+*** Show pattern
+
+** Helper functions
+
+* Extending cll
+** Preprocessor architecture
