@@ -33,7 +33,6 @@ PR(\abstractLiveCode).chuck(BP(\beep), nil, (
 		\time, (Pkey(\dur) * 0.6 / Pfunc { ~clock.tempo }).clip(0.04, 0.2)
 	)
 ));
-TempoClock.default => BP(\beep);
 )
 
 TempoClock.tempo = 2;

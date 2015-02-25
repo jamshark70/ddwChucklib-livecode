@@ -1780,7 +1780,10 @@ Proto {
 	~parmMap = (
 		go: ($x: 0)
 	);
-	~beatsPerBar = { ~clock.beatsPerBar };
+	~beatsPerBar = {
+		if(~clock.isNil) { ~clock = TempoClock.default };
+		~clock.beatsPerBar
+	};
 	~division = 0.25;
 	~phraseSeq = \main;
 	~lastPhrase = \main;
