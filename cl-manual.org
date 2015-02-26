@@ -28,6 +28,7 @@
 #+LATEX_HEADER: \setmonofont{Inconsolata}
 
 #+LATEX_HEADER: \usepackage{caption}
+#+LATEX_HEADER: \captionsetup[figure]{font={it,footnotesize},labelfont={it,footnotesize},singlelinecheck=false}
 #+LATEX_HEADER: \captionsetup[lstlisting]{font={it,footnotesize},labelfont={it,footnotesize},singlelinecheck=false}
 
 #+LATEX_HEADER: \usepackage{sclang-prettifier}
@@ -409,33 +410,21 @@ Two characters are reserved: a space is a timing placeholder, and
 a vertical bar, \textbar, is a divider.
 
 If the string has no dividers, then the items within it (including
-placeholders) are equally spaced throughout the bar. If there are
-dividers, the measure's duration will be divided first: $n$ dividers
-produces $n+1$ units. Then, within each division, items will be
-equally spaced. The spacing is independent for each division. For
-example, in #6 below, the first division contains one item, but the
-second contains two. For all the divisions to have the same duration,
-then, =-= in the second division should be half as long as in the
-first.
+placeholders) are equally spaced throughout the bar. This holds true
+even if it's a nonstandard division: #4 has seven characters in the
+string, producing a septuplet.
 
-#+ATTR_LATEX: :align |c|l|l|
-|---+-------------------------------------------------------+------------|
-|   | *String*                                              | *Rhythm*   |
-|---+-------------------------------------------------------+------------|
-| 1 | \texttt{"--"}                                         | HH         |
-|---+-------------------------------------------------------+------------|
-| 2 | \texttt{"----"}                                       | QQQQ       |
-|---+-------------------------------------------------------+------------|
-| 3 | \texttt{"- --"}                                       | HQQ        |
-|---+-------------------------------------------------------+------------|
-| 4 | \texttt{"- --- -"}                                    | 7(QEEQE)   |
-|---+-------------------------------------------------------+------------|
-| 5 | \texttt{"-\textbar-\textbar-\textbar-"}               | QQQQ       |
-|---+-------------------------------------------------------+------------|
-| 6 | \texttt{"-\textbar--\textbar-\textbar-"}              | QEEQQ      |
-|---+-------------------------------------------------------+------------|
-| 7 | \texttt{"--\textbar \ -\ \ \textbar- --\textbar \ -"} | EE.E.ESE.E |
-|---+-------------------------------------------------------+------------|
+If there are dividers, the measure's duration will be divided first:
+$n$ dividers produce $n+1$ units. Then, within each division, items
+will be equally spaced. The spacing is independent for each
+division. For example, in #6 below, the first division contains one
+item, but the second contains two. For all the divisions to have the
+same duration, then, =-= in the second division should be half as long
+as in the first.
+
+#+name: rhythmNotation1
+#+caption: Some examples of cll rhythmic notation, with and without dividers.
+[[./manual-supporting/rhythmic-notation-crop.pdf]]
 
 *Note:* It isn't exactly right to think of a space as a "rest."
 @@latex:\texttt{"- - "}@@ is not really two quarter notes separated by
@@ -443,6 +432,7 @@ quarter rests; it's actually two half notes! If you need to silence
 notes explicitly, then you should define an item in the parameter map
 whose value is a =Rest= object.
 
+***** TODO Email ly list: Rhythmic notation svg collapses multiple spaces
 ***** TODO Set pattern examples
 
 #+name: setpatternExamples
