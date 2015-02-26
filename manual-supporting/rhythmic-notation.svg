@@ -154,7 +154,7 @@ c45 0 73 46 73 94v8h-167c-23 0 -31 14 -31 23c0 3 1 5 2 6c80 93 138 207 138 330c0
 </text>
 <text transform="translate(8.1343, 47.0069)" font-family="monospace" font-size="2.2001" text-anchor="start" fill="currentColor">
 <tspan>
-"--| -  |- --| -"</tspan>
+"--| - ​ |- --| -"</tspan>
 </text>
 <line transform="translate(39.9071, 47.0069)" stroke-linejoin="round" stroke-linecap="round" stroke-width="0.1000" stroke="currentColor" x1="0.0500" y1="-0.0000" x2="35.3539" y2="-0.0000"/>
 <rect transform="translate(75.1210, 47.0069)" x="0.0000" y="-1.0500" width="0.1900" height="2.1000" ry="0.0000" fill="currentColor"/>

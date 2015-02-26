@@ -97,7 +97,10 @@ global = { \numericTimeSignature \time 4/4 }
 
     \line {
       \column {
-        \line { 7. \typewriter "\"--| -  |- --| -\"" }
+        % Note: There is a U+200B "zero-width space"
+        % between the consecutive spaces in beat 2.
+        % Otherwise SVG renders incorrectly.
+        \line { 7. \typewriter "\"--| - ​ |- --| -\"" }
         \hspace #25
       }
       \column {
@@ -111,3 +114,5 @@ global = { \numericTimeSignature \time 4/4 }
     }
   }
 }
+
+ 

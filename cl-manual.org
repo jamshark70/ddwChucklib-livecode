@@ -432,7 +432,6 @@ quarter rests; it's actually two half notes! If you need to silence
 notes explicitly, then you should define an item in the parameter map
 whose value is a =Rest= object.
 
-***** TODO Email ly list: Rhythmic notation svg collapses multiple spaces
 ***** TODO Set pattern examples
 
 #+name: setpatternExamples
