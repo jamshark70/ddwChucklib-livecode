@@ -163,6 +163,10 @@ x = PR(\clPatternSet).copy.process("kik = (x)*1");
 // ok
 x = PR(\clPatternSet).copy;
 x.process("kik = (x.(a|b))");
+
+x = PR(\clPatternSet).copy;
+x.process("kik = (x.a|b)");
+
 x.listVars
 
 // ok?
@@ -478,5 +482,15 @@ y.asPatString;
 
 y = PR(\clCompGrouping).copy;
 y.process(CollStream("a**2.b**2)"));
+y.clumpOperators;
+y.asPatString;
+
+y = PR(\clCompGrouping).copy;
+y.process(CollStream("(a%4|b)*4.(a|b%4)*2)"));
+y.clumpOperators;
+y.asPatString;
+
+y = PR(\clCompGrouping).copy;
+y.process(CollStream("x.a|b)"));
 y.clumpOperators;
 y.asPatString;

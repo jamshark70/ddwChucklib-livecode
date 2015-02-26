@@ -45,3 +45,64 @@ TempoClock.tempo = 2;
 /beep-;
 
 /beep(free);
+
+
+
+// acid bassline
+(
+SynthDef(\sqrbass, { |out, freq = 110, gate = 1, freqMul = 1.006, amp = 0.1,
+	filtMul = 3, filtDecay = 0.12, ffreq = 2000, rq = 0.1,
+	lagTime = 0.1|
+	var sig = Mix(Pulse.ar(Lag.kr(freq, lagTime) * [1, freqMul], 0.5)) * amp,
+	filtEg = EnvGen.kr(Env([filtMul, filtMul, 1], [0.005, filtDecay], \exp), gate),
+	ampEg = EnvGen.kr(Env.adsr(0.01, 0.08, 0.5, 0.1), gate, doneAction: 2);
+	sig = RLPF.ar(sig, (ffreq * filtEg).clip(20, 20000), rq);
+	Out.ar(out, (sig * ampEg).dup);
+}).add;
+)
+
+(instrument: \sqrbass, midinote: 36, ffreq: 300, rq: 0.2, filtMul: 8).play;
+
+(
+BP(\acid).free;
+PR(\abstractLiveCode).chuck(BP(\acid), nil, (
+	event: (eventKey: \default),
+	alwaysReset: true,
+	defaultParm: \degree,
+	parmMap: (
+		degree: (isPitch: true),
+	),
+	defaults: (
+		ffreq: 300, filtMul: 8, rq: 0.2,
+		octave: 3, root: 6, scale: Scale.locrian.semitones
+	),
+	postDefaults: PmonoArtic(\sqrbass,
+		\dummy, 1
+	)
+));
+)
+
+/acid(defaults.octave = 2);
+/acid(defaults.root = 6);
+/acid(defaults.scale = Scale.locrian.semitones);
+
+/acid = "1.|1.|1_  1.|";
+
+/acid = "1~5~1~9~";
+
+/acid = "1_  1.|5~3_9.4.|7.2~4_5'.|5_8. 2.";
+
+/acid = "1_  1.|5~3_9.4.|7.2~4_5'.|5_8~2_4.";
+
+/acid+;
+/acid-;
+
+/acid(reset);
+
+8.degreeToKey(Scale.locrian.semitones, 12);
+4.degreeToKey(Scale.locrian.semitones, 12);
+
+92.4986.cpsmidi
+42.asMIDINote
+
+TempoClock.tempo = 132/60;

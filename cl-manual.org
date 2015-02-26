@@ -498,9 +498,114 @@ to specify any other values and the following rules apply:
 *Note:* Items in pitch sequences may include more than one character:
  =3= is one note, as is =6+,~=.
 
-***** TODO Acid bassline
+@@latex:Listing \ref{pitchSet1}@@ illustrates the kind of articulation
+that is possible with this notation, using a 90s-throwback acid-style
+bassline. Though the sound is not as cool as a real TB303, careful use
+of slurs and staccatos mimics the feel of the venerable old
+machine.[fn:be0c1420] A further refinement would be to add values for
+filter frequency and =filtMul= into the parameter map.
+
+#+name: pitchSet1
+#+caption: A retro acid-house bassline.
+#+BEGIN_SRC {SuperCollider} -i
+(
+SynthDef(\sqrbass, { |out, freq = 110, gate = 1,
+   freqMul = 1.006, amp = 0.1,
+   filtMul = 3, filtDecay = 0.12, ffreq = 2000, rq = 0.1,
+   lagTime = 0.1|
+   var sig = Mix(
+      Pulse.ar(
+         Lag.kr(freq, lagTime) * [1, freqMul],
+         0.5
+      )
+   ) * amp,
+   filtEg = EnvGen.kr(
+      Env([filtMul, filtMul, 1], [0.005, filtDecay], \exp),
+      gate
+   ),
+   ampEg = EnvGen.kr(
+      Env.adsr(0.01, 0.08, 0.5, 0.1),
+      gate, doneAction: 2
+   );
+   sig = RLPF.ar(sig, (ffreq * filtEg).clip(20, 20000), rq);
+   Out.ar(out, (sig * ampEg).dup);
+}).add;
+
+BP(\acid).free;
+PR(\abstractLiveCode).chuck(BP(\acid), nil, (
+   event: (eventKey: \default),
+   alwaysReset: true,
+   defaultParm: \degree,
+   parmMap: (
+      degree: (isPitch: true),
+   ),
+   defaults: (
+      ffreq: 300, filtMul: 8, rq: 0.2,
+      octave: 3, root: 6, scale: Scale.locrian.semitones
+   ),
+   postDefaults: PmonoArtic(\sqrbass,
+      \dummy, 1
+   )
+));
+
+TempoClock.tempo = 132/60;
+)
+
+/acid = "1_  1.|5~3_9.4.|7.2~4_5'.|5_8~2_4.";
+
+/acid+;
+/acid-;
+#+END_SRC
 
 **** Phrase selection
+Statements to set the phrase sequence follow a different syntax:
+
+#+BEGIN_SRC {SuperCollider} -i
+/proc = (group...);
+#+END_SRC
+
+=group= can consist of any of the following elements:
+
+- Phrase ID :: The name of any phrase that's already defined, or a
+     regular expression in single quote marks. If more than one
+     existing phrase matches the regular expression, one of the
+     matches will be chosen at random; e.g., to choose randomly among
+     phrases beginning with =x=, write @@latex:\texttt{'\textasciicircum{}x'}@@.
+- Name sequence :: Two or more of /any/ of these items, separated by
+     dots and enclosed in parentheses: =(a0.a1.a2)=. These will be
+     enclosed in =Pseq=.
+- Random selection :: Two or more of any of these items, separated by
+     vertical bars (\textbar) and enclosed in parentheses:
+     =(a0|a1|a2)=. These will be enclosed in =Prand=. /One/ will be
+     chosen before advancing to the next ID.
+- Phrase group :: A name, followed by two asterisks and a number of
+     bars in the phrase group. If a four-bar phrase is stored as =a0=,
+     =a1=, =a2=, and =a3=, you can write it simply as =a**4=. The
+     preprocessor will expand this to regular expression matches, as
+     if you had written =('^a0'.'^a1'.'^a2'.'^a3')=. The use of
+     regular expression matching here is to make it easier to have
+     slight variations on the bars within the phrase group, while
+     keeping the same musical shape.
+
+Any of these items may optionally attach a number of repeats =*n=:
+=(a*3.b)= translates to =Pseq([Pn(\a, 3), \b], inf)=, and =(a*3|b)= to
+=Prand([Pn(\a, 3), \b], inf)=.
+
+Items in a random selection may also attach a weight =%w=, which must
+be given as an integer: =(a%6|b%4)= has a 60% chance of choosing =a=
+and a 40% chance of =b=.
+
+Groups may be nested, producing complex structures compactly. For
+example, to have an 80% chance of =a= for four bars, then an 80%
+chance of =b= for two bars, you would write:
+
+#+BEGIN_SRC {SuperCollider} -i
+((a%4|b)*4.(a|b%4)*2)
+#+END_SRC
+
+You may also include both =.= and =|= in a single set of
+parentheses. The dot (for sequence) takes precedence: =(a.b|c)=
+evaluates as =((a.b)|c)=.
 
 *** Start/stop
 *** Generator
@@ -527,3 +632,10 @@ S. / Cottle, D. / Collins N. [eds.] /The SuperCollider
 Book/. Cambridge, Mass.: MIT Press. pp. 589--612.
 
 [fn:8ae1bb90] http://github.com/jamshark70/chucklib-livecode
+
+[fn:be0c1420] Note the trick to get monophonic synthesis. Assigning a
+=PmonoArtic= into =postDefaults= effectively turns the entire
+event-producing chain into a =PmonoArtic=---even if it adds no
+musically useful information into the resulting events. /Caveat/: If
+you will have any notes slur across the barline, make sure to include
+=alwaysReset: true= in the BP parameter dictionary.
