@@ -35,6 +35,9 @@
 
 #+LATEX_HEADER: \hyphenation{Synth-Def Synth-Defs}
 
+#+LATEX_HEADER: \usepackage{environ}
+#+LATEX_HEADER: \NewEnviron{boxnote}[1][]{\bigskip\noindent\framebox[1\textwidth]{\parbox[c]{0.95\textwidth}{\textbf{Note:} \BODY}}\bigskip}
+
 * Introduction
 #+LATEX: \frenchspacing
 ** Overview
@@ -194,7 +197,8 @@ because the buffer number is not known in advance. The only way to
 supply the buffer number as a default is to read the buffer first,
 and put it into the defaults dictionary only after that.
 
-*Note:* Clearly, the code to initialize the process in @@latex:Listing
+#+begin_boxnote
+Clearly, the code to initialize the process in @@latex:Listing
 \ref{instance1}@@ is too long to be practical to type in the middle of
 a performance. For practical purposes, you should place all of the
 process definitions into a separate file, which you would load once at
@@ -206,6 +210,7 @@ behaviors into objects that are simpler to use, once defined. /cll/ is
 an even more compact layer of control on top of this, following the
 same design principle: /definition/ and /performance usage/ are
 different, and call for different types of code.)
+#+end_boxnote
 
 ** Parameter map
 The parameter map =parmMap= is easiest to write as a set of nested [[Classes/Event][Events]]:
@@ -397,7 +402,8 @@ Syntax elements:
     clock.
 - =string= :: Specifies parameter values and rhythms.
 
-*Note:* Both the phrase and parameter names are optional. That allows
+#+BEGIN_boxnote
+Both the phrase and parameter names are optional. That allows
 the following syntactic combinations:
 
 #+ATTR_LATEX: :align |l|l|
@@ -415,6 +421,7 @@ the following syntactic combinations:
 
 Of these, the last looks somewhat surprising. It makes sense if you
 think of the double-dot as a delimiter for an empty phrase name.
+#+END_boxnote
 
 *** Pattern string syntax
 Pattern strings place values at time points within the bar. The values
@@ -442,11 +449,13 @@ as in the first.
 #+caption: Some examples of cll rhythmic notation, with and without dividers.
 [[./manual-supporting/rhythmic-notation-crop.pdf]]
 
-*Note:* It isn't exactly right to think of a space as a "rest."
+#+BEGIN_boxnote
+It isn't exactly right to think of a space as a "rest."
 @@latex:\texttt{"- - "}@@ is not really two quarter notes separated by
 quarter rests; it's actually two half notes! If you need to silence
 notes explicitly, then you should define an item in the parameter map
 whose value is a =Rest= object.
+#+END_boxnote
 
 **** TODO Set pattern examples
 
@@ -565,8 +574,10 @@ to specify any other values and the following rules apply:
 
 - @@latex:\texttt{\textasciitilde}@@ slurs this note into the next note.
 
-*Note:* Items in pitch sequences may include more than one character:
+#+BEGIN_boxnote
+Items in pitch sequences may include more than one character:
  =3= is one note, as is =6+,~=.
+#+END_boxnote
 
 @@latex:Listing \ref{pitchSet1}@@ illustrates the kind of articulation
 that is possible with this notation, using a 90s-throwback acid-style
