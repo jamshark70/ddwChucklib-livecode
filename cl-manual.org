@@ -194,6 +194,19 @@ because the buffer number is not known in advance. The only way to
 supply the buffer number as a default is to read the buffer first,
 and put it into the defaults dictionary only after that.
 
+*Note:* Clearly, the code to initialize the process in @@latex:Listing
+\ref{instance1}@@ is too long to be practical to type in the middle of
+a performance. For practical purposes, you should place all of the
+process definitions into a separate file, which you would load once at
+the beginning of a performance. See also the /[[Make statement][Make]]/ statement, which
+makes it easy to instantiate the processes as needed during the
+performance, reducing the overhead of initial loading. (In fact,
+Chucklib was designed from the beginning to "package" complex musical
+behaviors into objects that are simpler to use, once defined. /cll/ is
+an even more compact layer of control on top of this, following the
+same design principle: /definition/ and /performance usage/ are
+different, and call for different types of code.)
+
 ** Parameter map
 The parameter map =parmMap= is easiest to write as a set of nested [[Classes/Event][Events]]:
 
