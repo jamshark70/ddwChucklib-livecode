@@ -103,43 +103,7 @@ Thanks are due to:
 - =rest= :: An empty phrase, which only occupies time.
 
 ** PR(\textbackslash abstractLiveCode)
-To create a /cll/ process, "chuck" =PR(\abstractLiveCode)= into a BP
-("Bound Process"), with a parameter dictionary providing the
-details. Parameters to include in the dictionary:
-
-- =userprep= :: A function, called when the process is created. Use
-     this function to create any resources that the process will
-     require.
-- =userfree= :: A function, called when the process is
-     destroyed. Clean up any resources allocated in =userprep=.
-- =defaultParm= :: The name of the default parameter affected by /[[Set pattern][Set pattern]]/
-     statements. The default parameter also controls rhythm.
-- =parmMap= :: A nested dictionary of parameters, their allowed
-     values, and the characters that will identify these values in
-     pattern strings.
-- =defaults= :: An =Event= or event pattern providing default values
-     for the events that the process will play.
-- =postDefaults= :: (optional) An event pattern that can do further
-     calculations on the parameter values.
-
-This dictionary is not limited to these items. You may add any other
-data and functions that you need, to define complex behavior in terms
-of simpler functions and patterns.
-
-In @@latex:Listing \ref{instance1}@@, =userprep= loads a buffer and
-=userfree= releases it. By default, /Set pattern/ will operate on
-=amp=, and =parmMap= defines three values for it (soft, medium and
-loud). =parmMap= also provides some panning options. The =defaults=
-dictionary specifies the SynthDef to use (it may provide other synth
-defaults as well, not needed in this example), and =postDefaults=
-calculates the sounding duration of each note based on rhythm.
-
-Note the line =~defaults[\bufnum] = ~buf=: You may add values into
-=defaults= as part of =userprep=. That's necessary in this case
-because the buffer number is not known in advance. The only way to
-supply the buffer number as a default is to read the buffer first,
-and put it into the defaults dictionary only after that.
-
+#+begin_figure
 #+name: instance1
 #+caption: A simple cll process.
 #+BEGIN_SRC {SuperCollider} -i
@@ -191,6 +155,44 @@ TempoClock.tempo = 2;
 
 /beep(free);
 #+END_SRC
+#+end_figure
+
+To create a /cll/ process, "chuck" =PR(\abstractLiveCode)= into a BP
+("Bound Process"), with a parameter dictionary providing the
+details. Parameters to include in the dictionary:
+
+- =userprep= :: A function, called when the process is created. Use
+     this function to create any resources that the process will
+     require.
+- =userfree= :: A function, called when the process is
+     destroyed. Clean up any resources allocated in =userprep=.
+- =defaultParm= :: The name of the default parameter affected by /[[Set pattern][Set pattern]]/
+     statements. The default parameter also controls rhythm.
+- =parmMap= :: A nested dictionary of parameters, their allowed
+     values, and the characters that will identify these values in
+     pattern strings.
+- =defaults= :: An =Event= or event pattern providing default values
+     for the events that the process will play.
+- =postDefaults= :: (optional) An event pattern that can do further
+     calculations on the parameter values.
+
+This dictionary is not limited to these items. You may add any other
+data and functions that you need, to define complex behavior in terms
+of simpler functions and patterns.
+
+In @@latex:Listing \ref{instance1}@@, =userprep= loads a buffer and
+=userfree= releases it. By default, /Set pattern/ will operate on
+=amp=, and =parmMap= defines three values for it (soft, medium and
+loud). =parmMap= also provides some panning options. The =defaults=
+dictionary specifies the SynthDef to use (it may provide other synth
+defaults as well, not needed in this example), and =postDefaults=
+calculates the sounding duration of each note based on rhythm.
+
+Note the line =~defaults[\bufnum] = ~buf=: You may add values into
+=defaults= as part of =userprep=. That's necessary in this case
+because the buffer number is not known in advance. The only way to
+supply the buffer number as a default is to read the buffer first,
+and put it into the defaults dictionary only after that.
 
 ** Parameter map
 The parameter map =parmMap= is easiest to write as a set of nested [[Classes/Event][Events]]:
@@ -475,37 +477,7 @@ bar, then it will pick up =c=, without any other change needed.
 #+END_SRC
 
 *** Pitch notation
-If a parameter's map specifies =isPitch: true=, then it does not need
-to specify any other values and the following rules apply:
-
-- Scale degrees are given by decimal digits, where 1 is the tonic and
-  0 is the interval of a tenth above that (following the number row on
-  the keyboard).[fn:84cfcfa1]
-
-- @@latex:\texttt{+}@@ and @@latex:\texttt{-}@@ raise and lower the pitch by a semitone.
-
-- @@latex:\texttt{'}@@ and @@latex:\texttt{,}@@ displace the pitch by
-  an octave up or down, respectively. Multiple apostrophes or commas
-  displace by multiple octaves. (This syntax is borrowed from
-  LilyPond.)[fn:0fe09d88]
-
-- @@latex:\texttt{.}@@ indicates a staccato note.
-
-- @@latex:\texttt{\textunderscore}@@ indicates legato (sustain
-  duration slightly shorter than note duration).
-
-- @@latex:\texttt{\textasciitilde}@@ slurs this note into the next note.
-
-*Note:* Items in pitch sequences may include more than one character:
- =3= is one note, as is =6+,~=.
-
-@@latex:Listing \ref{pitchSet1}@@ illustrates the kind of articulation
-that is possible with this notation, using a 90s-throwback acid-style
-bassline. Though the sound is not as cool as a real TB303, careful use
-of slurs and staccatos mimics the feel of the venerable old
-machine.[fn:be0c1420] A further refinement would be to add values for
-filter frequency and =filtMul= into the parameter map.
-
+#+begin_figure
 #+name: pitchSet1
 #+caption: A retro acid-house bassline.
 #+BEGIN_SRC {SuperCollider} -i
@@ -557,6 +529,38 @@ TempoClock.tempo = 132/60;
 /acid+;
 /acid-;
 #+END_SRC
+#+end_figure
+
+If a parameter's map specifies =isPitch: true=, then it does not need
+to specify any other values and the following rules apply:
+
+- Scale degrees are given by decimal digits, where 1 is the tonic and
+  0 is the interval of a tenth above that (following the number row on
+  the keyboard).[fn:84cfcfa1]
+
+- @@latex:\texttt{+}@@ and @@latex:\texttt{-}@@ raise and lower the pitch by a semitone.
+
+- @@latex:\texttt{'}@@ and @@latex:\texttt{,}@@ displace the pitch by
+  an octave up or down, respectively. Multiple apostrophes or commas
+  displace by multiple octaves. (This syntax is borrowed from
+  LilyPond.)[fn:0fe09d88]
+
+- @@latex:\texttt{.}@@ indicates a staccato note.
+
+- @@latex:\texttt{\textunderscore}@@ indicates legato (sustain
+  duration slightly shorter than note duration).
+
+- @@latex:\texttt{\textasciitilde}@@ slurs this note into the next note.
+
+*Note:* Items in pitch sequences may include more than one character:
+ =3= is one note, as is =6+,~=.
+
+@@latex:Listing \ref{pitchSet1}@@ illustrates the kind of articulation
+that is possible with this notation, using a 90s-throwback acid-style
+bassline. Though the sound is not as cool as a real TB303, careful use
+of slurs and staccatos mimics the feel of the venerable old
+machine.[fn:be0c1420] A further refinement would be to add values for
+filter frequency and =filtMul= into the parameter map.
 
 *** Phrase selection
 Statements to set the phrase sequence follow a different syntax:
