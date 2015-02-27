@@ -283,7 +283,30 @@ parmMap: (
 )
 #+END_SRC
 
-**** TODO Discuss singleSynthPlayer vs. default
+#+BEGIN_boxnote
+The advice above---to wrap arrays in one more array level---is valid
+for the event prototype used by default in
+=PR(\abstractLiveCode)=. This is not SuperCollider's default event;
+it's a custom event prototype defined in /chucklib/ that plays single
+nodes and integrates more easily with =MixerChannel=. Because each
+such event plays only one node, array arguments are passed as is. The
+normal default event expands one-dimensional arrays into multiple
+nodes. The way to avoid this is to wrap the array in another array
+level---after which, array handling in the /cll/ parameter map
+requires a third level of wrapping.
+
+#+ATTR_LATEX: :align |p{0.2\textwidth}|p{0.3\textwidth}|p{0.3\textwidth}|
+|------------------------+-----------------------------+--------------------------------------------|
+| *parmMap array format* | *singleSynthPlayer meaning* | *Default event meaning*                    |
+|------------------------+-----------------------------+--------------------------------------------|
+| \texttt{[1, 2, 3]}     | Invalid                     | Invalid                                    |
+|------------------------+-----------------------------+--------------------------------------------|
+| \texttt{[[1, 2, 3]]}       | Pass the array to one node  | Distribute the three values to three nodes |
+|------------------------+-----------------------------+--------------------------------------------|
+| \texttt{[[[1, 2, 3]]]}     | Invalid                     | Pass the array to one node                 |
+|------------------------+-----------------------------+--------------------------------------------|
+#+END_boxnote
+**** DONE Discuss singleSynthPlayer vs. default			   :noexport:
 
 ** Event processing
 Every event produced by a /cll/ process goes through three stages:
@@ -638,17 +661,299 @@ parentheses. The dot (for sequence) takes precedence: =(a.b|c)=
 evaluates as =((a.b)|c)=.
 
 ** Start/stop statement
+The start/stop statement takes the following form:
+
+- Start: =/proc1/proc2/proc3+quant=
+- Stop: =/proc1/proc2/proc3-quant=
+
+Any number of process names may be given, each with a leading slash.
+
+=quant=, an integer, tells each process to start or stop on the next
+multiple number of beats. In 4/4 time, =/proc+4= will start the
+process on the next bar line; =/proc+8= will start on the next
+event-numbered bar line (i.e., every other bar). =quant= is optional;
+if not given, each process will use its own internal =quant=
+setting. By default, this is one bar; however, the =[[Func(\setm)][setm]]= helper
+function overrides this for the given number of bars.
+
 ** Generator statement
+Generators create randomized variations on a given string:
+
+#+BEGIN_SRC {SuperCollider} -i
+/proc.prefix.parm *n +ki %q "string"
+#+END_SRC
+
+- =proc= :: The process into which the new variations will go.
+- =prefix= :: A phrase identifier. /Mandatory./
+- =parm= :: (optional) The parameter to control.
+- =n= :: The number of variations to create. Each becomes a new
+     phrase: =prefix0=, =prefix1= up to $n-1$.
+- =k= :: The number of sequence items to add.
+- =i= :: The sequence item: either a single character (defined in the
+     parmMap) or the name of a Func, with a leading backslash =\=.
+- =q= :: (optional) The quantization factor, determining where in the
+     bar the new notes may be placed.
+- =string= :: A template, providing items and rhythms that should be
+     constant over all variations. You may use an existing pattern
+     string from any process by omitting the quote marks and
+     substituting =phrase.parm= (if the template comes from the same
+     process) or =/proc.phrase.parm= (if it comes from a different
+     process).
+
+#+BEGIN_boxnote
+At present, the string must contain vertical-bar dividers
+(\textbar). I may remove this limitation in a future version. For now,
+passing a string without dividers will cause an error.
+#+END_boxnote
+
+#+begin_figure
+#+name: gen1
+#+caption: Examples of generator statements.
+#+BEGIN_SRC {SuperCollider} -i
+// assuming BP(\snr) defines:
+// "-" (normal note)
+// "." (softer note)
+// Produces strong notes on 2 and 4, and one note elsewhere
+/snr.a *10 +1. "|-||-";
+/snr = ('^a');  // randomly choose one variation for each bar
+
+// "-" = open, "." = closed
+/hh = "..|..|..|..";  // all closed at first
+
+// add an open HH on any empty 16th
+/hh.a *10 +1- main;  // "main" refers to the above
+/hh = ('^a');
+
+// totally random HH rhythm (probably sounds stupid)
+{ "-.".wchoose(#[0.16, 0.84]) } => Func(\randHH);
+/hh.b *10 +9\randHH "|||";
+
+// or random notes on 8ths
+/hh.b *10 +5\randHH %0.5 "|||";
+
+// or, random notes, but don't allow two "-" in a row
+(
+{ |prev|
+   if(prev == $-) { $. } {
+      "-.".wchoose(#[0.16, 0.84])
+   }
+} => Func(\randHH);
+)
+
+/hh.b *10 +9\randHH "|||";
+#+END_SRC
+#+end_figure
+
+The generator's algorithm is:
+
+1. Use =q= to determine the valid time points at which to place
+   notes. In 4/4 time, with the default =q= = 0.25, there will be 16
+   time points.
+
+2. Evaluate the string, to find out where notes already exist. Remove
+   these time points from the available list.
+
+3. Randomly choose =k= time points, and add =i= at each of these
+   points.
+
+4. Write the results into a pattern string, and call the /[[Set pattern statement][Set pattern]]/
+   statement to add the pattern into the process.
+
+*** Functions as items
+Normally, =i= is simply a character indicating a specific value from
+the parameter map. If you want the item itself to be randomized,
+define a function to calculate the random value, save it in a
+/chucklib/ =Func=, and use the =Func='s name in place of the item.
+
+For each new item, the =Func= will be passed two arguments: the item
+before the randomly-chosen time point (or nil) and the item after the
+time point (or nil). You may add other arguments, in parentheses,
+after the function name; e.g. =+3\myRand(1, 3)= would call
+=\myRand.eval(prev, next, 1, 3)=.
+
 ** Make statement
-** Func call statement
+The make statement instantiates one or more /chucklib/ factories.
+
+#+BEGIN_SRC {SuperCollider} -i
+/make(factory0:targetName0/factory1:targetName1/...);
+#+END_SRC
+
+- =factory= :: The name of a =Fact= object to create.
+- =targetName= :: (optional) The name under which to create the
+     instance. If not given, the make statement looks into the factory
+     for the =defaultName=. If not found, the factory's name will be
+     used.
+
+Multiple =factory:targetName= pairs may be given, separated by slashes.
+
+As noted earlier, the code to define /cll/ processes is not
+performance-friendly. Instead, you can write this code into =Fact=
+object, and then =/make= them as you need them in performance.
+
+#+name: make1
+#+caption: Example of the make statement.
+#+BEGIN_SRC {SuperCollider} -i
+(
+(
+defaultName: \demo,
+make: { |name|
+	PR(\abstractLiveCode).chuck(BP(name), nil, (
+		event: (eventKey: \default),
+		defaultParm: \degree,
+		parmMap: (degree: (isPitch: true))
+	));
+}, type: \bp) => Fact(\demoBP);
+)
+
+/make(demoBP:dm);  // :dm overrides defaultName
+
+/dm = "1353427,5,";
+/dm+;
+/dm-;
+
+/dm(free);
+#+END_SRC
+
 ** Passthrough statement
+The passthrough statement takes arbitrary SuperCollider code, enclosed
+in parentheses, and applies it to any existing =BP= process. No syntax
+checking is done in the preprocessor, apart from counting parentheses
+to know which one really ends the statement.
+
+#+BEGIN_SRC {SuperCollider} -i
+// This...
+/snr(clock = ~myTempoClock);
+
+// ... is the same as running:
+BP(\snr).clock = ~myTempoClock;
+#+END_SRC
+
 ** Chuck statement
+The chuck statement is a shortcut for chucking a =BP= into some other object.
+
+#+BEGIN_SRC {SuperCollider} -i
+// This...
+/snr => MCG(0);
+
+// ... is the same as running:
+BP(\snr) => MCG(0);
+#+END_SRC
+
+** Func call statement
+The =Func= call statement is a shortcut to evaluate a function saved
+in /chucklib/'s =Func= collection. This makes it easier to use [[Helper functions][Helper
+functions]]. No syntax checking is done in the preprocessor.
+
+#+BEGIN_SRC {SuperCollider} -i
+/func.(arguments);
+
+// e.g.:
+/bars.(\proc, 2, \a);
+#+END_SRC
+
+#+BEGIN_boxnote
+The dot after the function name is critical! Without it, the statement
+looks exactly like a pass-through, and the preprocessor will treat it
+as such.
+#+END_boxnote
+
 ** Copy or transfer statement
+Copy/transfer statements create additional copies of phrases, so that
+you can transform the material while keeping the old copy. Then you
+can switch between the old and new versions, setting up a musical
+form.
+
+#+BEGIN_SRC {SuperCollider} -i
+/proc.phrase*n -> newPhrase;  // copy
+
+/proc.phrase*n ->> newPhrase;  // transfer
+#+END_SRC
+
+- =proc= :: The process on which to operate.
+- =phrase= :: The phrase name to copy.
+- =n= :: (optional) If given, copy a multi-bar phrase group, treating =phrase= as the prefix. =/proc.a*2 -> b= will copy =a0= to =b0= and =a1= to =b1=. (If =n= is omitted, both =phrase= and =newPhrase= will be used literally.)
+- =newPhrase= :: The name under which to store a copy. If =n= is given, this is a phrase group prefix.
+
+The difference between "copy" and "transfer" is:
+
+- Copy (=->=) simply duplicates the phrase information, but continues
+  playing the original phrases. If you change the new copies, you
+  won't hear the changes until you change the phrase selection
+  pattern. This is good for preparing new material and switching to it
+  suddenly.
+
+- Transfer (=->>=) duplicates the phrase information /and/ modifies
+  the phrase selection pattern, replacing every instance of the old
+  phrase name with the new.[fn:3ac66514] Changing the new copies will now be heard
+  immediately. This is good for slowly evolving new material, while
+  keeping the option to switch back to an older (presumably simpler)
+  version later.
+
 ** Show pattern statement
+Less a "statement" than a convenience interface, this feature looks up
+the string for a given phrase and parameter, and inserts it into the
+code document. Invoke this behavior by typing =/proc.phrase.parm= and
+evaluating the line by itself. As in other contexts, =phrase= and
+=parm= are optional and default to =main= and the process's
+=defaultParm= respectively.
+
+This is useful after a copy/transfer statement.
+
+#+BEGIN_SRC {SuperCollider} -i
+/snr.a = " - -";
+
+/snr.a -> b;
+
+/snr.b   // now hit ctrl-return at the end of this line
+
+// the line magically changes to
+/snr.b = " - -";
+#+END_SRC
+
+#+BEGIN_boxnote
+You must be using the SuperCollider IDE 3.7 or above. Automatic code
+insertion is not supported for other editors, or in SC 3.6.x (as it
+uses new features introduced in SC 3.7).
+#+END_boxnote
+
 ** Helper functions
+Three =Func= definitions are provided to make it easier to work with
+multi-bar phrase groups. I will introduce them using /cll/ [[Func call statement][Func call
+statement]] syntax.
+
+- =/setupbars.(\proc, n, \prefix)= :: Create empty phrases for
+     =prefix0=, =prefix1= up to $n-1$. This also inserts /[[Set pattern][Set pattern]]/
+     templates into the code document, for you to start filling in
+     musical material.
+- =/setm.(\proc, n, \prefix)= :: Set the process's phrase selection
+     pattern to play this phrase group. It also changes =quant= in the
+     process, so that starting and stopping the process will align to
+     the proper number of bars.
+- =/bars.(\proc, n, \prefix)= :: Calls both =setupbars= and =setm= at
+     once.
+
+A typical sequence of performance instructions for me is:
+
+#+BEGIN_SRC {SuperCollider} -i
+/make(kick);
+/bars.(\kick, 2, \a);
+
+// the following lines are automatically inserted
+/kick.a0 = "";
+/kick.a1 = "";
+#+END_SRC
+
+After the templates appear, I edit the strings to produce the rhythms
+I want, and then launch the process with =/kick+=. In this example,
+the phrase group occupies two bars. =setm= automatically sets the
+process's =quant= to two bars, so the process will then launch on an
+even-numbered barline.
 
 * Extending cll
-** Preprocessor architecture
+To be written...
+
+** Preprocessor architecture					   :noexport:
+
 * Footnotes
 
 [fn:84cfcfa1] In SuperCollider pattern terms, =1= translates into degree 0.
@@ -668,3 +973,9 @@ event-producing chain into a =PmonoArtic=---even if it adds no
 musically useful information into the resulting events. /Caveat/: If
 you will have any notes slur across the barline, make sure to include
 =alwaysReset: true= in the BP parameter dictionary.
+
+[fn:3ac66514] It does this by producing a =compileString= from the
+phrase selection pattern, performing string replacement, and then
+recompiling the pattern. This should work with all /cll/ [[Phrase selection][phrase
+selection]] strings. It is not guaranteed to work with hand-written
+patterns that generate phrase names algorithmically.

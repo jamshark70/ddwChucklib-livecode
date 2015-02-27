@@ -106,3 +106,33 @@ PR(\abstractLiveCode).chuck(BP(\acid), nil, (
 42.asMIDINote
 
 TempoClock.tempo = 132/60;
+
+
+
+(
+(
+defaultName: \demo,
+make: { |name|
+	PR(\abstractLiveCode).chuck(BP(name), nil, (
+		event: (eventKey: \default),
+		defaultParm: \degree,
+		parmMap: (degree: (isPitch: true))
+	));
+}, type: \bp) => Fact(\demoBP);
+)
+
+/make(demoBP);
+
+/demo = "1353427,5,";
+/demo+;
+/demo-;
+
+/demo(free);
+
+/make(demoBP:dm);
+
+/dm = "1353427,5,";
+/dm+;
+/dm-;
+
+/dm(free);
