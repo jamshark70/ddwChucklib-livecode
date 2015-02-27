@@ -88,7 +88,7 @@ Thanks are due to:
   implemented as a [[Classes/PbindProxy][PbindProxy]], so that its contents can be changed at
   any time.)
 - Each /parameter/ is defined by a pattern string, parsed and rendered
-  into SuperCollider pattern syntax by the /[[Set pattern][Set pattern]]/ statement.
+  into SuperCollider pattern syntax by the /[[Set pattern statement][Set pattern]]/ statement.
 - Parameter values are defined by the /parameter map/ (=parmMap=).
 
 # The BP also keeps a copy of the strings, for easier editing later.
@@ -166,7 +166,7 @@ details. Parameters to include in the dictionary:
      require.
 - =userfree= :: A function, called when the process is
      destroyed. Clean up any resources allocated in =userprep=.
-- =defaultParm= :: The name of the default parameter affected by /[[Set pattern][Set pattern]]/
+- =defaultParm= :: The name of the default parameter affected by /[[Set pattern statement][Set pattern]]/
      statements. The default parameter also controls rhythm.
 - =parmMap= :: A nested dictionary of parameters, their allowed
      values, and the characters that will identify these values in
