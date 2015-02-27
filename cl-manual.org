@@ -263,6 +263,8 @@ parmMap: (
 )
 #+END_SRC
 
+**** TODO Discuss singleSynthPlayer vs. default
+
 ** Event processing
 Every event produced by a /cll/ process goes through three stages:
 
@@ -345,8 +347,7 @@ by semicolons and submitted as a batch.
     - [X] \clStartStop -> "^([/`spc]*`id)+[`spc]*[+-]",
     - [X] \clPatternToDoc -> "^ *`id(\\.|`id)*[`spc]*$"
 
-** Statement details
-*** Set pattern
+** Set pattern statement
 /Set pattern/ is the primary interface for composing or improvising
 musical materials. As such, it's the most complicated of all the
 commands.
@@ -354,7 +355,7 @@ commands.
 This statement type subdivides into two functions: phrase /definition/
 and phrase /selection/.
 
-**** Phrase definition
+*** Phrase definition
 Most "Set pattern" statements follow this format:
 
 #+name: setpatternSyntax
@@ -400,7 +401,7 @@ the following syntactic combinations:
 Of these, the last looks somewhat surprising. It makes sense if you
 think of the double-dot as a delimiter for an empty phrase name.
 
-**** Pattern string syntax
+*** Pattern string syntax
 Pattern strings place values at time points within the bar. The values
 come from the parameter map. Timing comes from the items' positions
 within the string, based on the general idea of equal division of the
@@ -432,7 +433,7 @@ quarter rests; it's actually two half notes! If you need to silence
 notes explicitly, then you should define an item in the parameter map
 whose value is a =Rest= object.
 
-***** TODO Set pattern examples
+**** TODO Set pattern examples
 
 #+name: setpatternExamples
 #+caption: Set pattern examples.
@@ -442,7 +443,7 @@ whose value is a =Rest= object.
 /kick
 #+END_SRC
 
-**** Timing of multiple parameters
+*** Timing of multiple parameters
 Each parameter can have its own timing, but a =Pbind= can play with
 only one rhythm, raising a potential conflict.
 
@@ -473,7 +474,7 @@ bar, then it will pick up =c=, without any other change needed.
 /x = "-|-  -";  // now "c" is heard on beat 4.5
 #+END_SRC
 
-**** Pitch notation
+*** Pitch notation
 If a parameter's map specifies =isPitch: true=, then it does not need
 to specify any other values and the following rules apply:
 
@@ -557,7 +558,7 @@ TempoClock.tempo = 132/60;
 /acid-;
 #+END_SRC
 
-**** Phrase selection
+*** Phrase selection
 Statements to set the phrase sequence follow a different syntax:
 
 #+BEGIN_SRC {SuperCollider} -i
@@ -593,7 +594,8 @@ Any of these items may optionally attach a number of repeats =*n=:
 
 Items in a random selection may also attach a weight =%w=, which must
 be given as an integer: =(a%6|b%4)= has a 60% chance of choosing =a=
-and a 40% chance of =b=.
+and a 40% chance of =b=. If no weight is given, the default
+is 1. Weights are ignored for sequences (separated by dots).
 
 Groups may be nested, producing complex structures compactly. For
 example, to have an 80% chance of =a= for four bars, then an 80%
@@ -607,15 +609,14 @@ You may also include both =.= and =|= in a single set of
 parentheses. The dot (for sequence) takes precedence: =(a.b|c)=
 evaluates as =((a.b)|c)=.
 
-*** Start/stop
-*** Generator
-*** Make
-*** Func call
-*** Passthrough
-*** Chuck
-*** Copy or transfer
-*** Show pattern
-
+** Start/stop statement
+** Generator statement
+** Make statement
+** Func call statement
+** Passthrough statement
+** Chuck statement
+** Copy or transfer statement
+** Show pattern statement
 ** Helper functions
 
 * Extending cll
