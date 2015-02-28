@@ -76,8 +76,8 @@ Thanks are due to:
   capture my imagination about live coding, leading me in this
   direction.
 
-- Thor Magnusson, whose /ixilang/ system provided the inspiration for
-  /cll/ syntax.
+- Thor Magnusson, whose /ixilang/ system provided some of the
+  inspiration for /cll/ syntax.
 
 * Installation
 First, you must install the "ddwChucklib" quark and its
@@ -644,9 +644,9 @@ to specify any other values and the following rules apply:
 - @@latex:\texttt{+}@@ and @@latex:\texttt{-}@@ raise and lower the pitch by a semitone.
 
 - @@latex:\texttt{'}@@ and @@latex:\texttt{,}@@ displace the pitch by
-  an octave up or down, respectively. Multiple apostrophes or commas
-  displace by multiple octaves. (This syntax is borrowed from
-  LilyPond.)[fn:0fe09d88]
+  an octave up or down, respectively.[fn:0fe09d88] Multiple
+  apostrophes or commas displace by multiple octaves. (This syntax is
+  borrowed from LilyPond.)
 
 - @@latex:\texttt{.}@@ indicates a staccato note.
 
@@ -660,7 +660,7 @@ You should use the default event prototype for this process. Include
 the following in the "chuck" parameter dictionary, as in
 @@latex:Listing \ref{pitchSet1}@@:
 
-=event: (eventKey: \default),=
+=event: (eventKey: \default)=
 #+END_boxnote
 
 #+BEGIN_boxnote
@@ -743,8 +743,8 @@ multiple number of beats. In 4/4 time, =/proc+4= will start the
 process on the next bar line; =/proc+8= will start on the next
 event-numbered bar line (i.e., every other bar). =quant= is optional;
 if not given, each process will use its own internal =quant=
-setting. By default, this is one bar; however, =setm= helper function
-overrides this for the given number of bars.
+setting. By default, this is one bar; however, the =setm= 
+[[Helper functions][helper function]] overrides this for the given number of bars.
 
 ** Generator statement
 Generators create randomized variations on a given string:
@@ -932,8 +932,8 @@ BP(\snr) => MCG(0);
 
 ** Func call statement
 The =Func= call statement is a shortcut to evaluate a function saved
-in /chucklib/'s =Func= collection. This makes it easier to use [[Helper functions][Helper
-functions]]. No syntax checking is done in the preprocessor.
+in /chucklib/'s =Func= collection. This makes it easier to use 
+[[Helper functions][helper functions]]. No syntax checking is done in the preprocessor.
 
 #+name: clFunc1
 #+caption: Syntax template for func-call statements.
@@ -946,7 +946,7 @@ functions]]. No syntax checking is done in the preprocessor.
 
 #+BEGIN_boxnote
 The dot after the function name is critical! Without it, the statement
-looks exactly like a pass-through, and the preprocessor will treat it
+looks exactly like a passthrough, and the preprocessor will treat it
 as such.
 #+END_boxnote
 
@@ -1066,7 +1066,7 @@ matching the above stages.
 ** Statement regular expression
 First, add a statement ID and regular expression into
 =PR(\chucklibLiveCode)=. Within this object, =~statements= is an array
-of Associations: =\statementID -> "regexp"=.
+of Associations: @@latex:\texttt{\textbackslash statementID -> "regexp"}@@.
 
 #+name: regexp1
 #+caption: Cll statement regular expression templates.
@@ -1085,6 +1085,13 @@ of Associations: =\statementID -> "regexp"=.
       \clPatternToDoc -> "^ *`id(\\.|`id)*[`spc]*$"
    ];
 #+END_SRC
+
+More restrictive matches should come first. For instance,
+=\clXferPattern= comes before =\clCopyPattern=. If they were reversed,
+@@latex:\texttt{->}@@ in the "copy" regular expression would match the
+"xfer" statement as well as the "copy" statement. Checking
+@@latex:\texttt{->>}@@ first ensures that the more permissive test
+takes place only after the stricter test fails.
 
 Within these strings, a backtick (=`=) introduces a macro that will be
 expanded into part of a regular expression. Available macros are:
@@ -1133,7 +1140,7 @@ action.
 #+BEGIN_SRC {SuperCollider} -i
 Proto {
    ~process = { |code|
-      ... parse 'code' and build the SC language statement(s)...
+      // parse 'code' and build the SC language statement(s)...
       translatedStatement  // return value
    };
 } => PR(\clMyNewStatement);
@@ -1146,10 +1153,14 @@ Very simple statements may be implemented as functions added into
 #+caption: Adding a function into PR(\textbackslash chucklibLiveCode) for simple statement types.
 #+BEGIN_SRC {SuperCollider} -i
 PR(\chucklibLiveCode).clMyNewStatement = { |code|
-   ... parse 'code' and build the SC language statement(s)...
+   // parse 'code' and build the SC language statement(s)...
    translatedStatement  // return value
 };
 #+END_SRC
+
+* Code examples
+#+LaTeX: \renewcommand{\lstlistlistingname}{}
+#+LaTeX: \lstlistoflistings
 
 * Footnotes
 
