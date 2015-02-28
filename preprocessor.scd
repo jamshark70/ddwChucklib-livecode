@@ -1667,24 +1667,35 @@ Proto {
 	~process = { |code|
 		var pos;
 
-		~eqIndex = code.size;  // hack: no '=' in this command syntax
-		~parseIDs.(code);
-		try {
-			~string = ~clClass.new(~objKey).phraseStringAt(~phrase, ~parm);
-		} { |err|
-			Error("% while looking up pattern string".format(err.errorString.asCompileString)).throw;
+		if(~versionOK.isNil) {
+			~versionOK = Main.versionAtLeast(3, 7) and: { Platform.ideName == "scqt" };
+			PR(\clPatternToDoc).versionOK = ~versionOK;
 		};
 
-		if(~string.isNil) {
-			"Requested pattern hasn't been created".warn;
-		} {
-			if(~stepForward.isNil) {
-				~checkStepForward.();
+		if(~versionOK) {
+			~eqIndex = code.size;  // hack: no '=' in this command syntax
+			~parseIDs.(code);
+			try {
+				~string = ~clClass.new(~objKey).phraseStringAt(~phrase, ~parm);
+			} { |err|
+				Error("% while looking up pattern string".format(err.errorString.asCompileString)).throw;
 			};
 
-			pos = Document.current.selectionStart + Document.current.selectionSize;
-			if(~stepForward and: { Document.current.string(pos - 1, 1) == "\n" }) { pos = pos - 1 };
-			Document.current.string_(" = %;".format(~string.quote), pos, 0);
+			if(~string.isNil) {
+				"Requested pattern hasn't been created".warn;
+			} {
+				if(~stepForward.isNil) {
+					~checkStepForward.();
+				};
+
+				pos = Document.current.selectionStart + Document.current.selectionSize;
+				if(~stepForward and: { Document.current.string(pos - 1, 1) == "\n" }) { pos = pos - 1 };
+				Document.current.string_(" = %;".format(~string.quote), pos, 0);
+			};
+		} {
+			"Can't add the string into the document: wrong version (%) or editor (%)"
+			.format(Main.version, Platform.ideName)
+			.warn;
 		};
 		""  // the result is the side effect: don't run any code
 	};
