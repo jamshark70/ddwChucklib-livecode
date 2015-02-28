@@ -72,7 +72,7 @@ Thanks are due to:
   would exist.
 
 - Alex McLean, for his work on the /Tidal/ live-coding language for
-  music.(fn) /Tidal/ demonstration videos online were the first to
+  music.[fn:9e282b21] /Tidal/ demonstration videos online were the first to
   capture my imagination about live coding, leading me in this
   direction.
 
@@ -82,21 +82,6 @@ Thanks are due to:
 * Installation
 First, you must install the "ddwChucklib" quark and its
 dependencies. Consult Quarks documentation for details.
-
-#+BEGIN_boxnote
-Automatic installation of quarks with dependencies is not supported in
-SC 3.6.x in Windows. You will have to install the individual quarks by
-hand, by copying them into the Extensions directory.
-
-- ddwChucklib
-- ddwPrototype
-- ddwCommon
-- ddwGUIEnhancements
-- ddwMixerChannel
-- ddwPatterns
-- ddwTemperament
-- cruciallib
-#+END_boxnote
 
 /cll/'s functionality is contained in two files:
 
@@ -116,6 +101,21 @@ that is), then you can load them easily by:
 (Platform.userAppSupportDir +/+ "preprocessor.scd").load;
 (Platform.userAppSupportDir +/+ "helper-functions.scd").load;
 #+END_SRC
+
+#+BEGIN_boxnote
+Automatic installation of quarks with dependencies is not supported in
+SC 3.6.x in Windows. You will have to install the individual quarks by
+hand, by copying them into the Extensions directory.
+
+- ddwChucklib
+- ddwPrototype
+- ddwCommon
+- ddwGUIEnhancements
+- ddwMixerChannel
+- ddwPatterns
+- ddwTemperament
+- cruciallib
+#+END_boxnote
 
 * Process prototype
 ** Data structure
@@ -219,10 +219,10 @@ details. Parameters to include in the dictionary:
 
 #+BEGIN_boxnote
 /Chucklib/ documentation says to place the initialization function
-into =prep=, and cleanup into =freeCleanup=. == uses these functions
-for its own initialization and cleanup, and calls =userprep= and
-=userfree= from there. Do not override =prep= and =freeCleanup=, or
-your process will not work properly.
+into =prep=, and cleanup into =freeCleanup=. =PR(\abstractLiveCode)=
+uses these functions for its own initialization and cleanup, and calls
+=userprep= and =userfree= from there. Do not override =prep= and
+=freeCleanup=, or your process will not work properly.
 #+END_boxnote
 
 This dictionary is not limited to these items. You may add any other
@@ -261,6 +261,8 @@ different, and call for different types of code.)
 ** Parameter map
 The parameter map =parmMap= is easiest to write as a set of nested [[Classes/Event][Events]]:
 
+#+name: parmMap1
+#+caption: Template for the parameter map.
 #+BEGIN_SRC {SuperCollider} -i
 parmMap: (
    parmName: (
@@ -303,6 +305,8 @@ Array arguments must be enclosed in one extra array layer. That is, if
 you want to send an array of three frequencies such as =[200, 300,
 400]=, this must be given in the parameter map as =[ [200, 300, 400] ]=.
 
+#+name: parmMapArray1
+#+caption: How to write arrays in the parameter map.
 #+BEGIN_SRC {SuperCollider} -i
 parmMap: (
    freqs: (
@@ -314,20 +318,6 @@ parmMap: (
 
 Envelopes may be passed to arrayed Synth controls in the same way:
 =[Env.perc(0.01, 0.5).asArray]=.
-
-One other use of parameter map array is used to set disparate Event
-keys using one /cll/ parameter. =Pbind= allows multiple keys to be set
-at once by providing an array for a key. /cll/ supports this by using
-an array for the alias!
-
-#+BEGIN_SRC {SuperCollider} -i
-parmMap: (
-   filt: (
-      alias: [\ffreq, \rq],
-      $x: [[2000, 0.05]]
-   )
-)
-#+END_SRC
 
 #+BEGIN_boxnote
 The advice above---to wrap arrays in one more array level---is valid
@@ -352,6 +342,23 @@ requires a third level of wrapping.
 | \texttt{[[[1, 2, 3]]]}     | Invalid                     | Pass the array to one node                 |
 |------------------------+-----------------------------+--------------------------------------------|
 #+END_boxnote
+
+One other use of parameter map array is used to set disparate Event
+keys using one /cll/ parameter. =Pbind= allows multiple keys to be set
+at once by providing an array for a key. /cll/ supports this by using
+an array for the alias!
+
+#+name: parmMapArray2
+#+caption: Arrays for multiple-parameter setting using one cll parameter.
+#+BEGIN_SRC {SuperCollider} -i
+parmMap: (
+   filt: (
+      alias: [\ffreq, \rq],
+      $x: [[2000, 0.05]]
+   )
+)
+#+END_SRC
+
 **** DONE Discuss singleSynthPlayer vs. default			   :noexport:
 
 ** Event processing
@@ -388,6 +395,8 @@ sequences of statements to reuse quickly and easily.
 /cll/ statements begin with a slash: =/=. Statements may be separated
 by semicolons and submitted as a batch.
 
+#+name: cllStmt1
+#+caption: Cll statements, one by one or as a batch.
 #+BEGIN_SRC {SuperCollider} -i
 // run one at a time
 /kick.fotf = "----";
@@ -411,11 +420,11 @@ by semicolons and submitted as a batch.
 |--------------+-----------------------------------------------------------------+------------------------------------------|
 | Make         | Instantiate a process or voicer                                 | \texttt{/make(factory/factory)}          |
 |--------------+-----------------------------------------------------------------+------------------------------------------|
-| Func call    | Call a function in chucklib's \texttt{Func} collection          | \texttt{/funcname.(arguments)}           |
-|--------------+-----------------------------------------------------------------+------------------------------------------|
 | Passthrough  | Pass a method call to a \texttt{BP}                             | \texttt{/proc(method and arguments)}     |
 |--------------+-----------------------------------------------------------------+------------------------------------------|
 | Chuck        | Pass a chuck \texttt{=>} operation to a BP                      | \texttt{/proc => target }                |
+|--------------+-----------------------------------------------------------------+------------------------------------------|
+| Func call    | Call a function in chucklib's \texttt{Func} collection          | \texttt{/funcname.(arguments)}           |
 |--------------+-----------------------------------------------------------------+------------------------------------------|
 | Copy         | Copy a phrase or phrase set into a different name               | \texttt{/proc.phrase*n -> new}           |
 |--------------+-----------------------------------------------------------------+------------------------------------------|
@@ -503,8 +512,9 @@ a vertical bar, \textbar, is a divider.
 
 If the string has no dividers, then the items within it (including
 placeholders) are equally spaced throughout the bar. This holds true
-even if it's a nonstandard division: #4 has seven characters in the
-string, producing a septuplet.
+even if it's a nonstandard division: #4 (@@latex:Figure
+\ref{rhythmNotation1}@@) has seven characters in the string, producing
+a septuplet.
 
 If there are dividers, the measure's duration will be divided first:
 $n$ dividers produce $n+1$ units. Then, within each division, items
@@ -526,7 +536,7 @@ notes explicitly, then you should define an item in the parameter map
 whose value is a =Rest= object.
 #+END_boxnote
 
-**** TODO Set pattern examples
+**** TODO Set pattern examples					   :noexport:
 
 #+name: setpatternExamples
 #+caption: Set pattern examples.
@@ -541,13 +551,13 @@ Each parameter can have its own timing, but a =Pbind= can play with
 only one rhythm, raising a potential conflict.
 
 The =Pbind= rhythm is determined by the pattern string for the
-=defaultParm= declared in the process. When you set the =defaultParm=
-to a pattern, the rhythm defined in that string is assigned to the
-=\dur= key, where it drives the process's timing. Other parameters
-encode timing into a =Pstep=, to preserve the values' positions within
-the bar. Think of these as "sample-and-hold" values, where the control
-value /changes/ at times given by its own rhythm, but is /sampled/
-only at the times given by the =defaultParm= rhythm.
+=defaultParm= declared in the process. When you set the =defaultParm=,
+the rhythm defined in that string is assigned to the =\dur= key, where
+it drives the process's timing. Other parameters encode timing into a
+=Pstep=, to preserve the values' positions within the bar. Think of
+these as "sample-and-hold" values, where the control value /changes/
+at times given by its own rhythm, but is /sampled/ only at the times
+given by the =defaultParm= rhythm.
 
 For example, here, the default parameter's rhythm is two half
 notes. At the same time, a filter parameter changes on beats 1, 2
@@ -560,6 +570,8 @@ What about =c=? There is no event coming on or after beat 4, so =c=
 will be ignored in this case. But, if you add another note late in the
 bar, then it will pick up =c=, without any other change needed.
 
+#+name: setPatMulti1
+#+caption: Multiple parameters with different timing.
 #+BEGIN_SRC {SuperCollider} -i
 /x = "--";
 /x.filt = "ab c";  // "c" is not heard
@@ -570,7 +582,7 @@ bar, then it will pick up =c=, without any other change needed.
 *** Pitch notation
 #+begin_figure
 #+name: pitchSet1
-#+caption: A retro acid-house bassline.
+#+caption: A retro acid-house bassline, demonstrating pitch notation.
 #+BEGIN_SRC {SuperCollider} -i
 (
 SynthDef(\sqrbass, { |out, freq = 110, gate = 1,
@@ -644,6 +656,14 @@ to specify any other values and the following rules apply:
 - @@latex:\texttt{\textasciitilde}@@ slurs this note into the next note.
 
 #+BEGIN_boxnote
+You should use the default event prototype for this process. Include
+the following in the "chuck" parameter dictionary, as in
+@@latex:Listing \ref{pitchSet1}@@:
+
+=event: (eventKey: \default),=
+#+END_boxnote
+
+#+BEGIN_boxnote
 Items in pitch sequences may include more than one character:
  =3= is one note, as is =6+,~=.
 #+END_boxnote
@@ -658,6 +678,8 @@ filter frequency and =filtMul= into the parameter map.
 *** Phrase selection
 Statements to set the phrase sequence follow a different syntax:
 
+#+name: phraseSel1
+#+caption: Syntax template for "Set pattern" phrase selection.
 #+BEGIN_SRC {SuperCollider} -i
 /proc = (group...);
 #+END_SRC
@@ -698,6 +720,8 @@ Groups may be nested, producing complex structures compactly. For
 example, to have an 80% chance of =a= for four bars, then an 80%
 chance of =b= for two bars, you would write:
 
+#+name: phraseSel1
+#+caption: Nested phrase-selection groups.
 #+BEGIN_SRC {SuperCollider} -i
 ((a%4|b)*4.(a|b%4)*2)
 #+END_SRC
@@ -719,12 +743,14 @@ multiple number of beats. In 4/4 time, =/proc+4= will start the
 process on the next bar line; =/proc+8= will start on the next
 event-numbered bar line (i.e., every other bar). =quant= is optional;
 if not given, each process will use its own internal =quant=
-setting. By default, this is one bar; however, the =[[Func(\setm)][setm]]= helper
-function overrides this for the given number of bars.
+setting. By default, this is one bar; however, =setm= helper function
+overrides this for the given number of bars.
 
 ** Generator statement
 Generators create randomized variations on a given string:
 
+#+name: clGen1
+#+caption: Syntax template for generator statement.
 #+BEGIN_SRC {SuperCollider} -i
 /proc.prefix.parm *n +ki %q "string"
 #+END_SRC
@@ -805,6 +831,8 @@ The generator's algorithm is:
 4. Write the results into a pattern string, and call the /[[Set pattern statement][Set pattern]]/
    statement to add the pattern into the process.
 
+5. Do the above =n= times.
+
 *** Functions as items
 Normally, =i= is simply a character indicating a specific value from
 the parameter map. If you want the item itself to be randomized,
@@ -820,6 +848,8 @@ after the function name; e.g. =+3\myRand(1, 3)= would call
 ** Make statement
 The make statement instantiates one or more /chucklib/ factories.
 
+#+name: clMake1
+#+caption: Syntax template for make statements.
 #+BEGIN_SRC {SuperCollider} -i
 /make(factory0:targetName0/factory1:targetName1/...);
 #+END_SRC
@@ -830,7 +860,8 @@ The make statement instantiates one or more /chucklib/ factories.
      for the =defaultName=. If not found, the factory's name will be
      used.
 
-Multiple =factory:targetName= pairs may be given, separated by slashes.
+Multiple =factory:targetName= pairs may be given, separated by
+slashes. Both =BP= and =VC= factories are supported.
 
 As noted earlier, the code to define /cll/ processes is not
 performance-friendly. Instead, you can write this code into =Fact=
@@ -840,6 +871,7 @@ object, and then =/make= them as you need them in performance.
 #+caption: Example of the make statement.
 #+BEGIN_SRC {SuperCollider} -i
 (
+// THIS PART IN THE INIT FILE
 (
 defaultName: \demo,
 make: { |name|
@@ -851,6 +883,7 @@ make: { |name|
 }, type: \bp) => Fact(\demoBP);
 )
 
+// DO THIS IN PERFORMANCE
 /make(demoBP:dm);  // :dm overrides defaultName
 
 /dm = "1353427,5,";
@@ -867,6 +900,8 @@ no class is specified, =BP= is assumed. No syntax checking is done in
 the preprocessor, apart from counting parentheses to know which one
 really ends the statement.
 
+#+name: clPass1
+#+caption: Syntax template for passthrough statements.
 #+BEGIN_SRC {SuperCollider} -i
 // This...
 /snr(clock = ~myTempoClock);
@@ -882,6 +917,8 @@ BP(\snr).clock = ~myTempoClock;
 The chuck statement is a shortcut for chucking any existing /chucklib/
 object into some other object. If no class is given, =BP= is assumed.
 
+#+name: clChuck1
+#+caption: Syntax template for Chuck statements.
 #+BEGIN_SRC {SuperCollider} -i
 // This...
 /snr => MCG(0);
@@ -898,6 +935,8 @@ The =Func= call statement is a shortcut to evaluate a function saved
 in /chucklib/'s =Func= collection. This makes it easier to use [[Helper functions][Helper
 functions]]. No syntax checking is done in the preprocessor.
 
+#+name: clFunc1
+#+caption: Syntax template for func-call statements.
 #+BEGIN_SRC {SuperCollider} -i
 /func.(arguments);
 
@@ -917,6 +956,8 @@ you can transform the material while keeping the old copy. Then you
 can switch between the old and new versions, setting up a musical
 form.
 
+#+name: clCopy1
+#+caption: Syntax template for copy/transfer statements.
 #+BEGIN_SRC {SuperCollider} -i
 /proc.phrase*n -> newPhrase;  // copy
 
@@ -944,15 +985,17 @@ The difference between "copy" and "transfer" is:
   version later.
 
 ** Show pattern statement
-Less a "statement" than a convenience interface, this feature looks up
-the string for a given phrase and parameter, and inserts it into the
-code document. Invoke this behavior by typing =/proc.phrase.parm= and
-evaluating the line by itself. As in other contexts, =phrase= and
+Less a "statement" than an interface convenience, this feature looks
+up the string for a given phrase and parameter, and inserts it into
+the code document. Invoke this behavior by typing =/proc.phrase.parm=
+and evaluating the line by itself. As in other contexts, =phrase= and
 =parm= are optional and default to =main= and the process's
 =defaultParm= respectively.
 
 This is useful after a copy/transfer statement.
 
+#+name: clShow1
+#+caption: Demonstration of "Show pattern" statements.
 #+BEGIN_SRC {SuperCollider} -i
 /snr.a = " - -";
 
@@ -965,7 +1008,7 @@ This is useful after a copy/transfer statement.
 #+END_SRC
 
 #+BEGIN_boxnote
-You must be using the SuperCollider IDE 3.7 or above. Automatic code
+You must be using SuperCollider IDE 3.7 or above. Automatic code
 insertion is not supported for other editors, or in SC 3.6.x (as it
 uses new features introduced in SC 3.7).
 #+END_boxnote
@@ -988,6 +1031,8 @@ statement]] syntax.
 
 A typical sequence of performance instructions for me is:
 
+#+name: helper1
+#+caption: Common initialization sequence, using helper functions.
 #+BEGIN_SRC {SuperCollider} -i
 /make(kick);
 /bars.(\kick, 2, \a);
@@ -1023,6 +1068,8 @@ First, add a statement ID and regular expression into
 =PR(\chucklibLiveCode)=. Within this object, =~statements= is an array
 of Associations: =\statementID -> "regexp"=.
 
+#+name: regexp1
+#+caption: Cll statement regular expression templates.
 #+BEGIN_SRC {SuperCollider} -i
    ~statements = [
       \clMake -> "^ *make\\(.*\\)",
@@ -1042,6 +1089,8 @@ of Associations: =\statementID -> "regexp"=.
 Within these strings, a backtick (=`=) introduces a macro that will be
 expanded into part of a regular expression. Available macros are:
 
+#+name: regexp2
+#+caption: Regular expression macros for SC language tokens.
 #+BEGIN_SRC {SuperCollider} -i
    ~tokens = (
       al: "A-Za-z",
@@ -1128,6 +1177,12 @@ recompiling the pattern. This should work with all /cll/ [[Phrase selection][phr
 selection]] strings. It is not guaranteed to work with hand-written
 patterns that generate phrase names algorithmically.
 
+[fn:9e282b21] McLean, Alex. "Making Programming Languages to Dance to:
+Live Coding with Tidal." Proceedings of the 2nd ACM SIGPLAN
+international workshop on Functional art, music, modeling &
+design, September 6, 2014, Gothenburg, Sweden, pp. 63--70.
+
 * To-do								   :noexport:
 ** DONE Doc: Mention not to set prep or freeCleanup
 ** DONE Doc: How to install cll
+** TODO Register commands
