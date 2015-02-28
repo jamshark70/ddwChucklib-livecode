@@ -816,9 +816,10 @@ make: { |name|
 
 ** Passthrough statement
 The passthrough statement takes arbitrary SuperCollider code, enclosed
-in parentheses, and applies it to any existing =BP= process. No syntax
-checking is done in the preprocessor, apart from counting parentheses
-to know which one really ends the statement.
+in parentheses, and applies it to any existing /chucklib/ object. If
+no class is specified, =BP= is assumed. No syntax checking is done in
+the preprocessor, apart from counting parentheses to know which one
+really ends the statement.
 
 #+BEGIN_SRC {SuperCollider} -i
 // This...
@@ -826,10 +827,14 @@ to know which one really ends the statement.
 
 // ... is the same as running:
 BP(\snr).clock = ~myTempoClock;
+
+// Or...
+/VC.bass(releaseAll);  // VC(\bass).releaseAll;
 #+END_SRC
 
 ** Chuck statement
-The chuck statement is a shortcut for chucking a =BP= into some other object.
+The chuck statement is a shortcut for chucking any existing /chucklib/
+object into some other object. If no class is given, =BP= is assumed.
 
 #+BEGIN_SRC {SuperCollider} -i
 // This...
@@ -837,6 +842,9 @@ The chuck statement is a shortcut for chucking a =BP= into some other object.
 
 // ... is the same as running:
 BP(\snr) => MCG(0);
+
+// Or...
+/VC.keys => MCG(0);  // VC(\keys) => MCG(0);
 #+END_SRC
 
 ** Func call statement

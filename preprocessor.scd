@@ -163,8 +163,8 @@ Proto {
 	~statements = [
 		\clMake -> "^ *make\\(.*\\)",
 		\clFuncCall -> "^ *`id\\.\\(.*\\)",
-		\clPassThru -> "^ *`id\\(.*\\)",
-		\clChuck -> "^ *`id *=>.*",
+		\clPassThru -> "^ *([A-Z][A-Za-z0-9_]*\\.)?`id\\(.*\\)",
+		\clChuck -> "^ *([A-Z][A-Za-z0-9_]*\\.)?`id *=>.*",
 		\clPatternSet -> "^ *`id(\\.|`id|`id\\*[0-9]+)* = .*",
 		\clGenerator -> "^ *`id(\\.|`id)* \\*.*",
 		\clXferPattern -> "^ *`id(\\.`id)?(\\*`int)? ->>",  // harder match should come first

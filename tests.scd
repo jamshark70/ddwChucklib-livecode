@@ -494,3 +494,52 @@ y = PR(\clCompGrouping).copy;
 y.process(CollStream("x.a|b)"));
 y.clumpOperators;
 y.asPatString;
+
+
+// multi-bar transfer
+/k(free);
+
+(
+PR(\abstractLiveCode).chuck(BP(\k), nil, (
+	defaultParm: \amp,
+	parmMap: (amp: ($-: 0.5, $.: 0.1))
+));
+)
+
+/bars.(\k, 4, \a);
+/k.a0 = "-|| -|";
+/k.a1 = "-  -| -| -|";
+/k.a2 = "-|| - -|";
+/k.a3 = "-  -| - -| -|";
+
+/k(phraseSeq.asCompileString)
+
+/k.a*4 ->> b;
+
+/k(phraseSeq.asCompileString)
+
+/bars.(\k, 4, \p);
+/k.p0 = "-|| -|";
+/k.p1 = "-  -| -| -|";
+/k.p2 = "-|| - -|";
+/k.p3 = "-  -| - -| -|";
+
+/k.p*4 ->> q;
+
+/k.q0 = "-|| -|";
+
+
+"a?b".matchRegexp("ab");
+"a?b".matchRegexp("b");
+
+/BP.k(listVars);
+
+x = PR(\chucklibLiveCode);
+y = x.replaceRegexpMacros(x.statements.detect { |item| item.key == \clPassThru }.value);
+
+y.matchRegexp("BP.k(listVars)");
+
+Voicer(1, \default) => VC(\d);
+
+/VC.d(inspect);
+v.releaseAll
