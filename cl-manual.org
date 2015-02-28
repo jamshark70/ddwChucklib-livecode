@@ -79,6 +79,44 @@ Thanks are due to:
 - Thor Magnusson, whose /ixilang/ system provided the inspiration for
   /cll/ syntax.
 
+* Installation
+First, you must install the "ddwChucklib" quark and its
+dependencies. Consult Quarks documentation for details.
+
+#+BEGIN_boxnote
+Automatic installation of quarks with dependencies is not supported in
+SC 3.6.x in Windows. You will have to install the individual quarks by
+hand, by copying them into the Extensions directory.
+
+- ddwChucklib
+- ddwPrototype
+- ddwCommon
+- ddwGUIEnhancements
+- ddwMixerChannel
+- ddwPatterns
+- ddwTemperament
+- cruciallib
+#+END_boxnote
+
+/cll/'s functionality is contained in two files:
+
+- =preprocessor.scd= :: Installs the preprocessor to convert /cll/
+     statements into SuperCollider language syntax.
+
+- =helper-functions.scd= :: A handful of useful =Func= definitions.
+
+To use /cll/ in a session, simply load the =scd= files in the
+interpreter. If you place both files into your user application
+support directory (run =Platform.userAppSupportDir= to find out where
+that is), then you can load them easily by:
+
+#+name: install1
+#+caption: Instructions to load cll into a SC language session.
+#+BEGIN_SRC {SuperCollider} -i
+(Platform.userAppSupportDir +/+ "preprocessor.scd").load;
+(Platform.userAppSupportDir +/+ "helper-functions.scd").load;
+#+END_SRC
+
 * Process prototype
 ** Data structure
 /cll/ organizes musical behavior, and musical content, hierarchically:
@@ -178,6 +216,14 @@ details. Parameters to include in the dictionary:
      for the events that the process will play.
 - =postDefaults= :: (optional) An event pattern that can do further
      calculations on the parameter values.
+
+#+BEGIN_boxnote
+/Chucklib/ documentation says to place the initialization function
+into =prep=, and cleanup into =freeCleanup=. == uses these functions
+for its own initialization and cleanup, and calls =userprep= and
+=userfree= from there. Do not override =prep= and =freeCleanup=, or
+your process will not work properly.
+#+END_boxnote
 
 This dictionary is not limited to these items. You may add any other
 data and functions that you need, to define complex behavior in terms
@@ -335,7 +381,7 @@ materials on the fly. Sudden textural changes require changing many
 phrase-selection pattern at once. For this, [[Register]] commands can save
 sequences of statements to reuse quickly and easily.
 
-** Importing the cll API into another process prototype		   :noexport:
+** TODO Importing the cll API into another process prototype	   :noexport:
 
 * Livecoding statement reference
 ** Statement types
@@ -958,9 +1004,103 @@ process's =quant= to two bars, so the process will then launch on an
 even-numbered barline.
 
 * Extending cll
-To be written...
+/cll/ is designed to be extensible: adding new statements is
+relatively straightforward.
 
-** Preprocessor architecture					   :noexport:
+Processing a /cll/ statement goes through two main steps:
+
+1. =PR(\chucklibLiveCode)= tests the statement against a number of
+   regular expressions, to determine what type of statement it is.
+
+2. Then, a =PR= object to handle the statement is instantiated, and
+   the statement is passed to that object's =process= method.
+
+So, to implement a new statement type, you need to do two things,
+matching the above stages.
+
+** Statement regular expression
+First, add a statement ID and regular expression into
+=PR(\chucklibLiveCode)=. Within this object, =~statements= is an array
+of Associations: =\statementID -> "regexp"=.
+
+#+BEGIN_SRC {SuperCollider} -i
+   ~statements = [
+      \clMake -> "^ *make\\(.*\\)",
+      \clFuncCall -> "^ *`id\\.\\(.*\\)",
+      \clPassThru -> "^ *([A-Z][A-Za-z0-9_]*\\.)?`id\\(.*\\)",
+      \clChuck -> "^ *([A-Z][A-Za-z0-9_]*\\.)?`id *=>.*",
+      \clPatternSet -> "^ *`id(\\.|`id|`id\\*[0-9]+)* = .*",
+      \clGenerator -> "^ *`id(\\.|`id)* \\*.*",
+      // harder match should come first
+      \clXferPattern -> "^ *`id(\\.`id)?(\\*`int)? ->>",
+      \clCopyPattern -> "^ *`id(\\.`id)?(\\*`int)? ->",
+      \clStartStop -> "^([/`spc]*`id)+[`spc]*[+-]",
+      \clPatternToDoc -> "^ *`id(\\.|`id)*[`spc]*$"
+   ];
+#+END_SRC
+
+Within these strings, a backtick (=`=) introduces a macro that will be
+expanded into part of a regular expression. Available macros are:
+
+#+BEGIN_SRC {SuperCollider} -i
+   ~tokens = (
+      al: "A-Za-z",
+      dig: "0-9",
+      id: "[A-Za-z][A-Za-z0-9_]*",
+      int: "(-[0-9]+|[0-9]+)",
+      // http://www.regular-expressions.info/floatingpoint.html
+      float: "[\\-+]?[0-9]*\\.?[0-9]+([eE][\\-+]?[0-9]+)?",
+      spc: "    "  // space, tab, return
+   );
+#+END_SRC
+
+You should match only as much of the syntax as you need to determine
+the statement type. This is not the place for syntax validation. For
+example, the =\clGenerator= statement has a fairly complex syntax, but
+the matching regular expression is looking only for one or more IDs
+separated by dots, followed by a space and then an asterisk. This will
+dispatch to =PR(\clGenerator)=; it is this object's responsibility to
+report syntax errors (generally by throwing descriptive =Error=
+objects).
+
+#+BEGIN_boxnote
+The leading slash is stripped from the statement before regular
+expression matching. Don't include the slash in your regular
+expression.
+#+END_boxnote
+
+** Handler object
+Usually, a statement handler is a =PR= object, containing a =Proto=
+object prototype. The =PR='s name must match the statement ID created
+in the last step.
+
+The =Proto= must implement =process=, which takes =code= (the
+statement, as a String) as its argument. It should return a string
+containing the SuperCollider language syntax to perform the right
+action.
+
+#+name: cllTemplate1
+#+caption: Template for cll statement handlers.
+#+BEGIN_SRC {SuperCollider} -i
+Proto {
+   ~process = { |code|
+      ... parse 'code' and build the SC language statement(s)...
+      translatedStatement  // return value
+   };
+} => PR(\clMyNewStatement);
+#+END_SRC
+
+Very simple statements may be implemented as functions added into
+=PR(\chucklibLiveCode)=.
+
+#+name: cllTemplate2
+#+caption: Adding a function into PR(\textbackslash chucklibLiveCode) for simple statement types.
+#+BEGIN_SRC {SuperCollider} -i
+PR(\chucklibLiveCode).clMyNewStatement = { |code|
+   ... parse 'code' and build the SC language statement(s)...
+   translatedStatement  // return value
+};
+#+END_SRC
 
 * Footnotes
 
@@ -987,3 +1127,7 @@ phrase selection pattern, performing string replacement, and then
 recompiling the pattern. This should work with all /cll/ [[Phrase selection][phrase
 selection]] strings. It is not guaranteed to work with hand-written
 patterns that generate phrase names algorithmically.
+
+* To-do								   :noexport:
+** DONE Doc: Mention not to set prep or freeCleanup
+** DONE Doc: How to install cll
