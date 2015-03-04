@@ -170,7 +170,7 @@ Proto {
 		\clXferPattern -> "^ *`id(\\.`id)?(\\*`int)? ->>",  // harder match should come first
 		\clCopyPattern -> "^ *`id(\\.`id)?(\\*`int)? ->",
 		\clStartStop -> "^([/`spc]*`id)+[`spc]*[+-]",
-		\clPatternToDoc -> "^ *`id(\\.|`id)*[`spc]*$"
+		\clPatternToDoc -> "^ *`id(\\.|`id)*(\\*[0-9]+)?[`spc]*$"
 	];
 
 	// support functions
@@ -1671,17 +1671,24 @@ Proto {
 			~versionOK = Main.versionAtLeast(3, 7) and: { Platform.ideName == "scqt" };
 			PR(\clPatternToDoc).versionOK = ~versionOK;
 		};
-
 		if(~versionOK) {
 			~eqIndex = code.size;  // hack: no '=' in this command syntax
 			~parseIDs.(code);
+			if(~numToApply.notNil) {
+				~phrases = [[~phrase], (0 .. ~numToApply - 1)].flop.collect({ |array| array.join.asSymbol });
+			} {
+				~phrases = [~phrase]
+			};
+
 			try {
-				~string = ~clClass.new(~objKey).phraseStringAt(~phrase, ~parm);
+				~strings = ~phrases.collect { |phrase|
+					~clClass.new(~objKey).phraseStringAt(phrase, ~parm);
+				};
 			} { |err|
 				Error("% while looking up pattern string".format(err.errorString.asCompileString)).throw;
 			};
 
-			if(~string.isNil) {
+			if(~strings.any(_.isNil)) {
 				"Requested pattern hasn't been created".warn;
 			} {
 				if(~stepForward.isNil) {
@@ -1689,8 +1696,23 @@ Proto {
 				};
 
 				pos = Document.current.selectionStart + Document.current.selectionSize;
-				if(~stepForward and: { Document.current.string(pos - 1, 1) == "\n" }) { pos = pos - 1 };
-				Document.current.string_(" = %;".format(~string.quote), pos, 0);
+				if(~numToApply.isNil) {
+					if(~stepForward and: {
+						Document.current.string(pos - 1, 1) == "\n"
+					}) { pos = pos - 1 };
+					Document.current.string_(" = %;".format(~strings[0].quote), pos, 0);
+				} {
+					if(~parm == ~clClass.new(~objKey).defaultParm) { ~parm =nil };
+					Document.current.string_(
+						~strings.collect { |string, i|
+							"/%.%% = %;\n".format(~objKey, ~phrases[i],
+								if(~parm.notNil) { "." ++ ~parm } { "" },
+								string.quote
+							)
+						}.join,
+						pos, 0
+					)
+				};
 			};
 		} {
 			"Can't add the string into the document: wrong version (%) or editor (%)"

@@ -990,7 +990,8 @@ up the string for a given phrase and parameter, and inserts it into
 the code document. Invoke this behavior by typing =/proc.phrase.parm=
 and evaluating the line by itself. As in other contexts, =phrase= and
 =parm= are optional and default to =main= and the process's
-=defaultParm= respectively.
+=defaultParm= respectively. For a multi-bar phrase group, type
+=/proc.phrase*n.parm= (where =n= is the number of bars in the group.)
 
 This is useful after a copy/transfer statement.
 
