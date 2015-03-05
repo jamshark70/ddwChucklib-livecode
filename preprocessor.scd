@@ -1918,10 +1918,11 @@ Proto {
 		)
 	};
 
-	~reschedule = { |quant(-1)|
+	~reschedule = { |quant|
 		var oldStreamPlayer = ~eventStreamPlayer,
 		newStreamPlayer = BP(~collIndex).asEventStreamPlayer;
-		~clock.schedAbs(~clock.nextTimeOnGrid(quant) - 0.001, { oldStreamPlayer.stop });
+		if(quant.isNil) { quant = ~quant ?? { BasicTimeSpec(-1) } };
+		~clock.schedAbs(quant.asTimeSpec.bpSchedTime(BP(~collIndex)) - 0.001, { oldStreamPlayer.stop });
 		~clock.play(newStreamPlayer.refresh, quant);
 		currentEnvironment
 	};
