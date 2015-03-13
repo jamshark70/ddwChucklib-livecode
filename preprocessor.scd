@@ -1,5 +1,5 @@
 this.preProcessor = { |code|
-	if("/+".includes(code.first)) {
+	if("/+(".includes(code.first)) {
 		\chucklibLiveCode.eval(code)
 	} {
 		code
@@ -8,20 +8,31 @@ this.preProcessor = { |code|
 
 // main preprocessor
 { |code|
-	code = \clParseIntoStatements.eval(code);
-	code.do { |stmt, i|
-		case
-		{ stmt.first == $/ and: { stmt[1] != $/ } } {
-			code[i] = PR(\chucklibLiveCode)/*.copy?*/.process(stmt.drop(1));
-		}
-		{ stmt.first == $+ } {
-			if(BP.exists(\clRegister).not) {
-				PR(\clRegister) => BP(\clRegister);
-			};
-			code[i] = BP(\clRegister).process(stmt.drop(1));
-		};
+	if(code.first == $( and: {
+		code = code.trim(" \t\n");
+		code.last == $)
+	}) {
+		// 'code' has already lost trailing spaces
+		code = code[1 .. code.size - 2].trim(" \n\t");
 	};
-	code.join(";\n");
+	if("/+".includes(code.first)) {
+		code = \clParseIntoStatements.eval(code);
+		code.do { |stmt, i|
+			case
+			{ stmt.first == $/ and: { stmt[1] != $/ } } {
+				code[i] = PR(\chucklibLiveCode)/*.copy?*/.process(stmt.drop(1));
+			}
+			{ stmt.first == $+ } {
+				if(BP.exists(\clRegister).not) {
+					PR(\clRegister) => BP(\clRegister);
+				};
+				code[i] = BP(\clRegister).process(stmt.drop(1));
+			};
+		};
+		code.join(";\n");
+	} {
+		code
+	}
 } => Func(\chucklibLiveCode);
 
 // remove slashes and semicolons
