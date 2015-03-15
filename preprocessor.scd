@@ -1773,7 +1773,7 @@ Proto {
 			switch(cmd)
 			{ $/ } {
 				if(~registers[regId].isNil) {
-					~clear.(regId);
+					~emptyRegister.(regId);
 				};
 				"BP(%).registers[%].add(%)".format(
 					~collIndex.asCompileString,
@@ -1782,7 +1782,7 @@ Proto {
 				);
 			}
 			{ $! } {
-				"BP(%).clear(%)".format(
+				"BP(%).emptyRegister(%)".format(
 					~collIndex.asCompileString,
 					regId.asCompileString
 				);
@@ -1809,7 +1809,7 @@ Proto {
 			Error("Invalid register command '%'".format(cmd)).throw;
 		};
 	};
-	~clear = { |key|
+	~emptyRegister = { |key|
 		~registers[key] = List.new;
 	};
 } => PR(\clRegister);
