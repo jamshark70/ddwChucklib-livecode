@@ -1938,6 +1938,15 @@ Proto {
 		currentEnvironment
 	};
 
+	~resetToQuant = { |quant|
+		if(quant.isNil) { quant = ~quant ?? { BasicTimeSpec(-1) } };
+		~clock.schedAbs(quant.asTimeSpec.bpSchedTime(BP(~collIndex)) - 0.01, e {
+			~reset.();
+			~reschedule.(quant);
+		});
+		currentEnvironment
+	};
+
 	~reset = {
 		~makeStreamForKey.(\phraseSeq);
 		~makeStreamForKey.(\defaults);
