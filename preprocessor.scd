@@ -639,7 +639,7 @@ Proto {
 		stream << "%(%).setPattern(%, %, %, %, %)".format(
 			~clClass, ~objKey.asCompileString,
 			phrase, ~parm.asCompileString,
-			~patString, ~inString, ~quant
+			~patString, ~inString.asCompileString, ~quant
 		);
 		if(~isPitch) {
 			stream << ";\n%(%).setPattern(%, %, Pseq(%, 1), \"\")".format(
@@ -1711,14 +1711,14 @@ Proto {
 					if(~stepForward and: {
 						Document.current.string(pos - 1, 1) == "\n"
 					}) { pos = pos - 1 };
-					Document.current.string_(" = %;".format(~strings[0].quote), pos, 0);
+					Document.current.string_(" = %;".format(~strings[0]), pos, 0);
 				} {
 					if(~parm == ~clClass.new(~objKey).defaultParm) { ~parm =nil };
 					Document.current.string_(
 						~strings.collect { |string, i|
 							"/%.%% = %;\n".format(~objKey, ~phrases[i],
 								if(~parm.notNil) { "." ++ ~parm } { "" },
-								string.quote
+								string
 							)
 						}.join,
 						pos, 0
