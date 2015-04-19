@@ -539,7 +539,11 @@ Proto {
 				~clClass, ~objKey.asCompileString, ~parm
 			).warn;
 			deltas = [Rest(~beatsPerBar)];
-			levels = (~valueForParm.(\rest, ~clClass.new(~objKey), ~parm) ?? { 1 }).asArray;
+			levels = ~valueForParm.(\rest, ~clClass.new(~objKey), ~parm) ?? { 1 };
+			if(~isPitch and: { levels.isKindOf(Association) }) {
+				levels = levels.key;
+			};
+			levels = levels.asArray;
 			legatos = [1];
 		} {
 			deltas = (times ++ ~beatsPerBar).differentiate;

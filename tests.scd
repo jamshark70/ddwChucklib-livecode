@@ -543,3 +543,17 @@ Voicer(1, \default) => VC(\d);
 
 /VC.d(inspect);
 v.releaseAll
+
+
+
+// Setting "|||" to an isPitch parm produces an invalid pattern :bug:
+(
+BP(\x).free;
+PR(\abstractLiveCode).chuck(BP(\x), nil, (
+	defaultParm: \a,
+	parmMap: (a: (isPitch: true))
+));
+)
+
+/x = "|||";
+/x = " ";
