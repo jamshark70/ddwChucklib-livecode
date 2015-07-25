@@ -1873,6 +1873,8 @@ Proto {
 	};
 	~prSetPhraseString = { |phrase, parm(~defaultParm), string|
 		~phraseStrings.put(phrase, parm, string);
+		// advise clients (e.g. GUIs) of new content
+		NotificationCenter.notify(\clLiveCode, \phraseString, [~collIndex, phrase, parm, string]);
 		currentEnvironment
 	};
 	~setPattern = { |phrase, parm, pattern, inString, newQuant|
@@ -1883,13 +1885,13 @@ Proto {
 			~phrases[phrase] = pat;
 		};
 		if(parm.notNil) {
+			~prSetPhraseString.(phrase, parm, inString);
 			~clock.schedAbs(BP(~collIndex).eventSchedTime(-1) - 0.001, e {
 				if(parm == \dur) {
 					// _.value is needed to convert Rests to durations
 					~phraseDurs[phrase] = pattern.list.sum(_.value);
 				};
 				pat.set(storeParm, pattern);
-				~prSetPhraseString.(phrase, parm, inString);
 				nil
 			});
 		} {
