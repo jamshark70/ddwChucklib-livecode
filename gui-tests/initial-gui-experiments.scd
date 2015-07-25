@@ -119,12 +119,13 @@ Proto {
 	~background = Color.white;
 	~stringColor = Color.black;
 	~markColor = Color(0.8, 0, 0);
+	~str = "";
 
 	~prep = { |parentView(~parentView), bounds(~bounds)|
 		~parentView = parentView;
 		~bounds = bounds;
 		~view = TextView(parentView, bounds)
-		.string_(~string)
+		.string_(~str)
 		.background_(~background)
 		.keyUpAction_(e { |... args| ~prKeyUpAction.(*args) })
 		.mouseUpAction_(e { |... args| ~prMouseUpAction.(*args) })
@@ -164,15 +165,26 @@ Proto {
 		currentEnvironment
 	};
 
+	~setString = { |string, start, length|
+		var end = start + length;
+		~view.setString(string, start, length);
+		~str = "%%%".format(
+			if(start > 0) { ~str[0 .. start - 1] } { "" },
+			string,
+			if(end <= ~str.size) { ~str[end - 1 .. ] } { "" }
+		);
+		~updateBookmarks.(start + (length > 0).asInteger, string.size - length);
+	};
+	~string = { ~view.string };
 	// DO NOT OVERRIDE
 	~prKeyUpAction = { |view, char, mod, unicode, keycode, key|
 		var newString, ascii;
 		if(char.notNil) {
 			newString = view.string;
-			~updateBookmarks.(~selectionStart, newString.size - ~string.size);
+			~updateBookmarks.(~selectionStart, newString.size - ~str.size);
 		};
 		if(newString.notNil) {
-			~string = newString;
+			~str = newString;
 		};
 		~getSelection.();
 		~keyUpAction.(view, char, mod, unicode, keycode, key);

@@ -10,6 +10,9 @@ Proto {
 	~updateDefer = 0.1;
 
 	~prep = {
+		~bookmarks = MultiLevelIdentityDictionary.new;
+		~bookmarkIndex = IdentityDictionary.new;
+		~markUpdaters = IdentityDictionary.new;
 		~makeGui.();
 		~scanBPs.();
 		~notifier = NotificationCenter.register(\clLiveCode, \phraseString, ~collIndex, e {
@@ -20,6 +23,7 @@ Proto {
 	~freeCleanup = {
 		// ~isActive = false;
 		~notifier.remove;
+		~markUpdaters.do { |upd| upd.remove };
 		~win.onClose_(nil).close;
 		"freed".debug;
 	};
@@ -62,21 +66,29 @@ Proto {
 			nil
 		};
 		var origItem;
-		var newPage = TextView()
+		var newPage = PR(\rangeTextView).copy
+		.put(\background, ~backColor)
+		.put(\stringColor, ~stringColor)
+		.prep(nil, nil),
+		view = newPage.view;
 		// .background_(~backColor)
-		.palette_(QPalette.auto.base_(~backColor).baseText_(~stringColor))
-		.string_("x")
+		view.palette_(QPalette.auto.base_(~backColor).baseText_(~stringColor))
+		// .string_("x")
 		.font_(~textFont);
+		~markUpdaters[key.asSymbol] = SimpleController(newPage)
+		.put(\markMoved, e { |obj, what, old, new|
+			~updateOneBookmark.(old, new);
+		});
 		if(i.isNil) {
 			i = ~pages.size div: 2;
 			~pages = ~pages.add(key).add(newPage);
-			~stackLayout.add(newPage);
+			~stackLayout.add(view);
 			~pageMenu.items = ~pageMenu.items.add(key.asString);
 		} {
 			origItem = ~pageMenu.items[~pageMenu.value];
 			~pages = ~pages.insert(i, newPage).insert(i, key);
 			i = i div: 2;
-			~stackLayout.insert(newPage, i);
+			~stackLayout.insert(view, i);
 			~pageMenu.items = ~pageMenu.items.insert(i, key.asString);
 			~pageMenu.value = ~pageMenu.items.indexOfEqual(origItem);
 		};
@@ -89,24 +101,27 @@ Proto {
 	};
 
 	~updatePatString = { |objKey, phrase, parm, string|
-		var page, start, length, pageView;
+		var page, start, length, pageView, patString;
 		if(string.size > 0) {
 			if(~isDefaultParm.(objKey, parm)) { parm = nil };
 			#page, start, length = ~findStringPos.(objKey, phrase, parm);
 			[page, start, length].debug("position to insert");
 			// safety check?
 			pageView = ~pages[page * 2 + 1];
+			patString = "/%.%% = %;\n".format(
+				objKey,
+				phrase, // if(phrase.notNil) { "." ++ phrase } { "" },
+				if(parm.notNil) { "." ++ parm } { "" },
+				string
+			).postcs;
+			~bookmarks.put(~pages[page * 2].asSymbol, phrase, parm.asSymbol,
+				[start, start + patString.size - 1]);
+			~bookmarkIndex[start] = [~pages[page * 2].asSymbol, phrase, parm.asSymbol];
+			~bookmarkIndex[start + patString.size - 1] = ~bookmarkIndex[start];
 			// if(phrase == \main) { phrase = nil };
 			{
-				pageView.setString(
-					"/%.%% = %;\n".format(
-						objKey,
-						phrase, // if(phrase.notNil) { "." ++ phrase } { "" },
-						if(parm.notNil) { "." ++ parm } { "" },
-						string
-					).postcs,
-					start, length
-				);
+				pageView.setString(patString, start, length);
+				pageView.addBookmark(start, start + patString.size - 1);
 			}.defer(~updateDefer);
 		};
 	};
@@ -114,68 +129,67 @@ Proto {
 	// note, this should always return a position, even if it's a place for a new pattern
 	// return: [page_index, start, length]
 	~findStringPos = { |objKey, phrase, parm|
-		var phrKey, phrIndex, pageI, pageStr, keyIndex, j, toFind, lastComparison;
+		var phrKey, phrIndex, pageI, page, pageStr, mark, keyIndex, j;
+		var toFind, lastComparison;
 		#phrKey, phrIndex = ~phraseAndIndex.(phrase);
 		pageI = ~pageIndexForPhrase.(phrKey);
 		if(pageI.isNil) {
 			pageI = ~newPage.(phrKey.asSymbol);
 		};
-		pageStr = ~pages[pageI * 2 + 1].string;
-		toFind = "/%%%".format(objKey,
-			if(phrase.notNil) { "." ++ phrase } { "" },
-			if(parm.notNil) { "." ++ parm } { "" }
-		).debug("searching for");
-		if(phrIndex.notNil) {
-			keyIndex = block { |break|
-				pageStr.findRegexp("^// ([0-9]+)").debug("search for headings").pairsDo { |fullMatch, indexMatch|
-					[indexMatch[1].asInteger, phrIndex.asInteger, indexMatch[1].asInteger >= phrIndex.asInteger].debug("oh bloody fucking hell");
-					if(indexMatch[1].asInteger >= phrIndex.asInteger) {
-						j = fullMatch[0];
-						break.(indexMatch);
-					}
+		page = ~pages[pageI * 2 + 1];
+		pageStr = page.string;
+		if(~isDefaultParm.(objKey, parm)) { parm = nil };
+		mark = ~bookmarks.at(objKey, phrKey, parm.asSymbol);
+		if(mark.notNil) {
+			[pageI, mark[0], mark[1] - mark[0] + 1]
+		} {  // find space for the new string
+			// find index heading
+			if(phrIndex.notNil) {
+				keyIndex = ~indexHeadInString.(pageStr, phrIndex);
+				if(keyIndex.notNil) {
+					if(keyIndex[1] == phrIndex) {
+						j = keyIndex[0] + keyIndex[1].size + 1;
+					} {
+						j = keyIndex[0] - 3;
+						page.setString("// " ++ phrIndex ++ "\n\n", j, 0);
+						pageStr = pageStr.insert(j, "// " ++ phrIndex ++ "\n\n");
+						j = j + phrIndex.size + 3;
+					};
+				} {
+					Error("keyIndex isNil: I think we shouldn't ever get here").throw;
 				};
-				j = 0;
-				nil
-			};
-			if(keyIndex.size > 0) {
-				[keyIndex[1].asInteger, phrIndex.asInteger, keyIndex[1].asInteger != phrIndex.asInteger].debug("test to add a fucking heading");
-			};
-			if(keyIndex.size < 2 or: { keyIndex[1].asInteger != phrIndex.asInteger }) {
-				// insert new heading
-				~pages[pageI * 2 + 1].setString("// " ++ phrIndex ++ "\n\n", j, 0);
-				pageStr = pageStr.insert(j, "// " ++ phrIndex ++ "\n\n");
-				// ~pages[pageI * 2 + 1].stringColor_(~stringColor).string_(pageStr);
-			};
-			j = j + phrIndex.size + 4;
-		} {
-			j = 0;
-		};
-		[j, pageStr.size].debug("before while");
-		keyIndex = -10;
-		while { j < pageStr.size and: { j - keyIndex > 1 and: {
-			[j, pageStr[j .. j+15].asCompileString].debug("testing");
-			pageStr.findRegexpAt("// [0-9]", j).isNil and: {
-				(lastComparison = ~compareStringAt.(pageStr, toFind, j).debug("comparison")) > 0
-			}
-		} } } {
-			keyIndex = j;
-			while { j < pageStr.size and: { pageStr[j] != $\n } } {
-				j = j + 1
-			};
-			j = j + 1;
-		};
-		if(j >= pageStr.size) {
-			[pageI, j - 2, 0].debug("past document end");
-		} {
-			if(lastComparison == 0) {
-				keyIndex = j; // = keyIndex;
-				while { j < pageStr.size and: { pageStr[j] != $\n } } {
-					j = j + 1;
-				};
-				[pageI, keyIndex, j - keyIndex + 1].debug("match")
 			} {
-				if(pageStr.findRegexpAt("/[a-zA-Z]", j).isNil) { j = j - 1 };
-				[pageI, j, 0].debug("non-match, insert")
+				j = 0;  // un-sectioned strings at top
+			};
+
+			// find alpha order
+			[j, pageStr.size].debug("before while");
+			keyIndex = -10;
+			while { j < pageStr.size and: { j - keyIndex > 1 and: {
+				[j, pageStr[j .. j+15].asCompileString].debug("testing");
+				pageStr.findRegexpAt("// [0-9]", j).isNil and: {
+					(lastComparison = ~compareStringAt.(pageStr, toFind, j).debug("comparison")) > 0
+				}
+			} } } {
+				keyIndex = j;
+				while { j < pageStr.size and: { pageStr[j] != $\n } } {
+					j = j + 1
+				};
+				j = j + 1;
+			};
+			if(j >= pageStr.size) {
+				[pageI, max(0, j - 2), 0].debug("<< past document end");
+			} {
+				if(lastComparison == 0) {
+					keyIndex = j; // = keyIndex;
+					while { j < pageStr.size and: { pageStr[j] != $\n } } {
+						j = j + 1;
+					};
+					[pageI, keyIndex, j - keyIndex + 1].debug("<< match")
+				} {
+					if(pageStr.findRegexpAt("/[a-zA-Z]", j).isNil) { j = j - 1 };
+					[pageI, j, 0].debug("<< non-match, insert")
+				};
 			};
 		};
 	};
@@ -211,6 +225,20 @@ Proto {
 		};
 	};
 
+	~indexHeadInString = { |string, phrIndex|
+		block { |break|
+			string.findRegexp("^// ([0-9]+)").debug("search for headings").pairsDo { |fullMatch, indexMatch|
+				[indexMatch[1].asInteger, phrIndex.asInteger, indexMatch[1].asInteger >= phrIndex.asInteger].debug("oh bloody fucking hell");
+				if(indexMatch[1].asInteger >= phrIndex.asInteger) {
+					// j = fullMatch[0];
+					break.(indexMatch);
+				}
+			};
+			// j = pageStr.size - 1;
+			nil
+		};
+	};
+
 	~setPage = { |index|
 		~pageMenu.value = index;
 		~stackLayout.index = index;
@@ -218,6 +246,20 @@ Proto {
 
 	~isDefaultParm = { |objKey, parm|
 		BP.exists(objKey) and: { parm == BP(objKey).defaultParm }
+	};
+
+	~updateOneBookmark = { |old, new|
+		var mIndex = ~bookmarkIndex[old], pair;
+		if(mIndex.notNil) {
+			~bookmarkIndex.removeAt(old);
+			~bookmarkIndex.put(new, mIndex);
+			pair = ~bookmarks.at(*mIndex);
+			if(pair.notNil) {
+				pair.do { |item, i|
+					if(item == old) { pair[i] = new };
+				};
+			};
+		};
 	};
 
 	~compareStringAt = { |sourceStr, findStr, i|
@@ -254,6 +296,18 @@ PR(\abstractLiveCode).chuck(BP(\j), nil, (
 	parmMap: (amp: ($-: 0.5, $.: 0.1))
 ));
 )
+
+BP(\edit).pages[1].string.size
+BP(\edit).pages[1].string[23 .. ]
+
+BP(\edit).pages[1].str.asCompileString
+
+BP(\edit).pages[1].visibleBookmarks = [0, 17];
+BP(\edit).pages[1].visibleBookmarks = [];
+BP(\edit).pages[1].drawBookmarks;
+
+BP(\edit).bookmarks
+BP(\edit).bookmarkIndex
 
 /k = "----";
 
