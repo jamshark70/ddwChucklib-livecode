@@ -119,6 +119,7 @@ Proto {
 	~background = Color.white;
 	~stringColor = Color.black;
 	~markColor = Color(0.8, 0, 0);
+	~font = Font("Inconsolata", 14);
 	~str = "";
 
 	~prep = { |parentView(~parentView), bounds(~bounds)|
@@ -470,24 +471,73 @@ Proto {
 } => PR(\clGuiSectionView);
 
 Proto {
+	~prep = { |layout, insertIndex|
+		~view = ScrollView();
+		if(insertIndex.notNil) {
+			layout.insert(~view, insertIndex);
+		} {
+			layout.add(~view);
+		};
+		~layout = VLayout();
+		~view.canvas_(View().layout_(~layout));
+		~sections = List.new;
+		currentEnvironment
+	};
+	~free = {
+		~sections.do { |pair| pair[0].free };
+	};
 
+	~newSection = { |name|
+		var i = ~sections.detectIndex { |item| item[0].name > name },
+		newSect = PR(\clGuiSection).copy.name_(name).prep,
+		// newGui,
+		label = StaticText().string_(name),
+		newGui = PR(\clGuiSectionView).copy.prep(newSect, ~layout,
+			if(i.notNil) { i * 2 });
+
+		if(i.notNil) {
+			~layout.insert(label, i * 2);
+			~sections.insert(i, [newSect, newGui]);
+		} {
+			~layout.insert(label, ~sections.size * 2);
+			~sections.add([newSect, newGui]);
+		};
+	};
 } => PR(\clGuiPage);
 )
 
 Object.dependantsDictionary.keys  // sanity check: shouldn't have lots of Protos
 
 (
-var freeFunc = { if(a.env.notNil) { a.free } };
-freeFunc.();
+var freeFunc = { if(p.env.notNil) { p.free } };
+tryNoTrace(freeFunc);
 
 w = Window("test", Rect(800, 200, 500, 400));
 w.layout = VLayout();
 w.onClose = freeFunc;
 w.front;
 
-a = PR(\clGuiSection).copy.prep;
-g = PR(\clGuiSectionView).copy.prep(a, w.layout);
+p = PR(\clGuiPage).copy.prep(w.layout);
+
+// a = PR(\clGuiSection).copy.prep;
+// g = PR(\clGuiSectionView).copy.prep(a, w.layout);
 )
+
+w.layout.insert(StaticText().string_("hello"), 0);
+w.view.children
+
+p.newSection("a");
+p.listVars;
+p.sections[0][1].view.listVars
+p.sections[0][1].view.view.parent.parent
+p.sections[0][1].view.view.bounds
+p.sections[0][1].view.view.string
+w.refresh;
+
+p.newSection("b");
+p.newSection("0");
+
+a = p.sections[1][0];
 
 a.listVars;
 g.listVars;
@@ -497,6 +547,7 @@ a.addString("abc");
 a.addString("xyz");
 
 a.strings[0].string = "abcdefg";
+a.strings[2].string = "abcdefg";
 
 g.view.listVars
 g.view.getSelection
@@ -510,15 +561,3 @@ g.free;
 a.dependants
 a.strings[0].dependants
 a.free;
-
-
-(
-{
-	t = TextView(nil, Rect(800, 200, 300, 200)).front;
-	1.0.wait;
-	t.setString("You should see stuff in the post window.", 0, 0)
-	.keyUpAction_({ |view, char| char.postln });
-	1.0.wait;
-	t.setString("Click anywhere in this string and type. ", 0, 0);
-}.fork(AppClock);
-)
