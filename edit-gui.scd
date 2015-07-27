@@ -114,9 +114,9 @@ Proto {
 				if(parm.notNil) { "." ++ parm } { "" },
 				string
 			).postcs;
-			~bookmarks.put(~pages[page * 2].asSymbol, phrase, parm.asSymbol,
+			~bookmarks.put(objKey, phrase, parm.asSymbol,
 				[start, start + patString.size - 1]);
-			~bookmarkIndex[start] = [~pages[page * 2].asSymbol, phrase, parm.asSymbol];
+			~bookmarkIndex[start] = [objKey, phrase, parm.asSymbol];
 			~bookmarkIndex[start + patString.size - 1] = ~bookmarkIndex[start];
 			// if(phrase == \main) { phrase = nil };
 			{
@@ -146,17 +146,19 @@ Proto {
 			// find index heading
 			if(phrIndex.notNil) {
 				keyIndex = ~indexHeadInString.(pageStr, phrIndex);
-				if(keyIndex.notNil) {
-					if(keyIndex[1] == phrIndex) {
-						j = keyIndex[0] + keyIndex[1].size + 1;
-					} {
-						j = keyIndex[0] - 3;
-						page.setString("// " ++ phrIndex ++ "\n\n", j, 0);
-						pageStr = pageStr.insert(j, "// " ++ phrIndex ++ "\n\n");
-						j = j + phrIndex.size + 3;
-					};
+				if(keyIndex.isNil) {
+					j = pageStr.size;
+					keyIndex = ["", j];
 				} {
-					Error("keyIndex isNil: I think we shouldn't ever get here").throw;
+					keyIndex[0] = keyIndex[0][3..];
+				};
+				if(keyIndex[1] == phrIndex) {
+					j = keyIndex[0] + keyIndex[1].size + 4;
+				} {
+					j = keyIndex[0];
+					page.setString("// " ++ phrIndex ++ "\n\n", j, 0);
+					pageStr = pageStr.insert(j, "// " ++ phrIndex ++ "\n\n");
+					j = j + phrIndex.size + 4;
 				};
 			} {
 				j = 0;  // un-sectioned strings at top
@@ -164,6 +166,11 @@ Proto {
 
 			// find alpha order
 			[j, pageStr.size].debug("before while");
+			toFind = "/%%%".format(objKey,
+				if(phrase.notNil) { "." ++ phrase } { "" },
+				if(parm.notNil) { "." ++ parm } { "" }
+			).debug("searching for");
+
 			keyIndex = -10;
 			while { j < pageStr.size and: { j - keyIndex > 1 and: {
 				[j, pageStr[j .. j+15].asCompileString].debug("testing");
@@ -178,7 +185,13 @@ Proto {
 				j = j + 1;
 			};
 			if(j >= pageStr.size) {
-				[pageI, max(0, j - 2), 0].debug("<< past document end");
+				j = pageStr.size - 1;
+				while { j > 0 and: { pageStr[j] == $\n } } { j = j - 1 };
+				if(j > 0 and: { j.debug("last non-newline") == (pageStr.size - 1).debug("last char index") }) {  // need to add a newline
+					pageStr = pageStr ++ $\n;
+					page.setString("\n", j, 0);  // also updates bookmarks
+				};
+				[pageI, (j + 2).clip(0, pageStr.size), 0].debug("<< past document end");
 			} {
 				if(lastComparison == 0) {
 					keyIndex = j; // = keyIndex;
@@ -231,7 +244,7 @@ Proto {
 				[indexMatch[1].asInteger, phrIndex.asInteger, indexMatch[1].asInteger >= phrIndex.asInteger].debug("oh bloody fucking hell");
 				if(indexMatch[1].asInteger >= phrIndex.asInteger) {
 					// j = fullMatch[0];
-					break.(indexMatch);
+					break.(fullMatch);
 				}
 			};
 			// j = pageStr.size - 1;
@@ -309,7 +322,12 @@ BP(\edit).pages[1].drawBookmarks;
 BP(\edit).bookmarks
 BP(\edit).bookmarkIndex
 
-/k = "----";
+e = BP(\edit);
+e.pages[1].string.asCompileString
+.size
+
+/k = "----";  // k, j: OK; j, k: inserts one char early, messes up bookmarks
+/j = " - -";
 
 /k = "|-  -|--| -  ";
 1+1
