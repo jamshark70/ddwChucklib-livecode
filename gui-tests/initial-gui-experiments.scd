@@ -168,20 +168,18 @@ Proto {
 	~setString = { |string, start, length|
 		var end = start + length;
 		~view.setString(string, start, length);
-		~str = "%%%".format(
-			if(start > 0) { ~str[0 .. start - 1] } { "" },
-			string,
-			if(end <= ~str.size) { ~str[end - 1 .. ] } { "" }
-		);
-		~updateBookmarks.(start + (length > 0).asInteger, string.size - length);
+		~str = ~view.string;
+		~updateBookmarks.(start + (length > 0).asInteger, string.size - length, ~str);
 	};
 	~string = { ~view.string };
 	// DO NOT OVERRIDE
 	~prKeyUpAction = { |view, char, mod, unicode, keycode, key|
 		var newString, ascii;
 		if(char.notNil) {
-			newString = view.string;
-			~updateBookmarks.(~selectionStart, newString.size - ~str.size);
+			~str.postcs;
+			newString = view.string.postcs;
+			[newString.size, ~str.size].debug("new, old sizes");
+			~updateBookmarks.(~selectionStart, newString.size - ~str.size, newString);
 		};
 		if(newString.notNil) {
 			~str = newString;
@@ -196,10 +194,12 @@ Proto {
 	~getSelection = {
 		~selectionStart = ~view.selectionStart;
 		~selectionSize = ~view.selectionSize;
+		[~selectionStart, ~selectionSize]
 	};
-	~updateBookmarks = { |start, delta = 0|
+	~updateBookmarks = { |start, delta = 0, string|
 		var oldMark, newMark;
 		if(start.notNil and: { delta != 0 }) {
+			// currentEnvironment.changed(*[\contentChanged, start, delta, string].debug("updateBookmarks"));
 			block { |break|
 				~bookmarks.reverseDo { |mark, i|
 					if(mark < start) {
@@ -208,7 +208,6 @@ Proto {
 						oldMark = ~bookmarks[~bookmarks.size - i - 1];
 						newMark = mark + delta;
 						~bookmarks[~bookmarks.size - i - 1] = newMark;
-						currentEnvironment.changed(\markMoved, oldMark, newMark);
 					};
 				};
 			};
@@ -220,6 +219,7 @@ Proto {
 PR(\bookmarkTextView).clone {
 	~addBookmark = { |start, end|
 		var i = ~bookmarks.detectIndex { |mark| mark >= start };
+		[i, ~bookmarks, start, end].debug;
 		case
 		{ i.isNil } { ~bookmarks.add(start).add(end) }
 		{ ~bookmarks[i] != start } {
@@ -228,13 +228,16 @@ PR(\bookmarkTextView).clone {
 			} {
 				"Range (% .. %) overlaps with another range".format(start, end).warn;
 			};
+		} {
+			"Range (% .. %) overlaps with another range".format(start, end).warn;
 		};
 		~drawBookmarks.();
 	};
 	~removeBookmark = { |start|
 		var i = ~bookmarks.detectIndex { |mark| mark >= start };
 		if(i.notNil) {
-			~bookmarks.removeAt(i).removeAt(i);
+			~bookmarks.removeAt(i);
+			~bookmarks.removeAt(i);
 		};
 		~drawBookmarks.();
 	};
@@ -266,7 +269,21 @@ t.drawBookmarks;
 
 
 t = PR(\rangeTextView).copy.prep(nil, Rect(800, 200, 500, 400)); t.view.front;
-t.addBookmark(25, 30);
+t.addBookmark(5, 10);
+
+t.bookmarks;
+
+t.addBookmark(10, 12);
+
+t.bookmarks;
+
+t.removeBookmark(5);
+
+t.addBookmark(0, 5);
+t.setString("insertion... ", 0, 0);
+
+t.bookmarks;
+
 t.addBookmark(27, 32);  // warning, good
 t.addBookmark(50, 55);
 
@@ -292,3 +309,216 @@ old from prKeyUpAction:
 			~updateBookmarks.(~selectionStart, newString.size - ~string.size);
 		};
 */
+
+// scrolling VLayout?
+(
+w = Window("scroll", Rect(800, 200, 500, 400));
+v = ScrollView(w, w.view.bounds);
+c = View();
+l = VLayout(
+	*(t = Array.fill(3, { |i|
+		[StaticText().string_("Section" + i),
+			TextView().minHeight_(200)]
+	}).flat)
+);
+c.layout = l;
+v.canvas = c;
+w.front;
+)
+
+
+// redesign: page -> section -> string
+// GUI is dependant of string: still 1:1, but break infinitely-recursive structure
+(
+// string and pos
+Proto {
+	~string = "";
+	~pos = 0;
+	~existing = false;
+
+	~length = { ~string.size };
+	~end = { ~pos + ~string.size };
+
+	~string_ = { |newStr|
+		var oldSize = ~string.size;
+		~string = newStr;
+		currentEnvironment.changed(\string, newStr, oldSize);
+	};
+	~silentString_ = { |newStr|
+		~string = newStr;
+		currentEnvironment
+	};
+	// ~update = { |obj, what, ... args|
+	// 	switch(what)
+	// 	{ \guiEdit } {
+	// 	};
+	// };
+} => PR(\clGuiString);
+
+Proto {
+	~name = "";
+	~prep = {
+		~strings = List.new;
+		currentEnvironment
+	};
+	~free = {
+		currentEnvironment.changed(\modelWasFreed);
+	};
+
+	~addString = { |str|
+		var newStr, i;
+		// if(str.last != $\n) { str = str ++ $\n };
+		if(str.last == $\n) {
+			str = str.drop(-1);
+		};
+		newStr = PR(\clGuiString).copy.string_(str);
+		i = ~strings.detectIndex { |item| item.string > str };
+		if(i.isNil) {
+			newStr.pos = ~strings.sum(_.length) + ~strings.size;
+			~strings.add(newStr);
+		} {
+			newStr.pos = ~strings[i].pos;
+			~strings.insert(i, newStr);
+		};
+		currentEnvironment.changed(\addString, newStr);
+	};
+	~removeStrings = { |match|
+		var c = ~strings.size - 1;
+		~strings.reverseDo { |str, i|
+			if(str.string.contains(match)) {
+				~strings.removeAt(c - i);
+				currentEnvironment.changed(\removeString, str);
+			};
+		};
+		currentEnvironment
+	};
+
+	~sortStrings = {
+		~strings.sort { |a, b| a.pos < b.pos };
+		currentEnvironment.changed(\reset, ~strings);
+	};
+
+	~contentChanged = { |start, delta, string|
+		block { |break|
+			~strings.reverseDo { |str, i|
+				if(str.pos < start) {
+					if(str.end >= start) {
+						// silentString_ b/c the change is coming from the GUI
+						str.silentString_(string[str.pos .. str.end - 1 + delta]);
+					};
+					break.();
+				} {
+					if(str.existing) {
+						str.pos = str.pos + delta;
+					} {
+						str.existing = true
+					};
+				};
+			};
+		};
+		currentEnvironment
+	};
+} => PR(\clGuiSection);
+
+Proto {
+	~minHeight = 250;
+	~prep = { |model, layout, insertIndex|
+		~model = model;
+		~view = PR(\rangeTextView).copy.prep(nil, nil);
+		~view.view.minHeight_(~minHeight);
+		if(insertIndex.notNil) {
+			layout.insert(~view.view, insertIndex);
+		} {
+			layout.add(~view.view);
+		};
+		model.addDependant(currentEnvironment);
+		~view.addDependant(currentEnvironment);
+		currentEnvironment
+	};
+	~free = {
+		~view.removeDependant(currentEnvironment);
+		~view.remove;
+		~model.strings.do(_.removeDependant(currentEnvironment));
+		~model.removeDependant(currentEnvironment);
+		currentEnvironment
+	};
+	~update = { |obj, what ... args|
+		switch(what)
+		{ \contentChanged } {
+			~model.contentChanged(*args);
+		}
+		{ \string } {  // obj is the \clGuiString
+			~view.setString(args[0], obj.pos, args[1]);
+		}
+		{ \addString } {
+			args = args[0];
+			~view.setString(args.string ++ $\n, args.pos, 0);
+			args.addDependant(currentEnvironment);  // receive changes from this \clGuiString
+		}
+		{ \removeString } {
+			args = args[0];
+			~view.setString("", args.pos, args.length);
+			args.removeDependant(currentEnvironment);
+		}
+		{ \reset } {
+			"\clGuiSectionView:reset, implement later".warn;
+		}
+		{ \modelWasFreed } {
+			~free.();
+		};
+	};
+} => PR(\clGuiSectionView);
+
+Proto {
+
+} => PR(\clGuiPage);
+)
+
+Object.dependantsDictionary.keys  // sanity check: shouldn't have lots of Protos
+
+(
+var freeFunc = { if(a.env.notNil) { a.free } };
+freeFunc.();
+
+w = Window("test", Rect(800, 200, 500, 400));
+w.layout = VLayout();
+w.onClose = freeFunc;
+w.front;
+
+a = PR(\clGuiSection).copy.prep;
+g = PR(\clGuiSectionView).copy.prep(a, w.layout);
+)
+
+a.listVars;
+g.listVars;
+
+a.addString("test");
+a.addString("abc");
+a.addString("xyz");
+
+a.strings[0].string = "abcdefg";
+
+g.view.listVars
+g.view.getSelection
+g.view.view.selectionStart
+
+a.strings[0].listVars
+
+a.strings.collect(_.pos);
+
+g.free;
+a.dependants
+a.strings[0].dependants
+a.free;
+
+
+(
+{
+	t = TextView(nil, Rect(800, 200, 300, 200)).front;
+	1.0.wait;
+	t.setString("You should see stuff in the post window.", 0, 0)
+	.keyUpAction_({ |view, char| char.postln });
+	1.0.wait;
+	t.setString("Click anywhere in this string and type. ", 0, 0);
+}.fork(AppClock);
+)
