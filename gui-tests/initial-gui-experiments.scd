@@ -120,6 +120,7 @@ Proto {
 	~stringColor = Color.black;
 	~markColor = Color(0.8, 0, 0);
 	~font = Font("Inconsolata", 14);
+	~textParms = #[font, background, stringColor];
 	~str = "";
 
 	~prep = { |parentView(~parentView), bounds(~bounds)|
@@ -127,11 +128,14 @@ Proto {
 		~bounds = bounds;
 		~view = TextView(parentView, bounds)
 		.string_(~str)
-		.background_(~background)
+		// .background_(~background)
 		.keyUpAction_(e { |... args| ~prKeyUpAction.(*args) })
 		.mouseUpAction_(e { |... args| ~prMouseUpAction.(*args) })
 		// .receiveDragHandler_(e { |... args| ~prReceiveDragHandler.(*args) })
 		;
+		~textParms.().do { |key|
+			~view.perform(key.asSetter, key.envirGet);
+		};
 		// save time for platform lookup
 		// this is to detect ctrl-C and ctrl-v
 		// but in OSX, it's cmd-c and cmd-v
@@ -330,8 +334,8 @@ w.front;
 
 // redesign: page -> section -> string
 // GUI is dependant of string: still 1:1, but break infinitely-recursive structure
-(
 // string and pos
+(
 Proto {
 	~string = "";
 	~pos = 0;
@@ -394,6 +398,10 @@ Proto {
 		currentEnvironment
 	};
 
+	~stringForPhrase = { |match|
+		~strings.detect { |item| item.string.contains(match) };
+	};
+
 	~sortStrings = {
 		~strings.sort { |a, b| a.pos < b.pos };
 		currentEnvironment.changed(\reset, ~strings);
@@ -422,10 +430,12 @@ Proto {
 } => PR(\clGuiSection);
 
 Proto {
+	~textViewKey = \rangeTextView;
 	~minHeight = 250;
 	~prep = { |model, layout, insertIndex|
+		var textview;
 		~model = model;
-		~view = PR(\rangeTextView).copy.prep(nil, nil);
+		~view = PR(~textViewKey).copy.prep(nil, nil);
 		~view.view.minHeight_(~minHeight);
 		if(insertIndex.notNil) {
 			layout.insert(~view.view, insertIndex);
@@ -468,6 +478,7 @@ Proto {
 			~free.();
 		};
 	};
+	~textParms = { PR(~textViewKey).textParms };
 } => PR(\clGuiSectionView);
 
 Proto {
@@ -486,14 +497,18 @@ Proto {
 	~free = {
 		~sections.do { |pair| pair[0].free };
 	};
-
+	~sectionForPhraseIndex = { |phrIndex|
+		var pair = ~sections.detect { |pair| pair[0].name == phrIndex };
+		if(pair.notNil) { pair[0] } { nil };
+	};
 	~newSection = { |name|
-		var i = ~sections.detectIndex { |item| item[0].name > name },
-		newSect = PR(\clGuiSection).copy.name_(name).prep,
+		var i = ~sections.detectIndex { |pair| pair[0].name > name },
+		newSect = PR(\clGuiSection).copy.name_(name.asString).prep,
 		// newGui,
 		label = StaticText().string_(name),
-		newGui = PR(\clGuiSectionView).copy.prep(newSect, ~layout,
-			if(i.notNil) { i * 2 });
+		newGui = PR(\clGuiSectionView).copy
+		.putAll(~getTextParms.())
+		.prep(newSect, ~layout, if(i.notNil) { i * 2 });
 
 		if(i.notNil) {
 			~layout.insert(label, i * 2);
@@ -502,6 +517,13 @@ Proto {
 			~layout.insert(label, ~sections.size * 2);
 			~sections.add([newSect, newGui]);
 		};
+		newSect
+	};
+	~textParms = { PR(\clGuiSectionView).textParms };
+	~getTextParms = {
+		var out = IdentityDictionary.new;
+		~textParms.().do { |key| out.put(key, key.envirGet) };
+		out
 	};
 } => PR(\clGuiPage);
 )
@@ -561,3 +583,8 @@ g.free;
 a.dependants
 a.strings[0].dependants
 a.free;
+
+
+(
+PR(\abstractProcess)
+)
