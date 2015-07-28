@@ -82,6 +82,7 @@ Proto {
 			~pageMenu.items = ~pageMenu.items.insert(i, key.asString);
 			~pageMenu.value = ~pageMenu.items.indexOfEqual(origItem);
 		};
+		newPage.newSection(~defaultPhrIndex);
 		i
 	};
 
@@ -105,7 +106,7 @@ Proto {
 			if(parm.notNil) { "." ++ parm } { "" }
 		);
 		str = section.stringForPhrase(fullPhrID);
-		newStr = "% = %;\n".format(fullPhrID, string);
+		newStr = "% = %;".format(fullPhrID, string);
 		if(str.isNil) {
 			str = section.addString(newStr);
 		} {
@@ -221,17 +222,18 @@ PR(\abstractLiveCode).chuck(BP(\j), nil, (
 )
 
 e = BP(\edit);
+z = e.pages[0].sections[0][0];
+z.strings.do(_.listVars);
 
 e.pages[0].sectionForPhraseIndex(nil)
 e.phraseAndIndex("main").postcs
 
-z = e.pages[0].sections[0][0];
-z.strings.do(_.listVars);
 
 /k = "----";  // k, j: OK; j, k: inserts one char early, messes up bookmarks
 /j = " - -";
 
 /k = "|-  -|--| -  ";
+/j = "|-  -||-";
 1+1
 
 /k.main0 = "-| -|-|";

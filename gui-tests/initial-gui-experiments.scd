@@ -170,11 +170,11 @@ Proto {
 		currentEnvironment
 	};
 
-	~setString = { |string, start, length|
+	~setString = { |string, start, length, stringObj|
 		var end = start + length;
 		~view.setString(string, start, length);
 		~str = ~view.string;
-		~updateBookmarks.(start + (length > 0).asInteger, string.size - length, ~str);
+		~updateBookmarks.(start, string.size - length, ~str, (length > 0).asInteger, stringObj);
 	};
 	~string = { ~view.string };
 	// DO NOT OVERRIDE
@@ -201,10 +201,11 @@ Proto {
 		~selectionSize = ~view.selectionSize;
 		[~selectionStart, ~selectionSize]
 	};
-	~updateBookmarks = { |start, delta = 0, string|
+	~updateBookmarks = { |start, delta = 0, string, startOffset(0), stringObj|
 		var oldMark, newMark;
 		if(start.notNil and: { delta != 0 }) {
-			// currentEnvironment.changed(*[\contentChanged, start, delta, string].debug("updateBookmarks"));
+			currentEnvironment.changed(\contentChanged, start, delta, string, stringObj);
+			start = start + startOffset;
 			block { |break|
 				~bookmarks.reverseDo { |mark, i|
 					if(mark < start) {
@@ -346,11 +347,18 @@ Proto {
 
 	~string_ = { |newStr|
 		var oldSize = ~string.size;
+		[oldSize, ~string, newStr.size, newStr].debug(">> clGuiString:string_");
 		~string = newStr;
-		currentEnvironment.changed(\string, newStr, oldSize);
+		currentEnvironment.changed(\string, newStr, oldSize, currentEnvironment);
+		newStr.debug("<< clGuiString:string_");
+		currentEnvironment
 	};
 	~silentString_ = { |newStr|
+		[~string.size, ~string, newStr.size, newStr].debug(">> clGuiString:silentString_");
+		currentEnvironment.dumpBackTrace;
+		"^^ DEBUG TRACE".debug;
 		~string = newStr;
+		newStr.debug("<< clGuiString:silentString_");
 		currentEnvironment
 	};
 	// ~update = { |obj, what, ... args|
@@ -407,20 +415,22 @@ Proto {
 		currentEnvironment.changed(\reset, ~strings);
 	};
 
-	~contentChanged = { |start, delta, string|
+	~contentChanged = { |start, delta, string, stringObj|
 		block { |break|
 			~strings.reverseDo { |str, i|
-				if(str.pos < start) {
-					if(str.end >= start) {
-						// silentString_ b/c the change is coming from the GUI
-						str.silentString_(string[str.pos .. str.end - 1 + delta]);
-					};
-					break.();
-				} {
-					if(str.existing) {
-						str.pos = str.pos + delta;
+				if(str !== stringObj) {
+					if(str.pos < start) {
+						if(str.end >= start) {
+							// silentString_ b/c the change is coming from the GUI
+							str.silentString_(string[str.pos .. str.end - 1 + delta]);
+						};
+						break.();
 					} {
-						str.existing = true
+						if(str.existing) {
+							str.pos = str.pos + delta;
+						} {
+							str.existing = true
+						};
 					};
 				};
 			};
@@ -459,7 +469,7 @@ Proto {
 			~model.contentChanged(*args);
 		}
 		{ \string } {  // obj is the \clGuiString
-			~view.setString(args[0], obj.pos, args[1]);
+			~view.setString(args[0], obj.pos, args[1], obj);
 		}
 		{ \addString } {
 			args = args[0];
