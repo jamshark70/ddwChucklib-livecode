@@ -146,20 +146,6 @@ Proto {
 		};
 	};
 
-	~indexHeadInString = { |string, phrIndex|
-		block { |break|
-			string.findRegexp("^// ([0-9]+)").debug("search for headings").pairsDo { |fullMatch, indexMatch|
-				[indexMatch[1].asInteger, phrIndex.asInteger, indexMatch[1].asInteger >= phrIndex.asInteger].debug("oh bloody fucking hell");
-				if(indexMatch[1].asInteger >= phrIndex.asInteger) {
-					// j = fullMatch[0];
-					break.(fullMatch);
-				}
-			};
-			// j = pageStr.size - 1;
-			nil
-		};
-	};
-
 	~setPage = { |index|
 		~pageMenu.value = index;
 		~stackLayout.index = index;
@@ -167,20 +153,6 @@ Proto {
 
 	~isDefaultParm = { |objKey, parm|
 		BP.exists(objKey) and: { parm == BP(objKey).defaultParm }
-	};
-
-	~updateOneBookmark = { |old, new|
-		var mIndex = ~bookmarkIndex[old], pair;
-		if(mIndex.notNil) {
-			~bookmarkIndex.removeAt(old);
-			~bookmarkIndex.put(new, mIndex);
-			pair = ~bookmarks.at(*mIndex);
-			if(pair.notNil) {
-				pair.do { |item, i|
-					if(item == old) { pair[i] = new };
-				};
-			};
-		};
 	};
 
 	~compareStringAt = { |sourceStr, findStr, i|
