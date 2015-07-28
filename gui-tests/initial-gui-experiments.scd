@@ -468,7 +468,7 @@ Proto {
 		}
 		{ \removeString } {
 			args = args[0];
-			~view.setString("", args.pos, args.length);
+			~view.setString("", args.pos, args.length + 1);
 			args.removeDependant(currentEnvironment);
 		}
 		{ \reset } {
