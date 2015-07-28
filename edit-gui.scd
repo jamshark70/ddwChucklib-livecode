@@ -1,19 +1,344 @@
+// first: TEXTVIEW WRAPPERS for content change tracking
 (
+Proto {
+	~background = Color.white;
+	~stringColor = Color.black;
+	~markColor = Color(0.8, 0, 0);
+	~font = Font("Inconsolata", 14);
+	~textParms = #[font, background, stringColor];
+	~str = "";
+
+	~prep = { |parentView(~parentView), bounds(~bounds)|
+		~parentView = parentView;
+		~bounds = bounds;
+		~view = TextView(parentView, bounds)
+		.string_(~str)
+		.keyUpAction_(e { |... args| ~prKeyUpAction.(*args) })
+		.mouseUpAction_(e { |... args| ~prMouseUpAction.(*args) });
+		~textParms.().do { |key|
+			~view.perform(key.asSetter, key.envirGet);
+		};
+		// save time for platform lookup
+		// this is to detect ctrl-C and ctrl-v
+		// but in OSX, it's cmd-c and cmd-v
+		~ctrlMod = if(thisProcess.platform.name == \osx) { 1048576 } { 262144 };
+		~bookmarks = List.new;
+		currentEnvironment
+	};
+
+	~addBookmark = { |pos|
+		var i = ~bookmarks.detectIndex { |mark| mark >= pos };
+		case
+		{ i.isNil } { ~bookmarks.add(pos) }
+		{ ~bookmarks[i] != pos } {
+			~bookmarks.insert(i, pos);
+		};
+		~drawBookmarks.();
+	};
+	~removeBookmark = { |pos|
+		~bookmarks.remove(pos);
+		~drawBookmarks.();
+	};
+
+	~background_ = { |color|
+		~background = color;
+		currentEnvironment
+	};
+	~drawBookmarks = {
+		~view.background_(~background).stringColor_(~stringColor);
+		~bookmarks.do { |mark|
+			~view.setStringColor(~markColor, mark, 1);
+		};
+		currentEnvironment
+	};
+
+	~setString = { |string, start, length, stringObj|
+		var end = start + length;
+		~view.setString(string, start, length);
+		~str = ~view.string;
+		~updateBookmarks.(start, string.size - length, ~str, (length > 0).asInteger, stringObj);
+	};
+	~string = { ~view.string };
+	// DO NOT OVERRIDE
+	~prKeyUpAction = { |view, char, mod, unicode, keycode, key|
+		var newString, ascii;
+		if(char.notNil) {
+			newString = view.string;
+			~updateBookmarks.(~selectionStart, newString.size - ~str.size, newString);
+		};
+		if(newString.notNil) {
+			~str = newString;
+		};
+		~getSelection.();
+		~keyUpAction.(view, char, mod, unicode, keycode, key);
+	};
+	~prMouseUpAction = { |view, x, y, mod|
+		~getSelection.();
+		~mouseUpAction.(view, x, y, mod);
+	};
+	~getSelection = {
+		~selectionStart = ~view.selectionStart;
+		~selectionSize = ~view.selectionSize;
+		[~selectionStart, ~selectionSize]
+	};
+	~updateBookmarks = { |start, delta = 0, string, startOffset(0), stringObj|
+		var oldMark, newMark;
+		if(start.notNil and: { delta != 0 }) {
+			currentEnvironment.changed(\contentChanged, start, delta, string, stringObj);
+			start = start + startOffset;
+			block { |break|
+				~bookmarks.reverseDo { |mark, i|
+					if(mark < start) {
+						break.()
+					} {
+						oldMark = ~bookmarks[~bookmarks.size - i - 1];
+						newMark = mark + delta;
+						~bookmarks[~bookmarks.size - i - 1] = newMark;
+					};
+				};
+			};
+			~drawBookmarks.();
+		};
+	};
+} => PR(\bookmarkTextView);
+
+PR(\bookmarkTextView).clone {
+	~addBookmark = { |start, end|
+		var i = ~bookmarks.detectIndex { |mark| mark >= start };
+		case
+		{ i.isNil } { ~bookmarks.add(start).add(end) }
+		{ ~bookmarks[i] != start } {
+			if(i.even and: { end <= ~bookmarks[i+1] }) {
+				~bookmarks.insert(i, end).insert(i, start);
+			} {
+				"Range (% .. %) overlaps with another range".format(start, end).warn;
+			};
+		} {
+			"Range (% .. %) overlaps with another range".format(start, end).warn;
+		};
+		~drawBookmarks.();
+	};
+	~removeBookmark = { |start|
+		var i = ~bookmarks.detectIndex { |mark| mark >= start };
+		if(i.notNil) {
+			~bookmarks.removeAt(i);
+			~bookmarks.removeAt(i);
+		};
+		~drawBookmarks.();
+	};
+	~drawBookmarks = {
+		~view.background_(~background).stringColor_(~stringColor);
+		~visibleBookmarks.pairsDo { |start, end|
+			~view.setStringColor(~markColor, start, end - start + 1);
+		};
+		currentEnvironment
+	};
+} => PR(\rangeTextView);
+
+
+// SUPPORT OBJECTS
+
+Proto {
+	~string = "";
+	~pos = 0;
+	~existing = false;
+
+	~length = { ~string.size };
+	~end = { ~pos + ~string.size };
+
+	~string_ = { |newStr|
+		var oldSize = ~string.size;
+		~string = newStr;
+		currentEnvironment.changed(\string, newStr, oldSize, currentEnvironment);
+		currentEnvironment
+	};
+	~silentString_ = { |newStr|
+		~string = newStr;
+		currentEnvironment
+	};
+} => PR(\clGuiString);
+
+Proto {
+	~name = "";
+	~prep = {
+		~strings = List.new;
+		currentEnvironment
+	};
+	~free = {
+		currentEnvironment.changed(\modelWasFreed);
+	};
+
+	~addString = { |str|
+		var newStr, i;
+		if(str.last == $\n) {
+			str = str.drop(-1);
+		};
+		newStr = PR(\clGuiString).copy.string_(str);
+		i = ~strings.detectIndex { |item| item.string > str };
+		if(i.isNil) {
+			newStr.pos = ~strings.sum(_.length) + ~strings.size;
+			~strings.add(newStr);
+		} {
+			newStr.pos = ~strings[i].pos;
+			~strings.insert(i, newStr);
+		};
+		currentEnvironment.changed(\addString, newStr);
+	};
+	~removeStrings = { |match|
+		var c = ~strings.size - 1;
+		~strings.reverseDo { |str, i|
+			if(str.string.contains(match)) {
+				~strings.removeAt(c - i);
+				currentEnvironment.changed(\removeString, str);
+			};
+		};
+		currentEnvironment
+	};
+
+	~stringForPhrase = { |match|
+		~strings.detect { |item| item.string.contains(match) };
+	};
+
+	~sortStrings = {
+		~strings.sort { |a, b| a.pos < b.pos };
+		currentEnvironment.changed(\reset, ~strings);
+	};
+
+	~contentChanged = { |start, delta, string, stringObj|
+		block { |break|
+			~strings.reverseDo { |str, i|
+				if(str !== stringObj) {
+					if(str.pos < start) {
+						if(str.end >= start) {
+							// silentString_ b/c the change is coming from the GUI
+							str.silentString_(string[str.pos .. str.end - 1 + delta]);
+						};
+						break.();
+					} {
+						if(str.existing) {
+							str.pos = str.pos + delta;
+						} {
+							str.existing = true
+						};
+					};
+				};
+			};
+		};
+		currentEnvironment
+	};
+} => PR(\clGuiSection);
+
+Proto {
+	~textViewKey = \rangeTextView;
+	~minHeight = 250;
+	~prep = { |model, layout, insertIndex|
+		var textview;
+		~model = model;
+		~view = PR(~textViewKey).copy.prep(nil, nil);
+		~view.view.minHeight_(~minHeight);
+		if(insertIndex.notNil) {
+			layout.insert(~view.view, insertIndex);
+		} {
+			layout.add(~view.view);
+		};
+		model.addDependant(currentEnvironment);
+		~view.addDependant(currentEnvironment);
+		currentEnvironment
+	};
+	~free = {
+		~view.removeDependant(currentEnvironment);
+		~view.remove;
+		~model.strings.do(_.removeDependant(currentEnvironment));
+		~model.removeDependant(currentEnvironment);
+		currentEnvironment
+	};
+	~update = { |obj, what ... args|
+		switch(what)
+		{ \contentChanged } {
+			~model.contentChanged(*args);
+		}
+		{ \string } {  // obj is the \clGuiString
+			~view.setString(args[0], obj.pos, args[1], obj);
+		}
+		{ \addString } {
+			args = args[0];
+			~view.setString(args.string ++ $\n, args.pos, 0);
+			args.addDependant(currentEnvironment);  // receive changes from this \clGuiString
+		}
+		{ \removeString } {
+			args = args[0];
+			~view.setString("", args.pos, args.length + 1);
+			args.removeDependant(currentEnvironment);
+		}
+		{ \reset } {
+			"\clGuiSectionView:reset, implement later".warn;
+		}
+		{ \modelWasFreed } {
+			~free.();
+		};
+	};
+	~textParms = { PR(~textViewKey).textParms };
+} => PR(\clGuiSectionView);
+
+Proto {
+	~prep = { |layout, insertIndex|
+		~view = ScrollView();
+		if(insertIndex.notNil) {
+			layout.insert(~view, insertIndex);
+		} {
+			layout.add(~view);
+		};
+		~layout = VLayout();
+		~view.canvas_(View().layout_(~layout));
+		~sections = List.new;
+		currentEnvironment
+	};
+	~free = {
+		~sections.do { |pair| pair[0].free };
+	};
+	~sectionForPhraseIndex = { |phrIndex|
+		var pair = ~sections.detect { |pair| pair[0].name == phrIndex };
+		if(pair.notNil) { pair[0] } { nil };
+	};
+	~newSection = { |name|
+		var i = ~sections.detectIndex { |pair| pair[0].name > name },
+		newSect = PR(\clGuiSection).copy.name_(name.asString).prep,
+		label = StaticText().string_(name),
+		newGui = PR(\clGuiSectionView).copy
+		.putAll(~getTextParms.())
+		.prep(newSect, ~layout, if(i.notNil) { i * 2 });
+
+		if(i.notNil) {
+			~layout.insert(label, i * 2);
+			~sections.insert(i, [newSect, newGui]);
+		} {
+			~layout.insert(label, ~sections.size * 2);
+			~sections.add([newSect, newGui]);
+		};
+		newSect
+	};
+	~textParms = { PR(\clGuiSectionView).textParms };
+	~getTextParms = {
+		var out = IdentityDictionary.new;
+		~textParms.().do { |key| out.put(key, key.envirGet) };
+		out
+	};
+} => PR(\clGuiPage);
+
+
+// MAIN GUI
+
 Proto {
 	~bounds = Window.screenBounds;
 	~windowTitle = "Pattern editor";
 	~backColor = Color.gray(0.078);
 	~windowBackground = Color.gray(0.2);
 	~stringColor = Color.white;
-	// ~isActive = true;
 	~textFont = Font("Inconsolata", 24);
 	~updateDefer = 0.1;
 	~defaultPhrIndex = " - Unnumbered - ";
 
 	~prep = {
-		// ~bookmarks = MultiLevelIdentityDictionary.new;
-		// ~bookmarkIndex = IdentityDictionary.new;
-		// ~markUpdaters = IdentityDictionary.new;
 		~makeGui.();
 		~scanBPs.();
 		~notifier = NotificationCenter.register(\clLiveCode, \phraseString, ~collIndex, e {
@@ -24,10 +349,8 @@ Proto {
 		});
 	};
 	~freeCleanup = {
-		// ~isActive = false;
 		~notifier.remove;
 		~pages.do(_.free);
-		// ~markUpdaters.do { |upd| upd.remove };
 		~win.onClose_(nil).close;
 		"freed".debug;
 	};
@@ -37,19 +360,16 @@ Proto {
 		~pages = Array.new;
 		~pageMenu = PopUpMenu()
 		.background_(~backColor).stringColor_(~stringColor)
-		// .items_(~pages[0, 2..])
 		.action_(e { |view| ~setPage.(view.value) });
 		~win.layout = VLayout(
 			~pageMenu,
-			~stackLayout = StackLayout(/**~pages[1, 3..]*/)
+			~stackLayout = StackLayout()
 		);
 		~newPage.(\main);
 		~win.front;
 		~win.onClose = e {
 			~win.onClose = nil;
-			// if(~isActive ? true) {
 			BP(~collIndex).free;
-			// };
 		};
 	};
 
@@ -102,7 +422,7 @@ Proto {
 		};
 		fullPhrID = "/%.%%".format(
 			objKey,
-			phrase, // if(phrase.notNil) { "." ++ phrase } { "" },
+			phrase,
 			if(parm.notNil) { "." ++ parm } { "" }
 		);
 		str = section.stringForPhrase(fullPhrID);
