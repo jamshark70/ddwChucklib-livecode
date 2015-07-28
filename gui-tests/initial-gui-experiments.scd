@@ -181,9 +181,7 @@ Proto {
 	~prKeyUpAction = { |view, char, mod, unicode, keycode, key|
 		var newString, ascii;
 		if(char.notNil) {
-			~str.postcs;
-			newString = view.string.postcs;
-			[newString.size, ~str.size].debug("new, old sizes");
+			newString = view.string;
 			~updateBookmarks.(~selectionStart, newString.size - ~str.size, newString);
 		};
 		if(newString.notNil) {
@@ -225,7 +223,6 @@ Proto {
 PR(\bookmarkTextView).clone {
 	~addBookmark = { |start, end|
 		var i = ~bookmarks.detectIndex { |mark| mark >= start };
-		[i, ~bookmarks, start, end].debug;
 		case
 		{ i.isNil } { ~bookmarks.add(start).add(end) }
 		{ ~bookmarks[i] != start } {
@@ -347,18 +344,12 @@ Proto {
 
 	~string_ = { |newStr|
 		var oldSize = ~string.size;
-		[oldSize, ~string, newStr.size, newStr].debug(">> clGuiString:string_");
 		~string = newStr;
 		currentEnvironment.changed(\string, newStr, oldSize, currentEnvironment);
-		newStr.debug("<< clGuiString:string_");
 		currentEnvironment
 	};
 	~silentString_ = { |newStr|
-		[~string.size, ~string, newStr.size, newStr].debug(">> clGuiString:silentString_");
-		currentEnvironment.dumpBackTrace;
-		"^^ DEBUG TRACE".debug;
 		~string = newStr;
-		newStr.debug("<< clGuiString:silentString_");
 		currentEnvironment
 	};
 	// ~update = { |obj, what, ... args|
