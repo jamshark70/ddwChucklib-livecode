@@ -1851,6 +1851,17 @@ Proto {
 		};
 		~userprep.();
 		~postParmMap.();
+		// for backward compatibility: User might have put in a stopCleanup func
+		// but I need it, to clear highlights
+		// so, check and move the user's function if needed.
+		// This will work if stopCleanup was provided as an entry in the chuck parameter dictionary.
+		if(~stopCleanup.notNil) {
+			~userStopCleanup = ~stopCleanup;
+		};
+		~stopCleanup = {
+			~clearHighlights.();
+			~userStopCleanup.();
+		};
 		Environment.current
 	};
 	~freeCleanup = {
@@ -1905,6 +1916,12 @@ Proto {
 		};
 	};
 
+	~clearHighlights = {
+		~phrases.keysDo { |key|
+			NotificationCenter.notify(~collIndex, key, false);
+		};
+	};
+
 	~asPattern = {
 		var emptyCountdown = 10, lastTime = 0;
 		~reset.();
@@ -1923,6 +1940,10 @@ Proto {
 						nil
 					};
 					phr = ~phraseSeqStream.next(inevent);
+					if(phr != ~lastPhrase) {
+						NotificationCenter.notify(~collIndex, ~lastPhrase, false);
+					};
+					NotificationCenter.notify(~collIndex, phr, true);
 					pat = ~phrases[phr];
 					// the pattern-wrapping here is not directly supported in Psym
 					if(~phraseDurs[phr].notNil) {

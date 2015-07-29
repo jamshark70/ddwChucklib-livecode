@@ -5,8 +5,10 @@ Proto {
 	~stringColor = Color.black;
 	~markColor = Color(0.8, 0, 0);
 	~font = Font("Inconsolata", 14);
+	~markFont = ~font.boldVariant;
 	~textParms = #[font, background, stringColor];
 	~str = "";
+	~displayBookmarks = false;
 
 	~prep = { |parentView(~parentView), bounds(~bounds)|
 		~parentView = parentView;
@@ -59,6 +61,20 @@ Proto {
 		~updateBookmarks.(start, string.size - length, ~str, (length > 0).asInteger, stringObj);
 	};
 	~string = { ~view.string };
+
+	~highlight = { |highlightOn(false), start, size|
+		defer(e {
+			~view.setStringColor(
+				if(highlightOn) { ~markColor } { ~stringColor },
+				start, size
+			);
+			~view.setFont(
+				if(highlightOn) { ~markFont } { ~font },
+				start, size
+			);
+		});
+		currentEnvironment
+	};
 	// DO NOT OVERRIDE
 	~prKeyUpAction = { |view, char, mod, unicode, keycode, key|
 		var newString, ascii;
@@ -97,7 +113,7 @@ Proto {
 					};
 				};
 			};
-			~drawBookmarks.();
+			if(~displayBookmarks) { ~drawBookmarks.() };
 		};
 	};
 } => PR(\bookmarkTextView);
@@ -143,6 +159,24 @@ Proto {
 	~pos = 0;
 	~existing = false;
 
+	~prep = {
+		if(~objKey.notNil and: { ~phrase.notNil }) {
+			NotificationCenter.register(
+				~objKey.asSymbol, ~phrase.asSymbol, currentEnvironment,
+				e { |highlight(false)|
+					currentEnvironment.changed(\highlight, highlight)
+				}
+			)
+		};
+		currentEnvironment
+	};
+	~free = {
+		if(~objKey.notNil and: { ~phrase.notNil }) {
+			NotificationCenter.unregister(~objKey.asSymbol, ~phrase.asSymbol, currentEnvironment);
+		};
+		currentEnvironment
+	};
+
 	~length = { ~string.size };
 	~end = { ~pos + ~string.size };
 
@@ -165,15 +199,19 @@ Proto {
 		currentEnvironment
 	};
 	~free = {
+		~strings.do(_.free);
 		currentEnvironment.changed(\modelWasFreed);
 	};
 
-	~addString = { |str|
+	~addString = { |str, objKey, phrase|
 		var newStr, i;
 		if(str.last == $\n) {
 			str = str.drop(-1);
 		};
-		newStr = PR(\clGuiString).copy.string_(str);
+		newStr = PR(\clGuiString).copy
+		.objKey_(objKey).phrase_(phrase)
+		.prep
+		.string_(str);
 		i = ~strings.detectIndex { |item| item.string > str };
 		if(i.isNil) {
 			newStr.pos = ~strings.sum(_.length) + ~strings.size;
@@ -188,6 +226,7 @@ Proto {
 		var c = ~strings.size - 1;
 		~strings.reverseDo { |str, i|
 			if(str.string.contains(match)) {
+				str.free;
 				~strings.removeAt(c - i);
 				currentEnvironment.changed(\removeString, str);
 			};
@@ -253,9 +292,13 @@ Proto {
 		currentEnvironment
 	};
 	~update = { |obj, what ... args|
+		// [obj, what, args].debug(">> clGuiSectionView:update");
 		switch(what)
 		{ \contentChanged } {
 			~model.contentChanged(*args);
+		}
+		{ \highlight } {
+			~view.highlight(args[0], obj.pos, obj.length);
 		}
 		{ \string } {  // obj is the \clGuiString
 			~view.setString(args[0], obj.pos, args[1], obj);
@@ -276,6 +319,7 @@ Proto {
 		{ \modelWasFreed } {
 			~free.();
 		};
+		// [obj, what, args].debug("<< clGuiSectionView:update");
 	};
 	~textParms = { PR(~textViewKey).textParms };
 } => PR(\clGuiSectionView);
@@ -428,7 +472,7 @@ Proto {
 		str = section.stringForPhrase(fullPhrID);
 		newStr = "% = %;".format(fullPhrID, string);
 		if(str.isNil) {
-			str = section.addString(newStr);
+			str = section.addString(newStr, objKey, phrase);
 		} {
 			str.string = newStr;
 		};
