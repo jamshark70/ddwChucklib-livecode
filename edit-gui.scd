@@ -1,12 +1,20 @@
 // first: TEXTVIEW WRAPPERS for content change tracking
 (
+var getTextProperties = {
+	var result = IdentityDictionary.with(\textProperties -> ~textProperties);
+	~textProperties.do { |key|
+		result.put(key, key.envirGet);
+	};
+	result
+};
+
 Proto {
 	~background = Color.white;
 	~stringColor = Color.black;
 	~markColor = Color(0.8, 0, 0);
 	~font = Font("Inconsolata", 14);
 	~markFont = ~font.boldVariant;
-	~textParms = #[font, background, stringColor];
+	~textProperties = #[font, background, stringColor];
 	~str = "";
 	~displayBookmarks = false;
 
@@ -17,9 +25,10 @@ Proto {
 		.string_(~str)
 		.keyUpAction_(e { |... args| ~prKeyUpAction.(*args) })
 		.mouseUpAction_(e { |... args| ~prMouseUpAction.(*args) });
-		~textParms.().do { |key|
-			~view.perform(key.asSetter, key.envirGet);
+		~textProperties.().do { |key|
+			~view.tryPerform(key.asSetter, key.envirGet);
 		};
+		~view.palette = QPalette.system.baseText_(~stringColor).base_(~background);
 		// save time for platform lookup
 		// this is to detect ctrl-C and ctrl-v
 		// but in OSX, it's cmd-c and cmd-v
@@ -61,6 +70,7 @@ Proto {
 		~updateBookmarks.(start, string.size - length, ~str, (length > 0).asInteger, stringObj);
 	};
 	~string = { ~view.string };
+	~focus = { |bool| ~view.focus(bool) };
 
 	~highlight = { |highlightOn(false), start, size|
 		defer(e {
@@ -194,6 +204,7 @@ Proto {
 
 Proto {
 	~name = "";
+	~defaultString = "\n\n//--- scratch\n";
 	~prep = {
 		~strings = List.new;
 		currentEnvironment
@@ -265,6 +276,7 @@ Proto {
 		};
 		currentEnvironment
 	};
+	~getTextProperties = getTextProperties;
 } => PR(\clGuiSection);
 
 Proto {
@@ -273,7 +285,13 @@ Proto {
 	~prep = { |model, layout, insertIndex|
 		var textview;
 		~model = model;
-		~view = PR(~textViewKey).copy.prep(nil, nil);
+		// model.getTextProperties.keysValuesDo { |key, value|
+		// 	key.envirPut(value);
+		// };
+		~view = PR(~textViewKey).copy
+		.putAll(model.getTextProperties)
+		.str_(model.defaultString ? "")
+		.prep(nil, nil);
 		~view.view.minHeight_(~minHeight);
 		if(insertIndex.notNil) {
 			layout.insert(~view.view, insertIndex);
@@ -329,19 +347,20 @@ Proto {
 		};
 		// [obj, what, args].debug("<< clGuiSectionView:update");
 	};
-	~textParms = { PR(~textViewKey).textParms };
+	// ~textProperties = { PR(~textViewKey).textProperties };
+	// ~getTextProperties = getTextProperties;
 } => PR(\clGuiSectionView);
 
 Proto {
 	~prep = { |layout, insertIndex|
-		~view = ScrollView();
+		~view = ScrollView().background_(~scrollBackground);
 		if(insertIndex.notNil) {
 			layout.insert(~view, insertIndex);
 		} {
 			layout.add(~view);
 		};
 		~layout = VLayout();
-		~view.canvas_(View().layout_(~layout));
+		~view.canvas_(View().background_(~scrollBackground).layout_(~layout));
 		~sections = List.new;
 		currentEnvironment
 	};
@@ -360,11 +379,12 @@ Proto {
 	};
 	~newSection = { |name|
 		var i = ~sections.detectIndex { |pair| pair[0].name > name },
-		newSect = PR(\clGuiSection).copy.name_(name.asString).prep,
-		label = StaticText().string_(name),
-		newGui = PR(\clGuiSectionView).copy
-		.putAll(~getTextParms.())
-		.prep(newSect, ~layout, if(i.notNil) { i * 2 });
+		newSect = PR(\clGuiSection).copy
+		.name_(name.asString)
+		.putAll(~getTextProperties.())
+		.prep,
+		label = StaticText().string_(name).stringColor_(~stringColor),
+		newGui = PR(\clGuiSectionView).copy.prep(newSect, ~layout, if(i.notNil) { i * 2 });
 
 		if(i.notNil) {
 			~layout.insert(label, i * 2);
@@ -376,12 +396,8 @@ Proto {
 		newSect.addDependant(currentEnvironment);
 		newSect
 	};
-	~textParms = { PR(\clGuiSectionView).textParms };
-	~getTextParms = {
-		var out = IdentityDictionary.new;
-		~textParms.().do { |key| out.put(key, key.envirGet) };
-		out
-	};
+	~textProperties = { ~textProperties ?? { PR(\clEditGui).textProperties } };
+	~getTextProperties = getTextProperties;
 	~update = { |obj, what ... args|
 		if(what == \escKey) {
 			currentEnvironment.changed(what, *args);
@@ -430,11 +446,21 @@ Proto {
 	~bounds = Window.screenBounds;
 	~windowTitle = "Pattern editor";
 	~backColor = Color.gray(0.078);
-	~windowBackground = Color.gray(0.2);
-	~stringColor = Color.white;
-	~textFont = Font("Inconsolata", 24);
+	~windowBackground = Color.gray(0.15);
+	~scrollBackground = Color.gray(0.3);
+	// ~stringColor = Color.white;
+	// ~textFont = Font("Inconsolata", 24);
 	~updateDefer = 0.1;
 	~defaultPhrIndex = " - Unnumbered - ";
+
+	// textview properties, to pass down
+	~background = Color.gray(0.15);
+	~stringColor = Color.white;
+	~markColor = Color(0.5, 1, 0.5);  // Color(0.8, 0, 0);
+	~font = Font("Inconsolata", 18);
+	~markFont = ~font.boldVariant;
+	~textProperties = #[background, scrollBackground, stringColor, markColor, font, markFont];
+	~getTextProperties = getTextProperties;
 
 	~prep = {
 		~makeGui.();
@@ -465,6 +491,8 @@ Proto {
 			~stackLayout = StackLayout()
 		);
 		~newPage.(\main);
+		~pages[0].sections[0][0].dependants;
+		~pages[0].sections[0][0].changed(\focus, true);
 		~setPage.(0);
 		~win.front;
 		~win.onClose = e {
@@ -491,7 +519,10 @@ Proto {
 			nil
 		};
 		var origItem;
-		var newPage = PR(\clGuiPage).copy.name_(key).prep(~stackLayout, i);
+		var newPage = PR(\clGuiPage).copy
+		.name_(key)
+		.putAll(~getTextProperties.())
+		.prep(~stackLayout, i);
 		if(i.isNil) {
 			i = ~pages.size;
 			~pages = ~pages.add(newPage);

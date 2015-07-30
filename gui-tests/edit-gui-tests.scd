@@ -8,6 +8,8 @@ BP(\edit).newPage(\a);
 /edit(updateDefer)
 /edit(updateDefer = 0.1)
 
+Object.dependantsDictionary.keys  // check for stray Protos
+
 // test
 
 /k(free)
@@ -36,6 +38,10 @@ e.phraseAndIndex("main").postcs
 
 /k = "----";  // k, j: OK; j, k: inserts one char early, messes up bookmarks
 /j = " - -";
+
+// free, recreate
+BP(\k).free;
+BP(\j).free;
 
 /k = "|-  -|--| -  ";
 /j = "|-  -||-";
