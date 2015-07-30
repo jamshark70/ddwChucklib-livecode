@@ -19,12 +19,15 @@ Proto {
 	~displayBookmarks = false;
 
 	~prep = { |parentView(~parentView), bounds(~bounds)|
+		var currentEnv = currentEnvironment;
 		~parentView = parentView;
 		~bounds = bounds;
 		~view = TextView(parentView, bounds)
 		.string_(~str)
 		.keyUpAction_(e { |... args| ~prKeyUpAction.(*args) })
-		.mouseUpAction_(e { |... args| ~prMouseUpAction.(*args) });
+		.mouseUpAction_(e { |... args| ~prMouseUpAction.(*args) })
+		.focusGainedAction_({ currentEnv.changed(\focused, true) })
+		.focusLostAction_({ currentEnv.changed(\focused, false) });
 		~textProperties.().do { |key|
 			~view.tryPerform(key.asSetter, key.envirGet);
 		};
@@ -342,6 +345,11 @@ Proto {
 		{ \focus } {
 			~view.focus(args[0] ? true)
 		}
+		{ \focused } {
+			// I have to change the message name,
+			// or ~model.changed recurs infinitely back to here
+			~model.changed(\focusedSection, args[0], ~model)
+		}
 		{ \modelWasFreed } {
 			~free.();
 		};
@@ -353,7 +361,7 @@ Proto {
 
 Proto {
 	~prep = { |layout, insertIndex|
-		~view = ScrollView().background_(~scrollBackground);
+		~view = ScrollView();
 		if(insertIndex.notNil) {
 			layout.insert(~view, insertIndex);
 		} {
@@ -361,6 +369,8 @@ Proto {
 		};
 		~layout = VLayout();
 		~view.canvas_(View().background_(~scrollBackground).layout_(~layout));
+		// ~view.background_(~scrollBackground);
+		~view.palette_(QPalette.new.base_(~scrollBackground));
 		~sections = List.new;
 		currentEnvironment
 	};
@@ -398,8 +408,9 @@ Proto {
 	};
 	~textProperties = { ~textProperties ?? { PR(\clEditGui).textProperties } };
 	~getTextProperties = getTextProperties;
+	~updateForwards = IdentitySet.with(\escKey, \focusedSection);
 	~update = { |obj, what ... args|
-		if(what == \escKey) {
+		if(~updateForwards.includes(what)) {
 			currentEnvironment.changed(what, *args);
 		};
 	};
@@ -531,7 +542,8 @@ Proto {
 			origItem = ~pageMenu.items[~pageMenu.value];
 			~pages = ~pages.insert(i, newPage);
 			~pageMenu.items = ~pageMenu.items.insert(i, key.asString);
-			~pageMenu.value = ~pageMenu.items.indexOfEqual(origItem);
+			~currentPage = ~pageMenu.items.indexOfEqual(origItem);
+			~pageMenu.value = ~currentPage;
 		};
 		newPage.addDependant(currentEnvironment);
 		newPage.newSection(~defaultPhrIndex);
@@ -658,7 +670,7 @@ Proto {
 			};
 			if(pageIndex.notNil) {
 				~setPage.(pageIndex);
-				~label = ~pages[pageIndex].labelForPhraseIndex(phrIndex);
+				~label = ~pages[pageIndex].labelForPhraseIndex(phrIndex ?? { ~defaultPhrIndex });
 				if(~label.notNil) {
 					~pages[pageIndex].view.visibleOrigin = Point(0, ~label.bounds.top);
 				};
@@ -675,18 +687,26 @@ Proto {
 		}
 		{ \setVisible } {
 			#phrKey, phrIndex = ~findVisible.(args[0]);
-			if(args[1] == \done and: { phrIndex.notNil }) {
-				~pages[~currentPage].sectionForPhraseIndex(phrIndex)
+			if(args[1] == \done /*and: { phrIndex.notNil }*/) {
+				~pages[~currentPage].sectionForPhraseIndex(phrIndex ?? { ~defaultPhrIndex })
 				.changed(\focus, true);
 			};
 		}
 		{ \resetVisible } {
 			~setPage.(args[0]);
 			~pages[args[0]].view.visibleOrigin = args[1];
+			if(~currentSection.notNil) {
+				~currentSection.changed(\focus, true)
+			};
 		}
 		{ \popUpRemoved } {
 			~selectField.removeDependant(currentEnvironment);
 			~selectField = nil;
+		}
+		{ \focusedSection } {
+			if(args[0]) {
+				~currentSection = args[1];
+			};
 		};
 	};
 } => PR(\clEditGui);

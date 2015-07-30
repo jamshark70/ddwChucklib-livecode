@@ -106,10 +106,13 @@ PR(\abstractLiveCode).chuck(BP(\x), nil, (
 /x.a0 = "-  -| . .- - |-  .  - | .  -. -";
 /x.a1 = "- ..| .- -. -| .- -  .| . .";
 
+
 /x = (a**2);
 
 BP(\x).phrases.keys
 
+
+BP(\edit).currentSection.name
 
 
 // find section view bounds
@@ -150,3 +153,30 @@ w.front;
 
 w.layout.add(u = UserView().fixedSize_(Size(120, 20)));
 u.remove;
+
+
+
+// tried but failed to reproduce a strange bug in ScrollView
+// where ESC navigating to the last section on a page
+// caused a light background to appear
+// but then it stopped happening
+
+(
+{
+	v = ScrollView(nil, Rect(800, 200, 500, 400)).front;
+	l = VLayout(
+		*Array.fill(2, {
+			[
+				StaticText().string_("x"),
+				TextView()
+				.background_(Color(0, 0, 0.2))
+				.minHeight_(250)
+			]
+		}).flat
+	);
+	v.canvas = View().layout_(l).background_(Color.gray(0.15));
+	v.background_(Color.gray(0.15));
+	1.0.wait;
+	v.visibleOrigin_(Point(0, 250));
+}.fork(AppClock);
+)
