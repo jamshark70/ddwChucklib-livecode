@@ -28,6 +28,8 @@ e = BP(\edit);
 z = e.pages[0].sections[0][0];
 z.strings.do(_.listVars);
 
+e.listVars
+
 e.pages[0].sectionForPhraseIndex(nil)
 e.phraseAndIndex("main").postcs
 
@@ -40,7 +42,6 @@ e.phraseAndIndex("main").postcs
 1+1
 
 /k.main0 = "-| -|-|";
-
 /k.main3 = "-| -|-|";
 /j.main3 = " - -";
 
@@ -102,3 +103,44 @@ PR(\abstractLiveCode).chuck(BP(\x), nil, (
 /x = (a**2);
 
 BP(\x).phrases.keys
+
+
+
+// find section view bounds
+e = BP(\edit).pages[0].sections[1];
+e[1].view.view.bounds;
+
+e = BP(\edit).pages[0];
+e.view.children[3].bounds;
+e.view.visibleOrigin = e.view.children[3].bounds.leftTop;
+
+
+(
+w = Window("test", Rect(800, 200, 500, 400));
+v = View(w, w.view.bounds.insetBy(5, 5))
+.layout_(VLayout(
+	t = TextField() // TextView()
+));
+w.front;
+)
+
+t.keyDownAction = { |view, char, modifiers, unicode|
+	if(char.notNil) { char.ascii.postln };
+};
+t.keyDownAction = nil;
+
+$/.ascii
+(64 + 31).asAscii
+
+v.keyDownAction = nil;
+
+(
+w = Window("test", Rect(800, 200, 500, 70));
+w.layout = HLayout(
+	PopUpMenu()
+);
+w.front;
+)
+
+w.layout.add(u = UserView().fixedSize_(Size(120, 20)));
+u.remove;
