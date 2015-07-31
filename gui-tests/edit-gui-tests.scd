@@ -2,6 +2,11 @@
 BP(\edit).free; PR(\clEditGui).chuck(BP(\edit), nil, (bounds: Rect(800, 50, 500, 600)));
 BP(\edit).pages
 
+BP(\edit).win.bounds  // Rect(296, 40, 500, 672)
+
+// performance:
+BP(\edit).free; PR(\clEditGui).chuck(BP(\edit), nil, (bounds: Rect(296, 40, 500, 672)));
+
 BP(\edit).newPage(\z);
 BP(\edit).newPage(\a);
 
