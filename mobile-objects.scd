@@ -120,17 +120,21 @@ protect {
 	// this has GUI stuff in it -- maybe revisit
 	PR(\abstractTouch).clone {
 		~white = Color.white;
-		~yellow = Color.yellow;
-		~ltYellow = ~yellow.blend(~white, 0.7);
+		~black = Color.black;
+		~tabBackground = Color.gray(0.3);
+
+		~yellow = Color(0.7, 0.7, 0.2); // Color.yellow(0.6);
+		~ltYellow = Color.yellow(0.6, 0.6, 0.2); // ~yellow.blend(~black, 0.7);
+		~yellowFor2D = Color(0.4, 0.4, 0.2);
 
 		~aqua = Color(0, 0.4, 1.0);
-		~ltAqua = ~aqua.blend(~white, 0.7);
+		~ltAqua = ~aqua.blend(~black, 0.7);
 
 		~purple = Color(1.0, 0.2, 1.0);
-		~ltPurple = ~purple.blend(~white, 0.7);
+		~ltPurple = ~purple.blend(~black, 0.7);
 
 		~green = Color(0.3, 1.0, 0.3);
-		~ltGreen = ~green.blend(~white, 0.7);
+		~ltGreen = ~green.blend(~black, 0.7);
 
 		~red = Color(0.8, 0, 0);
 		~ltRed = ~red.blend(~white, 0.7);
@@ -198,7 +202,7 @@ protect {
 				out.add('/1/xy').add((
 					bounds: Rect(last.bounds.right + ~gap.x, out[11].bounds.bottom + ~gap.y, ~xyExtent.x, ~xyExtent.y),
 					class: Slider2D,
-					init: e { |view| view.background_(~ltYellow).knobColor_(~yellow) },
+					init: e { |view| view.background_(~yellowFor2D).knobColor_(~yellow) },
 					updater: { |view, x, y| view.setXY(x, 1.0 - y) }
 				));
 				out
@@ -214,8 +218,9 @@ protect {
 		~minExtent = Point(150, 0);
 		~font = { ~model[\labelFont] ?? { Font.default.copy.size_(14) } };
 
-		~prep = { |model|
+		~prep = { |model/*, parentView*/|
 			if(model.notNil) { ~model = model };
+			// ~parentView = parentView;
 			~font = ~font.value;
 			~notification = NotificationCenter.register(~model, \any, Environment.current, e { |msg|
 				~respond.(~model, msg);  // args[0] == msg
@@ -230,7 +235,8 @@ protect {
 			Environment.current;
 		};
 		~free = {
-			if(~window.notNil and: { ~window.isClosed.not }) {
+			~parentView.remove;
+			if(~iMadeWindow and: { ~window.notNil and: { ~window.isClosed.not } }) {
 				~window.close;
 			};
 			~window = nil;
@@ -240,16 +246,32 @@ protect {
 		~freeCleanup = { ~free.() };
 
 		~makeWindow = {
+			var temp;
 			~maxExtent = ~calcExtent.();
-			~window = Window(~windowName, ~windowBoundsFromExtent.(~maxExtent));
-			~window.onClose = e {
+			if(~parentView.isNil) {
+				~window = Window(~windowName, ~windowBoundsFromExtent.(~maxExtent));
+				~parentView = ~window.view;
+				~iMadeWindow = true;
+			} {
+				temp = ~parentView;
+				while { temp.parent.notNil } { temp = temp.parent };
+				// now temp should be a TopView
+				~window = temp.findWindow;
+				~iMadeWindow = false;
+			};
+			~parentView.onClose = e {
 				if(~window.notNil) { ~window.onClose = nil };
 				~free.();
 			};
 		};
-		~calcExtent = {
-			var maxPt = ~minExtent;
-			~tabSpecs.pairsDo { |name, viewSpecs|
+		~calcExtent = { |overrideModel|
+			var maxPt = ~minExtent, specs;
+			if(overrideModel.notNil) {
+				specs = overrideModel.tabSpecs;
+			} {
+				specs = ~tabSpecs ?? { ~model.tabSpecs };
+			};
+			specs.pairsDo { |name, viewSpecs|
 				viewSpecs.pairsDo { |oscpath, spec|
 					maxPt = max(maxPt, spec.bounds.rightBottom);
 				}
@@ -262,7 +284,8 @@ protect {
 			Rect(sb.right - extent.x, sb.center.y - (extent.y / 2), extent.x, extent.y)
 		};
 		~makeTabs = {
-			~tabs = TabbedView(~window, ~window.view.bounds.insetBy(2, 2), ~tabSpecs[0, 2 ..]);
+			~tabs = TabbedView(~parentView, ~parentView.bounds.insetBy(2, 2), ~tabSpecs[0, 2 ..])
+			.backgrounds_([~model.tabBackground]);
 			~tabSwitch = Array.fill(~tabs.views.size, { |i| ("/" ++ (i+1)).asSymbol });
 			~views = IdentityDictionary.new;
 			~labels = IdentityDictionary.new;
