@@ -5,6 +5,7 @@ BP(\edit).pages
 BP(\edit).win.bounds  // Rect(296, 40, 500, 672)
 
 // performance:
+(thisProcess.nowExecutingPath.dirname.dirname +/+ "edit-gui.scd").load;
 BP(\edit).free; PR(\clEditGui).chuck(BP(\edit), nil, (bounds: Rect(296, 40, 500, 672)));
 
 BP(\edit).newPage(\z);
