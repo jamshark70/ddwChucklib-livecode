@@ -1,5 +1,3 @@
-// first: TEXTVIEW WRAPPERS for content change tracking
-(
 var getTextProperties = {
 	var result = IdentityDictionary.with(\textProperties -> ~textProperties);
 	~textProperties.do { |key|
@@ -7,6 +5,8 @@ var getTextProperties = {
 	};
 	result
 };
+
+// first: TEXTVIEW WRAPPERS for content change tracking
 
 Proto {
 	~background = Color.white;
@@ -478,7 +478,7 @@ Proto {
 		~scanBPs.();
 		~notifier = NotificationCenter.register(\clLiveCode, \phraseString, ~collIndex, e {
 			|objKey, phrase, parm, string|
-			if(parm != \dur) {
+			if(parm != \dur and: { string.size > 0 }) {
 				(e { ~updatePatString.(objKey, phrase, parm, string) }).defer;
 			};
 		});
@@ -710,4 +710,3 @@ Proto {
 		};
 	};
 } => PR(\clEditGui);
-)
