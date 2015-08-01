@@ -1833,7 +1833,7 @@ Proto {
 		~clock.beatsPerBar
 	};
 	~division = 0.25;
-	~phraseSeq = \main;
+	// see end for default phraseSeq
 	~lastPhrase = \main;
 
 	~prep = {
@@ -1908,7 +1908,7 @@ Proto {
 		} {
 			~clock.schedAbs(BP(~collIndex).eventSchedTime - 0.001, e {
 				// composite pattern
-				~phraseSeq = pattern;
+				~phraseSeq_.(pattern);
 				if(newQuant.notNil) { ~quant = newQuant.asTimeSpec };
 				if(~isPlaying) { ~reschedule.() };
 				nil
@@ -1940,10 +1940,6 @@ Proto {
 						nil
 					};
 					phr = ~phraseSeqStream.next(inevent);
-					if(phr != ~lastPhrase) {
-						NotificationCenter.notify(~collIndex, ~lastPhrase, false);
-					};
-					NotificationCenter.notify(~collIndex, phr, true);
 					pat = ~phrases[phr];
 					// the pattern-wrapping here is not directly supported in Psym
 					if(~phraseDurs[phr].notNil) {
@@ -1988,5 +1984,18 @@ Proto {
 		};
 		currentEnvironment
 	};
+
+	~phraseSeq_ = { |pattern|
+		var lastPhrase;
+		~phraseSeq = pattern.asPattern.collect { |phr|
+			~lastPhrase = lastPhrase;
+			if(phr != ~lastPhrase) {
+				NotificationCenter.notify(~collIndex, ~lastPhrase, false);
+			};
+			NotificationCenter.notify(~collIndex, phr, true);
+			lastPhrase = phr;  // leave the Proto var alone, until next time
+		};
+	};
+	~phraseSeq_.(\main);
 }.import((abstractProcess: #[makeStreamForKey])) => PR(\abstractLiveCode);
 )
