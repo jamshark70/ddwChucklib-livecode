@@ -1227,7 +1227,7 @@ PR(\clCopyPattern).clone {
 	~buildStatement = {
 		var stmt = ~superBuildStatement.(),
 		obj = ~clClass.new(~objKey),
-		phraseSeq = obj.phraseSeq.asCompileString;  // should work with composite patterns
+		phraseSeq = obj.phraseSeqString;  // should work with composite patterns
 		if(~numToCopy.isNil) {
 			phraseSeq = phraseSeq.replace(~srcPhrase.asCompileString, ~targetPhrase.asCompileString);
 		} {
@@ -1987,7 +1987,11 @@ Proto {
 
 	~phraseSeq_ = { |pattern|
 		var lastPhrase;
-		~phraseSeq = pattern.asPattern.collect { |phr|
+		pattern = pattern.asPattern;
+		// for xfer pattern: each ->> command would wrap another layer of Pcollect
+		// so, save the string *without* .collect
+		~phraseSeqString = pattern.asCompileString;
+		~phraseSeq = pattern.collect { |phr|
 			~lastPhrase = lastPhrase;
 			if(phr != ~lastPhrase) {
 				NotificationCenter.notify(~collIndex, ~lastPhrase, false);
