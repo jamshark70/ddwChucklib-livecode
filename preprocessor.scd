@@ -1923,18 +1923,21 @@ Proto {
 	};
 
 	~asPattern = {
-		var emptyCountdown = 10, lastTime = 0;
+		var phr, emptyCountdown = 10, lastTime = 0;
 		~reset.();
 		~playHook.();
 		Pchain(
-			BPStream(\postDefaults), //.trace(prefix: "postDefaults: "),
+			Pif(
+				Pfunc { phr != \rest },
+				BPStream(\postDefaults), //.trace(prefix: "postDefaults: "),
+				(),
+			),
 			Prout { |inevent|
-				var phr, pat;
+				var pat;
 				~makeStreamForKey.(\phraseSeq);
 				loop {
 					if(thisThread.beats > lastTime) {
 						lastTime = thisThread.beats;
-						~lastPhrase = phr;
 					} {
 						"BP(%): Empty phrase %, stopping".format(~collIndex.asCompileString, phr).warn;
 						nil
