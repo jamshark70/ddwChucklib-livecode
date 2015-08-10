@@ -186,3 +186,17 @@ u.remove;
 	v.visibleOrigin_(Point(0, 250));
 }.fork(AppClock);
 )
+
+
+// split line problem
+
+(
+t = TextView(nil, Rect(800, 200, 500, 400))
+.font_(Font.monospace(24))
+.string_("if(10.rand.even) { \"it was an even number\".postln } { \"it was an odd number\".postln };")
+.select(2, 0)
+.front;
+)
+
+t.currentLine;
+
