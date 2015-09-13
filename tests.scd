@@ -599,7 +599,7 @@ PR(\abstractLiveCode).chuck(BP(\k), nil, (
 		alias: (
 			alias: \xyz,
 			$a: 1,
-			$b: [[2, 3]]
+			$b: [2, 3]
 		),
 		array: (
 			alias: #[bufnum, rate],
@@ -621,3 +621,19 @@ e = BP(\k).eventStream.next(BP(\k).event.copy);
 
 /k+
 /k-
+
+
+/make(baseDrone);
+/drone+;
+
+/make(bpfBP);
+/bpf => t;
+/bars.(\bpf, 2, \a);
+/bpf.a0 = "ooo |h  h| u| u";
+/bpf.a1 = "";
+
+/bpf+;
+/bpf-;
+
+// a0 above -- this is wrong:
+"Pstep(Pseq(List[ $o, $o, $o, $ , $h, $ , $ , $h, $ , $u, $ , $u ], 1), Pseq([ 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.5, 0.5, 0.5, 0.5 ], 1), 1)"

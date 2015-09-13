@@ -398,7 +398,6 @@ Proto {
 			if(seg.size >= 1) {
 				division = ~beatsPerSeg.wrapAt(segI) / seg.size;
 				seg.do { |event, i|
-					// value = ~valueForParm.(event, obj, ~parm);
 					value = ~decodePitch.(event);  // returns event if it's not a pitch parm
 					if(value.size > 0) {
 						division = division / value.size;
@@ -438,9 +437,7 @@ Proto {
 		division = ~beatsPerSeg[0] / pat[0].size;
 		i = 0;
 		pat[0].do { |event, i|
-			// value = ~valueForParm.(event, obj, ~parm);
 			value = ~decodePitch.(event);  // returns event if it's not a pitch parm
-			value.postcs;
 			if(value.size > 0) {
 				division = division / value.size;
 				value.do { |item|
@@ -1877,8 +1874,13 @@ Proto {
 	};
 
 	~valueForParm = { |event, parm|
-		var dict = ~parmMap[parm];
-		if(dict.notNil) { dict[event] };  // else nil
+		var dict;
+		if(~parmIsPitch.(parm)) {
+			event
+		} {
+			dict = ~parmMap[parm];
+			if(dict.notNil) { dict[event] };  // else nil
+		};
 	};
 	~parmIsPitch = { |parm|
 		~parmMap[parm].notNil and: { ~parmMap[parm][\isPitch] == true }
@@ -1915,26 +1917,46 @@ Proto {
 				{ parm == \legato } {
 					pat.set(parm, pattern);
 				}
-				{
-					if(storeParm === parm) {
-						// optimization: single parameter names
-						pat.set(parm, pattern.collect { |valueID|
-							~valueForParm.(valueID, parm) ?? { Rest(valueID) }
-						});
-					} {
-						pat.set(parm, pattern.collect { |valueID, event|
-							var result = ~valueForParm.(valueID, parm);
-							if(result.isNil) {
-								result = [Rest(valueID)];
-							} {
-								result = result.asArray;
-							};
+				{ storeParm == parm } {
+					// no alias: optimize by simply converting and returning
+					pat.set(parm, pattern.collect { |valueID|
+						~valueForParm.(valueID, parm) ?? { Rest(valueID) }
+					});
+				}
+				{ storeParm.size == 0 } {
+					// alias is a single symbol: optimize by converting and storing directly
+					pat.set(parm, pattern.collect { |valueID, event|
+						var result = ~valueForParm.(valueID, parm) ?? { Rest(valueID) };
+						event.put(storeParm, result);
+						result
+					});
+				}
+				{ storeParm.size > 0 } {
+					pat.set(parm, pattern.collect { |valueID, event|
+						var result = ~valueForParm.(valueID, parm);
+						if(result.isNil) {
+							result = [Rest(valueID)];
+						} {
+							result = result.asArray;
+						};
+						if(storeParm.size >= result.size) {
 							storeParm.do { |key, i|
 								event.put(key, result.wrapAt(i));
 							};
-							result
-						});
-					};
+						} {
+							"Alias for % allows % values, but too many (%) were provided"
+							.format(parm.asCompileString, storeParm.size, result.size)
+							.warn;
+						};
+						result
+					});
+				}
+				{
+					// it really should be impossible to get here
+					Error("BP(%): Impossible condition assigning pattern %, storeParm = %"
+						.format(~collIndex.asCompileString, parm.asCompileString,
+							storeParm.asCompileString
+					)).throw;
 				};
 				nil
 			});
