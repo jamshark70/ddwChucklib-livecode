@@ -1940,7 +1940,7 @@ Proto {
 						lastTime = thisThread.beats;
 					} {
 						"BP(%): Empty phrase %, stopping".format(~collIndex.asCompileString, phr).warn;
-						nil
+						nil.alwaysYield
 					};
 					phr = ~phraseSeqStream.next(inevent);
 					pat = ~phrases[phr];
