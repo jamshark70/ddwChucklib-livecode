@@ -398,7 +398,8 @@ Proto {
 			if(seg.size >= 1) {
 				division = ~beatsPerSeg.wrapAt(segI) / seg.size;
 				seg.do { |event, i|
-					value = ~valueForParm.(event, obj, ~parm);
+					// value = ~valueForParm.(event, obj, ~parm);
+					value = ~decodePitch.(event);  // returns event if it's not a pitch parm
 					if(value.size > 0) {
 						division = division / value.size;
 						value.do { |item|
@@ -437,7 +438,9 @@ Proto {
 		division = ~beatsPerSeg[0] / pat[0].size;
 		i = 0;
 		pat[0].do { |event, i|
-			value = ~valueForParm.(event, obj, ~parm);
+			// value = ~valueForParm.(event, obj, ~parm);
+			value = ~decodePitch.(event);  // returns event if it's not a pitch parm
+			value.postcs;
 			if(value.size > 0) {
 				division = division / value.size;
 				value.do { |item|
@@ -561,42 +564,47 @@ Proto {
 		[deltas, levels, legatos]
 	};
 
-	~valueForParm = { |event, obj, parm|
-		var degree, legato = 0.9;
-		if(~isPitch) {
-			event = event.asString;
-			case
-			{ event[0].isDecDigit } {
-				~decodePitch.(event)
-			}
-			{ event[0] != $ } {
-				Rest(0) -> legato
-			}
-			{ obj.valueForParm(event, parm) };
-		} {
-			obj.valueForParm(event, parm);
-		};
-	};
-
+	// ~valueForParm = { |event, obj, parm|
+	// 	var degree, legato = 0.9;
+	// 	if(~isPitch) {
+	// 		event = event.asString;
+	// 		case
+	// 		{ event[0].isDecDigit } {
+	// 			~decodePitch.(event)
+	// 		}
+	// 		{ event[0] != $ } {
+	// 			Rest(0) -> legato
+	// 		}
+	// 		{ obj.valueForParm(event, parm) };
+	// 	} {
+	// 		obj.valueForParm(event, parm);
+	// 	};
+	// };
 
 	~decodePitch = { |pitchStr|
 		var degree, legato = 0.9;
-		pitchStr = pitchStr.asString;
-		case
-		{ pitchStr[0].isDecDigit } {
-			degree = (pitchStr[0].ascii - 48).wrap(1, 10) - 1;
-			pitchStr.drop(1).do { |ch|
-				switch(ch)
-				{ $- } { degree = degree - 0.1 }
-				{ $+ } { degree = degree + 0.1 }
-				{ $, } { degree = degree - 7 }
-				{ $' } { degree = degree + 7 }
-				{ $~ } { legato = 1.01 }
-				{ $_ } { legato = 0.9 }
-				{ $. } { legato = 0.4 }
-			};
-			degree -> legato  // Association identifies pitch above
-		}
+		if(~isPitch) {
+			pitchStr = pitchStr.asString;
+			case
+			{ pitchStr[0].isDecDigit } {
+				degree = (pitchStr[0].ascii - 48).wrap(1, 10) - 1;
+				pitchStr.drop(1).do { |ch|
+					switch(ch)
+					{ $- } { degree = degree - 0.1 }
+					{ $+ } { degree = degree + 0.1 }
+					{ $, } { degree = degree - 7 }
+					{ $' } { degree = degree + 7 }
+					{ $~ } { legato = 1.01 }
+					{ $_ } { legato = 0.9 }
+					{ $. } { legato = 0.4 }
+				};
+				degree -> legato  // Association identifies pitch above
+			}
+			{ pitchStr[0] != $ } {
+				Rest(0) -> legato
+			}
+			{ pitchStr }
+		} { pitchStr }
 	};
 
 	// pitchNum is a scale degree, assuming 0 as neutral-octave tonic
@@ -1898,11 +1906,36 @@ Proto {
 		if(parm.notNil) {
 			~prSetPhraseString.(phrase, parm, inString);
 			~clock.schedAbs(BP(~collIndex).eventSchedTime(-1) - 0.001, e {
-				if(parm == \dur) {
+				case
+				{ parm == \dur } {
 					// _.value is needed to convert Rests to durations
 					~phraseDurs[phrase] = pattern.list.sum(_.value);
+					pat.set(parm, pattern);
+				}
+				{ parm == \legato } {
+					pat.set(parm, pattern);
+				}
+				{
+					if(storeParm === parm) {
+						// optimization: single parameter names
+						pat.set(parm, pattern.collect { |valueID|
+							~valueForParm.(valueID, parm) ?? { Rest(valueID) }
+						});
+					} {
+						pat.set(parm, pattern.collect { |valueID, event|
+							var result = ~valueForParm.(valueID, parm);
+							if(result.isNil) {
+								result = [Rest(valueID)];
+							} {
+								result = result.asArray;
+							};
+							storeParm.do { |key, i|
+								event.put(key, result.wrapAt(i));
+							};
+							result
+						});
+					};
 				};
-				pat.set(storeParm, pattern);
 				nil
 			});
 		} {

@@ -557,3 +557,67 @@ PR(\abstractLiveCode).chuck(BP(\x), nil, (
 
 /x = "|||";
 /x = " ";
+
+
+
+// moving value conversion to process
+// when is it an array?
+ChuckableBrowser.newWindow;
+
+(
+BP(\k).free;
+PR(\abstractLiveCode).chuck(BP(\k), nil, (
+	defaultParm: \test,
+	parmMap: (
+		test: (
+			alias: #[bufnum, rate],
+			$a: [[0, 1]],
+			$b: [[1, 2]]
+		)
+	)
+));
+)
+
+/k = "ab";
+
+
+// test move
+(
+BP(\k).free;
+PR(\abstractLiveCode).chuck(BP(\k), nil, (
+	event: (
+		parent: (
+			play: { Event.current.postln }
+		)
+	),
+	defaultParm: \test,
+	parmMap: (
+		test: (
+			$a: 1,
+			$b: 2
+		),
+		alias: (
+			alias: \xyz,
+			$a: 1,
+			$b: [[2, 3]]
+		),
+		array: (
+			alias: #[bufnum, rate],
+			$a: [0, 1],
+			$b: [1, 2]
+		),
+		pitch: (isPitch: true)
+	)
+));
+)
+
+/k = "ab";
+/k..pitch = "13+";
+/k..alias = "ab";
+/k..array = "ab";
+
+BP(\k).prepareForPlay;
+e = BP(\k).eventStream.next(BP(\k).event.copy);
+
+/k+
+/k-
