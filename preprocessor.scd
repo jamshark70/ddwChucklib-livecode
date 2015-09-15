@@ -369,7 +369,11 @@ Proto {
 			} {
 				if(str[j] == $\\) { escaped = escaped.not } { escaped = false };
 			};
-			str[i + 1 .. j - 1];
+			if(j - i == 1) {
+				String.new  // special case: two adjacent quotes = empty string
+			} {
+				str[i + 1 .. j - 1];
+			};
 		};
 	};
 	~getQuantFrom = { |stream|
@@ -390,7 +394,7 @@ Proto {
 			Error("clPatternSet: Couldn't find pattern string").throw
 		};
 		pat = pat[0][1];
-		pat = pat[1 .. pat.size-2].split($|).collectAs(~divideEvents, Array);
+		pat = ~unquoteString.(pat).split($|).collectAs(~divideEvents, Array);
 		~segments = pat;
 		~parseBeatsPerBar.(code, pat);
 		i = 0;
@@ -431,7 +435,7 @@ Proto {
 		};
 		pat = pat[0][1];
 		// pat = [pat[1 .. pat.size-2].collectAs(~divideEvents, Array)];
-		pat = [~divideEvents.(pat[1 .. pat.size-2])];
+		pat = [~divideEvents.(~unquoteString.(pat))];
 		~segments = pat;
 		~parseBeatsPerBar.(code, pat, $/);
 		division = ~beatsPerSeg[0] / pat[0].size;
@@ -580,7 +584,8 @@ Proto {
 
 	~decodePitch = { |pitchStr|
 		var degree, legato = 0.9;
-		if(~isPitch) {
+		case
+		{ ~isPitch } {
 			pitchStr = pitchStr.asString;
 			case
 			{ pitchStr[0].isDecDigit } {
@@ -597,11 +602,13 @@ Proto {
 				};
 				degree -> legato  // Association identifies pitch above
 			}
-			{ pitchStr[0] != $ } {
+			{ pitchStr[0] != $  } {
 				Rest(0) -> legato
 			}
-			{ pitchStr }
-		} { pitchStr }
+			{ nil }
+		}
+		{ pitchStr == $  } { nil }
+		{ pitchStr }
 	};
 
 	// pitchNum is a scale degree, assuming 0 as neutral-octave tonic

@@ -611,10 +611,12 @@ PR(\abstractLiveCode).chuck(BP(\k), nil, (
 ));
 )
 
-/k = "ab";
-/k..pitch = "13+";
-/k..alias = "ab";
-/k..array = "ab";
+/k = "";
+
+/k = "a  b";
+/k..pitch = "1  3+";
+/k..alias = "ab  ";
+/k..array = "a| b";
 
 BP(\k).prepareForPlay;
 e = BP(\k).eventStream.next(BP(\k).event.copy);
@@ -637,3 +639,5 @@ e = BP(\k).eventStream.next(BP(\k).event.copy);
 
 // a0 above -- this is wrong:
 "Pstep(Pseq(List[ $o, $o, $o, $ , $h, $ , $ , $h, $ , $u, $ , $u ], 1), Pseq([ 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.5, 0.5, 0.5, 0.5 ], 1), 1)"
+
+/bpf(free);
