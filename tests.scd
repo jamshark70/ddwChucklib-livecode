@@ -607,7 +607,8 @@ PR(\abstractLiveCode).chuck(BP(\k), nil, (
 			$b: [1, 2]
 		),
 		pitch: (isPitch: true)
-	)
+	),
+	clock: TempoClock.default
 ));
 )
 
@@ -634,6 +635,19 @@ r.stop;
 
 BP(\k).phrases[\main].postcs
 BP(\k).phraseDurs
+
+
+// test helpers
+"helper-funcs.scd".resolveRelative.loadPath;
+
+/bars.(\k, 2, \m);
+
+/k = (m**2);
+
+BP(\k).phraseSeq.postcs
+
+/k.m0 = "";
+/k.m1 = "";
 
 
 /k+

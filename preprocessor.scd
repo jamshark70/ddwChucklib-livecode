@@ -353,7 +353,6 @@ Proto {
 		group.clumpOperators;
 		if(group.repeats.isNil) { group.repeats = inf };
 		~inString = "\"\"";
-		group.asPatString;
 	};
 	~unquoteString = { |str, pos = 0, delimiter = $"|
 		var i = str.indexOf(delimiter), j, escaped = false;
@@ -627,18 +626,26 @@ Proto {
 
 	~buildStatement = {
 		var stmt = CollStream.new;
-		if(~isMain) {
-			~patString = ~buildSimplePattern.(~levels);
-		} {
-			~patString = ~buildStepPattern.(~levels, ~deltas);
-		};
-		if(~numToApply.notNil) {
-			~numToApply.do { |i|
-				if(i > 0) { stmt << ";\n" };
-				~buildOneStatement.(stmt, i);
+		if(~parm.notNil) {
+			if(~isMain) {
+				~patString = ~buildSimplePattern.(~levels);
+			} {
+				~patString = ~buildStepPattern.(~levels, ~deltas);
 			};
-		} { ~buildOneStatement.(stmt) };
-		stmt.collection
+			if(~numToApply.notNil) {
+				~numToApply.do { |i|
+					if(i > 0) { stmt << ";\n" };
+					~buildOneStatement.(stmt, i);
+				};
+			} { ~buildOneStatement.(stmt) };
+			stmt.collection
+		} {
+			"%(%).setPattern(%, %, %, %, %)".format(
+				~clClass, ~objKey.asCompileString,
+				~phrase.asCompileString, nil,  // we already know ~parm is nil in this branch
+				~group.asPatString, ~inString.asCompileString, ~quant
+			);
+		};
 	};
 
 	~buildOneStatement = { |stream, i|
