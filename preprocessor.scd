@@ -331,7 +331,7 @@ Proto {
 		if(case.isNil) {
 			Error("clPatternSet: Pattern does not match any known cases. This should never happen").throw;
 		};
-		~patString = case.value.envirGet.(code);
+		case.value.envirGet.(code);
 	};
 
 	~compositePattern = { |code|
@@ -422,7 +422,6 @@ Proto {
 		~levels = levels;
 		~times = times;
 		~legatos = legatos;
-		"Pstep(Pseq(%, 1), Pseq(%, 1), 1)".format(levels.asCompileString, deltas.asCompileString).postcs;
 	};
 
 	~patternWithoutDividers = { |code|
@@ -458,7 +457,6 @@ Proto {
 		~levels = levels;
 		~times = times;
 		~legatos = legatos;
-		"Pstep(Pseq(%, 1), Pseq(%, 1), 1)".format(levels.asCompileString, deltas.asCompileString).postcs;
 	};
 
 	~prAddEntries = { |value, levels, times, legatos, time, division, i|
@@ -629,6 +627,11 @@ Proto {
 
 	~buildStatement = {
 		var stmt = CollStream.new;
+		if(~isMain) {
+			~patString = ~buildSimplePattern.(~levels);
+		} {
+			~patString = ~buildStepPattern.(~levels, ~deltas);
+		};
 		if(~numToApply.notNil) {
 			~numToApply.do { |i|
 				if(i > 0) { stmt << ";\n" };
@@ -646,24 +649,50 @@ Proto {
 			phrase = ~phrase.asCompileString;
 		};
 		if(~isMain) {
-			stream << "%(%).setPattern(%, %, Pseq(%, 1), \"\")".format(
+			stream << "%(%).setPhraseDur(%, %);\n".format(
 				~clClass, ~objKey.asCompileString,
-				phrase, \dur.asCompileString,
-				~deltas.asCompileString
-			) << ";\n"
+				phrase, ~beatsPerBar
+			);
+			if(~isPitch) {
+				// stream, keyArray, patternArray
+				~buildArrayKeyPat.(stream, phrase, [~parm, \dur, \legato], [
+					~patString, Pseq(~deltas).asCompileString, Pseq(~legatos).asCompileString
+				])
+			} {
+				~buildArrayKeyPat.(stream, phrase, [~parm, \dur], [
+					~patString, Pseq(~deltas).asCompileString
+				])
+			}
+		} {
+			if(~isPitch) {
+				~buildArrayKeyPat.(stream, phrase, [~parm, \legato], [
+					~patString, ~buildStepPattern.(~legatos, ~deltas)
+				])
+			} {
+				stream << "%(%).setPattern(%, %, %, %, %)".format(
+					~clClass, ~objKey.asCompileString,
+					phrase, ~parm.asCompileString,
+					~patString, ~inString.asCompileString, ~quant
+				);
+			}
 		};
-		stream << "%(%).setPattern(%, %, %, %, %)".format(
+		currentEnvironment
+	};
+	~buildArrayKeyPat = { |stream, phrase, keyArray, patStringArray|
+		stream << "%(%).setPattern(%, %, Ptuple(%), %)".format(
 			~clClass, ~objKey.asCompileString,
-			phrase, ~parm.asCompileString,
-			~patString, ~inString.asCompileString, ~quant
+			phrase,
+			keyArray.asCompileString,
+			patStringArray,
+			~inString.asCompileString
 		);
-		if(~isPitch) {
-			stream << ";\n%(%).setPattern(%, %, Pseq(%, 1), \"\")".format(
-				~clClass, ~objKey.asCompileString,
-				phrase, \legato.asCompileString,
-				~legatos.asCompileString
-			)
-		};
+		currentEnvironment
+	};
+	~buildStepPattern = { |levels, deltas|
+		"Pstep(Pseq(%, 1), Pseq(%, 1), 1)".format(levels.asCompileString, deltas.asCompileString).postcs;
+	};
+	~buildSimplePattern = { |levels|
+		"Pseq(%, 1)".format(levels.asCompileString)
 	};
 }.import((chucklibLiveCode: #[tokens, replaceRegexpMacros, removeRegexpDups, removeDupIndices]), #[tokens]) => PR(\clPatternSet);
 
@@ -1851,7 +1880,7 @@ Proto {
 	~prep = {
 		if(~phrases.isNil) {
 			~phrases = IdentityDictionary[
-				\main -> PbindProxy(\dur, Pfuncn { Rest(~clock.beatsPerBar) }),
+				\main -> PbindProxy.new,
 				\rest -> PbindProxy(\dur, Pfuncn { Rest(~clock.beatsPerBar) })
 			];
 			~phraseDurs = IdentityDictionary[
@@ -1882,7 +1911,7 @@ Proto {
 
 	~valueForParm = { |event, parm|
 		var dict;
-		if(~parmIsPitch.(parm)) {
+		if(parm == \dur or: { parm == \legato or: { ~parmIsPitch.(parm) } }) {
 			event
 		} {
 			dict = ~parmMap[parm];
@@ -1916,19 +1945,24 @@ Proto {
 			~prSetPhraseString.(phrase, parm, inString);
 			~clock.schedAbs(BP(~collIndex).eventSchedTime(-1) - 0.001, e {
 				case
-				{ parm == \dur } {
-					// _.value is needed to convert Rests to durations
-					~phraseDurs[phrase] = pattern.list.sum(_.value);
+				{ parm == \dur or: { parm == \legato } } {
 					pat.set(parm, pattern);
 				}
-				{ parm == \legato } {
-					pat.set(parm, pattern);
-				}
-				{ storeParm == parm } {
-					// no alias: optimize by simply converting and returning
-					pat.set(parm, pattern.collect { |valueID|
-						~valueForParm.(valueID, parm) ?? { Rest(valueID) }
-					});
+				{ storeParm === parm } {
+					if(parm.isArray) {
+						// special case: This should happen only for [key, \dur] type keys
+						// constructed by clPattern
+						pat.set(parm, pattern.collect { |valueIDs|
+							valueIDs.collect { |valueID, i|
+								~valueForParm.(valueID, parm[i]) ?? { Rest(valueID) }
+							}
+						});
+					} {
+						// single key, no alias: optimize by simply converting and returning
+						pat.set(parm, pattern.collect { |valueID|
+							~valueForParm.(valueID, parm) ?? { Rest(valueID) }
+						});
+					};
 				}
 				{ storeParm.size == 0 } {
 					// alias is a single symbol: optimize by converting and storing directly
@@ -1976,6 +2010,10 @@ Proto {
 				nil
 			});
 		};
+	};
+	~setPhraseDur = { |phrase, dur|
+		~phraseDurs[phrase] = dur;
+		currentEnvironment
 	};
 
 	~clearHighlights = {

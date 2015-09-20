@@ -599,7 +599,7 @@ PR(\abstractLiveCode).chuck(BP(\k), nil, (
 		alias: (
 			alias: \xyz,
 			$a: 1,
-			$b: [2, 3]
+			$b: 2, // [2, 3]
 		),
 		array: (
 			alias: #[bufnum, rate],
@@ -618,8 +618,23 @@ PR(\abstractLiveCode).chuck(BP(\k), nil, (
 /k..alias = "ab  ";
 /k..array = "a| b";
 
+BP(\k).phraseSeq = Pfunc { \main.debug("phrase") };
+
 BP(\k).prepareForPlay;
-e = BP(\k).eventStream.next(BP(\k).event.copy);
+BP(\k).reset;
+
+r = fork {
+	while { (e = BP(\k).eventStream.next(BP(\k).event.copy)).notNil } {
+		e.postln;
+		e.delta.wait;
+	}
+};
+
+r.stop;
+
+BP(\k).phrases[\main].postcs
+BP(\k).phraseDurs
+
 
 /k+
 /k-
@@ -706,4 +721,58 @@ fork {
 	(thisThread.clock.beats - start).debug("Stopped after beats");
 };
 )
+
+// clRhythmGen test -- this approach does NOT work in the main lib as yet
+a = PbindProxy(
+	#[\degree, \dur], Ptuple([
+		Pn(Pseries(0, 1, 8), inf),
+		Pwhite(1, 4, inf) * 0.25
+	])
+);
+b = a.asStream;
+
+b.next(())
+
+a.asCompileString;
+
+a.set(#[\degree, \dur], #[0, 1]);
+
+a.asCompileString;
+
+
+// test arrayed main patterns
+(
+BP(\k).free;
+PR(\abstractLiveCode).chuck(BP(\k), nil, (
+	event: (
+		parent: (
+			play: { Event.current.postln }
+		)
+	),
+	defaultParm: \test,
+	parmMap: (
+		test: (
+			$a: 1,
+			$b: 2
+		),
+		alias: (
+			alias: \xyz,
+			$a: 1,
+			$b: [2, 3]
+		),
+		array: (
+			alias: #[bufnum, rate],
+			$a: [0, 1],
+			$b: [1, 2]
+		),
+		pitch: (isPitch: true)
+	)
+));
+)
+
+a = PR(\clPatternSet).copy;
+a.process("k = \"ab\"").postln; "";
+a.process("k..pitch = \"1  3+\"").postln; "";
+a.process("k..alias = \"ab  \"").postln; "";
+a.process("k..array = \"a| b\"").postln; "";
 
