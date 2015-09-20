@@ -641,3 +641,69 @@ e = BP(\k).eventStream.next(BP(\k).event.copy);
 "Pstep(Pseq(List[ $o, $o, $o, $ , $h, $ , $ , $h, $ , $u, $ , $u ], 1), Pseq([ 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.5, 0.5, 0.5, 0.5 ], 1), 1)"
 
 /bpf(free);
+
+
+// generator tests
+(
+"preprocessor-generators.scd".resolveRelative.loadPath;
+
+{ |items| Prand(items, inf) } => Func(\rand);
+{ |items| Pxrand(items, inf) } => Func(\xrand);
+{ (Pwhite(1, 4, inf) * 0.25).trace(prefix: "rhythm: ") } => Func(\rhythm);
+)
+
+a = PR(\clGen).copy.putAll((args: (items: "abcde")));
+
+b = a.asStream;
+b.next;
+
+// oh ok, this works as expected!
+(
+fork {
+	var stream = Pstep(
+		Pseries(0, 1, inf),
+		Pn(1, 4)
+	).asStream,
+	next, start = thisThread.clock.beats;
+	while { (next = stream.next).notNil } {
+		next.postln;
+		1.0.wait;
+	};
+	(thisThread.clock.beats - start).debug("Stopped after beats");
+};
+)
+
+(
+a = PR(\clStepGen).copy.putAll((
+	valueGen: PR(\clGen).copy.putAll((dur: 2, args: (items: "abcde"))),
+	rhythmGen: PR(\clGen).copy.putAll((dur: 2, func: \rhythm))
+));
+
+fork {
+	var stream = a.asStream;
+	var next, start = thisThread.clock.beats;
+	while { (next = stream.next((test: true))).notNil } {
+		[next, thisThread.clock.beats - start].postln;
+		0.25.wait;
+	};
+	(thisThread.clock.beats - start).debug("Stopped after beats");
+};
+)
+
+(
+a = PR(\clRhythmGen).copy.putAll((
+	valueGen: PR(\clGen).copy.putAll((func: \xrand, args: (items: "abcde"))),
+	rhythmGen: PR(\clGen).copy.putAll((func: \rhythm))
+));
+
+fork {
+	var stream = a.asStream;
+	var next, start = thisThread.clock.beats;
+	while { (next = stream.next((test: true))).notNil } {
+		[next, thisThread.clock.beats - start].postln;
+		next[1].wait;
+	};
+	(thisThread.clock.beats - start).debug("Stopped after beats");
+};
+)
+
