@@ -767,7 +767,8 @@ PR(\abstractLiveCode).chuck(BP(\k), nil, (
 	parmMap: (
 		test: (
 			$a: 1,
-			$b: 2
+			$b: 2,
+			rest: -100
 		),
 		alias: (
 			alias: \xyz,
@@ -790,3 +791,10 @@ a.process("k..pitch = \"1  3+\"").postln; "";
 a.process("k..alias = \"ab  \"").postln; "";
 a.process("k..array = \"a| b\"").postln; "";
 
+a.process("k = \"  ab\"").postln; "";
+
+/k = "ab";
+/k..pitch = " 12 ";
+
+/k+
+/k-

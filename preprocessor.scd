@@ -540,11 +540,7 @@ Proto {
 				~clClass, ~objKey.asCompileString, ~parm
 			).warn;
 			deltas = [Rest(~beatsPerBar)];
-			levels = ~valueForParm.(\rest, ~clClass.new(~objKey), ~parm) ?? { 1 };
-			if(~isPitch and: { levels.isKindOf(Association) }) {
-				levels = levels.key;
-			};
-			levels = levels.asArray;
+			levels = #[rest];
 			legatos = [1];
 		} {
 			deltas = (times ++ ~beatsPerBar).differentiate;
@@ -552,8 +548,8 @@ Proto {
 				deltas = deltas.drop(1);
 			} {
 				deltas[0] = Rest(times[0]);
-				levels = levels.insert(0, levels[0]);
-				legatos = legatos.insert(0, legatos[0]);
+				levels = levels.insert(0, \rest);
+				legatos = legatos.insert(0, 0.8);
 			};
 			legatos = legatos.collect { |lg, i|
 				if(lg == 0.4) { min(0.4, 0.15 / deltas[i].value) } { lg }
@@ -1917,12 +1913,21 @@ Proto {
 	};
 
 	~valueForParm = { |event, parm|
-		var dict;
+		var dict, result;
 		if(parm == \dur or: { parm == \legato or: { ~parmIsPitch.(parm) } }) {
-			event
+			if(event == \rest) {
+				~parmMap[parm][\rest] ?? { 0 }
+			} {
+				event
+			}
 		} {
 			dict = ~parmMap[parm];
-			if(dict.notNil) { dict[event] };  // else nil
+			result = if(dict.notNil) { dict[event] };
+			if(event == \rest) {
+				Rest(result ?? { 0 })
+			} {
+				result  // nil if not specified
+			};
 		};
 	};
 	~parmIsPitch = { |parm|
