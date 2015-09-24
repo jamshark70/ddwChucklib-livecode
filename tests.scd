@@ -801,8 +801,8 @@ a.process("k = \"  ab\"").postln; "";
 
 
 // isolated tests of parseGenerator
-f = { |stream|
-	a = PR(\clPatternSet).copy;
+f = { |stream, isPitch(false)|
+	a = PR(\clPatternSet).copy.put(\isPitch, isPitch);
 	stream.next;
 	a.parseGenerator(stream);
 };
@@ -823,3 +823,7 @@ x.args[0][3].listVars;
 
 // un-quoted strings not handled yet
 x = f.(CollStream("\\rand(\"abc\\shuf(\"xyz\", 10)de\")"));
+
+// pitch?
+x = f.(CollStream("\\rand(\"1,2_3.4'\")"), isPitch: true);
+x.listVars;

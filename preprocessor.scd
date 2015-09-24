@@ -499,7 +499,7 @@ Proto {
 	// returns generator object
 	~parseGenerator = { |stream|
 		var /*genObj,*/ name = String.new,
-		argList, inArgList = false, args = Array.new, ch;
+		argList, inArgList = false, args = Array.new, pitchStr, ch;
 		// assumes stream has already gotten \
 		while { (ch = stream.next).notNil and: { ch.isAlphaNum or: { ch == $_ } } } {
 			name = name.add(ch);
@@ -527,9 +527,19 @@ Proto {
 				};
 			}
 			{ inArgList } {
-				if(ch == $\\) {
+				case
+				{ ~isPitch and: { ch.isDecDigit } } {
+					pitchStr = String.with(ch);
+					while {
+						(ch = stream.next).notNil and: {  "+-',~_.".includes(ch) }
+					} { pitchStr = pitchStr.add(ch) };
+					argList = argList.add(pitchStr);
+					stream.pos = stream.pos - 1;
+				}
+				{ ch == $\\ } {
 					argList = argList.add(~parseGenerator.(stream));
-				} {
+				}
+				{
 					argList = argList.add(ch);
 				};
 			}
