@@ -797,4 +797,29 @@ a.process("k = \"  ab\"").postln; "";
 /k..pitch = " 12 ";
 
 /k+
-/k-
+/k-;
+
+
+// isolated tests of parseGenerator
+f = { |stream|
+	a = PR(\clPatternSet).copy;
+	stream.next;
+	a.parseGenerator(stream);
+};
+
+x = f.(CollStream("\\rand()"));
+x.listVars;
+
+x = f.(CollStream("\\rand(\"abcde\""));
+x.listVars;
+
+x = f.(CollStream("\\rand(\"abcde\")"));
+x.listVars;
+
+// holy mother of... that actually parsed correctly!
+x = f.(CollStream("\\rand(\"abc\\shuf(\"xyz\")de\")"));
+x.listVars;
+x.args[0][3].listVars;
+
+// un-quoted strings not handled yet
+x = f.(CollStream("\\rand(\"abc\\shuf(\"xyz\", 10)de\")"));

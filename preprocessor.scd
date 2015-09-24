@@ -496,6 +496,58 @@ Proto {
 		result
 	};
 
+	// returns generator object
+	~parseGenerator = { |stream|
+		var /*genObj,*/ name = String.new, argList, inArgList = false, args = Array.new, ch;
+		// assumes stream has already gotten \
+		while { (ch = stream.next).notNil and: { ch.isAlphaNum or: { ch == $_ } } } {
+			name = name.add(ch);
+		};
+		while { ch.notNil and: { ch.isSpace } } { ch = stream.next };  // skip spaces
+		if(ch != $() {
+			Error("Generator '%' has no argument list".format(name)).throw;
+		};
+		while { ch.notNil and: { ch != $) } } {
+			ch = stream.next;
+			case
+			{ ch == $" } {
+				if(inArgList) {  // beginning an arg string
+					inArgList = false;
+					while { (ch = stream.next).notNil and: { ch.isSpace } };
+					if(",)".includes(ch)) {
+						args = args.add(argList);
+						inArgList = false;
+					} {
+						Error("Generator '%' bad argument list syntax".format(name)).throw;
+					};
+				} {
+					argList = Array.new;
+					inArgList = true;
+				};
+			}
+			{ inArgList } {
+				if(ch == $\\) {
+					argList = argList.add(~parseGenerator.(stream));
+				} {
+					argList = argList.add(ch);
+				};
+			}
+			{ ch == $, } {
+				while { (ch = stream.next).notNil and: { ch.isSpace } };
+			}
+		};
+		if(ch != $)) {
+			Error("Generator '%' doesn't close its parentheses".format(name)).throw;
+		};
+		// LATER: call parseGenerator recursively to get rhythm and/or legato generator
+		// LATER: separate PR() for every generator type
+		PR(\clGen).copy.putAll((
+			func: name.asSymbol,
+			bpKey: ~objKey,
+			args: args
+		));
+	};
+
 	// matchOverride needs refactoring
 	~parseBeatsPerBar = { |code, pat, matchOverride|
 		var obj = ~clClass.new(~objKey),
