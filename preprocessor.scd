@@ -498,7 +498,8 @@ Proto {
 
 	// returns generator object
 	~parseGenerator = { |stream|
-		var /*genObj,*/ name = String.new, argList, inArgList = false, args = Array.new, ch;
+		var /*genObj,*/ name = String.new,
+		argList, inArgList = false, args = Array.new, ch;
 		// assumes stream has already gotten \
 		while { (ch = stream.next).notNil and: { ch.isAlphaNum or: { ch == $_ } } } {
 			name = name.add(ch);
@@ -507,7 +508,7 @@ Proto {
 		if(ch != $() {
 			Error("Generator '%' has no argument list".format(name)).throw;
 		};
-		while { ch.notNil and: { ch != $) } } {
+		while { ch.notNil and: { inArgList or: { ch != $) } } } {
 			ch = stream.next;
 			case
 			{ ch == $" } {
@@ -532,9 +533,21 @@ Proto {
 					argList = argList.add(ch);
 				};
 			}
-			{ ch == $, } {
-				while { (ch = stream.next).notNil and: { ch.isSpace } };
+			{ ",)".includes(ch) } {
+				if(argList.isKindOf(String)) {
+					args = args.add(argList.interpret);
+					argList = nil;
+				};
+				if(ch != $)) {
+					while { (ch = stream.next).notNil and: { ch.isSpace } }
+				};
 			}
+			{   // default case
+				if(argList.isKindOf(String).not) {
+					argList = String.new;
+				};
+				argList = argList.add(ch);
+			};
 		};
 		if(ch != $)) {
 			Error("Generator '%' doesn't close its parentheses".format(name)).throw;
