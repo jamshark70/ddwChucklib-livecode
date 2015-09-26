@@ -11,7 +11,7 @@ protect {
 		// i.e., avoid creating a PR "subclass" for every generator func
 		~func = \rand;
 		~bpKey = nil;  // supply to 'use' this environment while inside the pattern
-		~args = ();
+		~args = nil;   // override with an array
 
 		// instance should override
 		~dur = {
@@ -47,9 +47,9 @@ protect {
 			func = ~func;
 			// func should return last inval
 			if(runInEnvir.notNil) {
-				runInEnvir.use { Func(func).v.valueWithEnvir(args).embedInStream(inval) }
+				runInEnvir.use { Func(func).v.valueArray(args).embedInStream(inval) }
 			} {
-				Func(func).v.valueWithEnvir(args).embedInStream(inval)
+				Func(func).v.valueArray(args).embedInStream(inval)
 			};
 		};
 		~asStream = {
