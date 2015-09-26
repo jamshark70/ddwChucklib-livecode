@@ -824,6 +824,21 @@ x.args[0][3].listVars;
 // un-quoted strings not handled yet
 x = f.(CollStream("\\rand(\"abc\\shuf(\"xyz\", 10)de\")"));
 
+x.args[0][3].args.asCompileString;
+
 // pitch?
 x = f.(CollStream("\\rand(\"1,2_3.4'\")"), isPitch: true);
 x.listVars;
+
+
+// mix with others?
+f = { |string, isPitch(false)|
+	a = PR(\clPatternSet).copy.put(\isPitch, isPitch);
+	string.next;
+	a.divideEvents(string);
+};
+
+x = f.("abc");
+
+x = f.("ab\\rand(\"abcd\")c");
+x[2].listVars;

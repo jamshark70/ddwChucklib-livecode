@@ -480,7 +480,11 @@ Proto {
 		result = Array.new;
 		// seg.asCompileString.debug(">> divideEvents");
 		while { (ch = stream.next).notNil } {
-			if(~isPitch and: { ch.isDecDigit }) {
+			case
+			{ ch == $\\ } {
+				result = result.add(~parseGenerator.(stream));
+			}
+			{ ~isPitch and: { ch.isDecDigit } } {
 				// ~isPitch = true;
 				str = String.with(ch);
 				while { (ch = stream.next).notNil and: { "+-',~_.".includes(ch) } } {
@@ -488,7 +492,8 @@ Proto {
 				};
 				result = result.add(str);
 				if(ch.notNil) { stream.pos = stream.pos - 1 };
-			} {
+			}
+			{
 				result = result.add(ch);
 			};
 		};
