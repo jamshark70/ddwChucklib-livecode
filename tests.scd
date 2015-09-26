@@ -816,10 +816,26 @@ x.listVars;
 x = f.(CollStream("\\rand(\"abcde\")"));
 x.listVars;
 
+x.asPatternString;
+a.asPatternString;
+
+y = PR('clRhythmGen').copy.putAll((valueGen: PR('clGen').copy.putAll((func: 'xrand', args: ( 'items': "abcde" ))), rhythmGen: PR('clGen').copy.putAll((func: 'rhythm'))));
+
+y = PR('clGen').copy.putAll((func: 'rand', args: [[$a, $b, $c, PR('clGen').copy.putAll((func: 'shuf', args: [[$x, $y, $z]])), $d, $e]]));
+
+PR('clGen').v.listVars;
+
+y.args[0][3].listVars
+
+x.tryPerform(\isClGen);
+
 // holy mother of... that actually parsed correctly!
 x = f.(CollStream("\\rand(\"abc\\shuf(\"xyz\")de\")"));
 x.listVars;
 x.args[0][3].listVars;
+
+x.tryPerform(\isClGen);
+x.args[0][3].tryPerform(\isClGen);
 
 // un-quoted strings not handled yet
 x = f.(CollStream("\\rand(\"abc\\shuf(\"xyz\", 10)de\")"));
@@ -842,3 +858,19 @@ x = f.("abc");
 
 x = f.("ab\\rand(\"abcd\")c");
 x[2].listVars;
+
+// test Pfintime
+a = Pbind(
+	\degree, Pfintime(2.0, Pseries(0, 1, inf)),
+	\dur, 0.25
+).play;
+
+a = Pn(
+	Pbind(
+		\degree, Pfintime(2.0, Pseries(0, 1, 5)),
+		\dur, 0.25
+	),
+	inf
+).play;
+
+a.stop;

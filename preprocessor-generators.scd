@@ -56,10 +56,56 @@ protect {
 			Routine { |inval| ~embedInStream.(inval) }
 		};
 		~canEmbed = true;  // do not override!
-	}, parentKeys: #[canEmbed]) => PR(\clGen);
+
+		// code generation
+		~protoID = \clGen;
+		~isClGen = true;
+		~patternStringKeys = #[func, bpKey, args];
+		~asPatternString = { |stream(CollStream.new)|
+			var needComma = false, obj;
+			stream << "PR(" <<< ~protoID << ").copy.putAll((";
+			~patternStringKeys.do { |key|
+				obj = key.envirGet;
+				if(obj.notNil) {
+					if(needComma) { stream << ", " };
+					stream << key << ": ";
+					~objectToStream.(obj, stream);
+					needComma = true;
+				};
+			};
+			stream << "))";
+			stream.collection
+		};
+		~objectToStream = { |obj, stream|
+			block { |break|
+				~patternStringFuncs.do { |pair|
+					if(pair.key.value(obj)) {
+						break.(pair.value.value(obj, stream));
+					};
+				};
+			};
+		};
+		~patternStringFuncs = [
+			{ |obj| obj.tryPerform(\isClGen) ? false } -> { |obj, stream|
+				obj.asPatternString(stream);
+			},
+			{ |obj| obj.isSequenceableCollection } -> { |obj, stream|
+				if(obj.isMemberOf(Array).not) {
+					stream << obj.class.name;
+				};
+				stream << "[";
+				obj.do { |item, i|
+					if(i > 0) { stream << ", " };
+					~objectToStream.(item, stream);
+				};
+				stream << "]";
+			},
+			{ true } -> { |obj, stream| stream <<< obj }
+		];
+	}, parentKeys: #[canEmbed, protoID, isClGen, patternStringKeys, patternStringFuncs]) => PR(\clGen);
 
 	// non-default parameter with rhythm generator: Use Pstep
-	PR(\clGen).clone {
+	PR(\clGen).clone({
 		~valueGen = 0;
 		~rhythmGen = 1;
 
@@ -75,13 +121,18 @@ protect {
 				rStream
 			};
 		};
-	} => PR(\clStepGen);
+
+		~protoID = \clStepGen;
+		~patternStringKeys = #[valueGen, rhythmGen];
+	}, parentKeys: #[protoID, patternStringKeys]) => PR(\clStepGen);
 
 	// default parm must expose 'dur' separately: Use Ptuple
-	PR(\clStepGen).clone {
+	PR(\clStepGen).clone({
 		~embedInStream = { |inval|
 			Ptuple([~valueGen.asStream, ~makeRhythmStream.()], 1).embedInStream(inval)
 		};
-	} => PR(\clRhythmGen);
+
+		~protoID = \clRhythmGen;
+	}, parentKeys: #[protoID, patternStringKeys]) => PR(\clRhythmGen);
 
 } { AbstractChuckArray.defaultSubType = saveType };
