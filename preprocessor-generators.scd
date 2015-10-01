@@ -14,38 +14,13 @@ protect {
 		~args = nil;   // override with an array
 		~parm = \value;
 
-		// instance should override
-		~dur = {
-			thisThread.clock.tryPerform(\beatsPerBar) ?? { TempoClock.beatsPerBar }
-		};
-		~tolerance = 0.001;
+		// optional argument 'bp' to access process variables
+		~asPattern = { Pseq(~args[0], inf) };
 
-		// time constraint must be implemented by a separate Routine
 		~embedInStream = { |inval|
 			var dur = ~dur.(),
 			startTime = thisThread.clock.beats,
-			next, pitch, bpEnvir, rout;
-			if(BP.exists(~bpKey)) {  // this also avoids 'nil'
-				bpEnvir = BP(~bpKey).v;
-			};
-			if(dur == inf) {
-				// optimize: no time constraint, just embed
-				~embedIt.(inval, bpEnvir);
-			} {
-				// 'rout' is analagous to "pattern.asStream" in, say, Pfin
-				rout = Routine { |inval| ~embedIt.(inval, bpEnvir) };
-				while { (thisThread.clock.beats - startTime).round(~tolerance) < dur
-					and: { (next = rout.next(inval)).notNil }
-				} {
-					inval = next.yield;
-				};
-			}
-		};
-		~embedIt = { |inval, runInEnvir|
-			// copy: don't corrupt () in parent event, if it wasn't overridden
-			// need local vars because we might use ~args and ~func in a different envir
-			var args = ~args/*.copy.proto_((gen: currentEnvironment))*/,
-			func = ~func,
+			next, pitch, bp, rout,
 			convertPitch = if(~isPitch.() ?? { false }) {
 				{ |next|
 					var pitch;
@@ -61,14 +36,11 @@ protect {
 			} {
 				{ |next| next }
 			};
-			// func should return last inval
-			if(runInEnvir.notNil) {
-				runInEnvir.use {
-					Func(func).v.valueArray(args).collect(convertPitch).embedInStream(inval)
-				}
-			} {
-				Func(func).v.valueArray(args).collect(convertPitch).embedInStream(inval)
+			if(BP.exists(~bpKey)) {  // this also avoids 'nil'
+				bp = BP(~bpKey);
 			};
+
+			~asPattern.(bp).collect(convertPitch).embedInStream(inval);
 		};
 		~asStream = {
 			Routine { |inval| ~embedInStream.(inval) }
@@ -133,16 +105,7 @@ protect {
 		~rhythmGen = 1;
 
 		~embedInStream = { |inval|
-			Pstep(~valueGen.asStream, ~makeRhythmStream.(), 1).embedInStream(inval)
-		};
-		~makeRhythmStream = {
-			var dur = min(~valueGen.dur, ~rhythmGen.dur),
-			rStream = ~rhythmGen.asStream;
-			if(dur != inf) {
-				Pconst(dur, rStream, ~tolerance).asStream;
-			} {
-				rStream
-			};
+			Pstep(~valueGen.asStream, ~rhythmGen.asStream, 1).embedInStream(inval)
 		};
 
 		~protoID = \clStepGen;
@@ -159,7 +122,8 @@ protect {
 			} {
 				{ |next| next }
 			};
-			Ptuple([~valueGen.asStream, ~makeRhythmStream.()], 1).embedInStream(inval)
+			Ptuple([~valueGen.asStream, ~rhythmGen.asStream], 1)
+			.collect(convertPitch).embedInStream(inval)
 		};
 
 		~protoID = \clRhythmGen;
