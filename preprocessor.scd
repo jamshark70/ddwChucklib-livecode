@@ -239,6 +239,7 @@ Proto {
 	~clClass = BP;
 	~isMain = false;
 	~isPitch = false;
+	~hasGen = false;
 	// note: ~parm will be set to nil for composite patterns
 
 	~process = { |code|
@@ -569,9 +570,12 @@ Proto {
 		};
 		// LATER: call parseGenerator recursively to get rhythm and/or legato generator
 		// LATER: separate PR() for every generator type
+		~hasGen = true;
 		PR(\clGen).copy.putAll((
 			func: name.asSymbol,
 			bpKey: ~objKey,
+			isPitch: ~isPitch,
+			parm: ~parm,
 			args: args
 		));
 	};

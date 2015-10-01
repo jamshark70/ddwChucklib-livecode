@@ -12,6 +12,7 @@ protect {
 		~func = \rand;
 		~bpKey = nil;  // supply to 'use' this environment while inside the pattern
 		~args = nil;   // override with an array
+		~parm = \value;
 
 		// instance should override
 		~dur = {
@@ -23,7 +24,7 @@ protect {
 		~embedInStream = { |inval|
 			var dur = ~dur.(),
 			startTime = thisThread.clock.beats,
-			next, bpEnvir, rout;
+			next, pitch, bpEnvir, rout;
 			if(BP.exists(~bpKey)) {  // this also avoids 'nil'
 				bpEnvir = BP(~bpKey).v;
 			};
@@ -43,13 +44,30 @@ protect {
 		~embedIt = { |inval, runInEnvir|
 			// copy: don't corrupt () in parent event, if it wasn't overridden
 			// need local vars because we might use ~args and ~func in a different envir
-			var args = ~args.copy.proto_((gen: currentEnvironment)),
-			func = ~func;
+			var args = ~args/*.copy.proto_((gen: currentEnvironment))*/,
+			func = ~func,
+			convertPitch = if(~isPitch.() ?? { false }) {
+				{ |next|
+					var pitch;
+					pitch = ~decodePitch.(next);
+					if(pitch.notNil) {
+						[pitch.key, pitch.value]  // [degree, legato]
+					} {
+						"Generator produced pitch string '%', could not decode"
+						.format(next).warn;
+						nil
+					};
+				}
+			} {
+				{ |next| next }
+			};
 			// func should return last inval
 			if(runInEnvir.notNil) {
-				runInEnvir.use { Func(func).v.valueArray(args).embedInStream(inval) }
+				runInEnvir.use {
+					Func(func).v.valueArray(args).collect(convertPitch).embedInStream(inval)
+				}
 			} {
-				Func(func).v.valueArray(args).embedInStream(inval)
+				Func(func).v.valueArray(args).collect(convertPitch).embedInStream(inval)
 			};
 		};
 		~asStream = {
@@ -57,10 +75,14 @@ protect {
 		};
 		~canEmbed = true;  // do not override!
 
+		~yieldsKeys = {
+			if(~isPitch.()) { [~parm, \legato] } { ~parm }
+		};
+
 		// code generation
 		~protoID = \clGen;
 		~isClGen = true;
-		~patternStringKeys = #[func, bpKey, args];
+		~patternStringKeys = #[func, bpKey, args, dur, isPitch, parm];
 		~asPatternString = { |stream(CollStream.new)|
 			var needComma = false, obj;
 			stream << "PR(" <<< ~protoID << ").copy.putAll((";
@@ -102,7 +124,8 @@ protect {
 			},
 			{ true } -> { |obj, stream| stream <<< obj }
 		];
-	}, parentKeys: #[canEmbed, protoID, isClGen, patternStringKeys, patternStringFuncs]) => PR(\clGen);
+	}, parentKeys: #[canEmbed, protoID, isClGen, patternStringKeys, patternStringFuncs])
+	.import((clPatternSet: #[decodePitch])) => PR(\clGen);
 
 	// non-default parameter with rhythm generator: Use Pstep
 	PR(\clGen).clone({
@@ -123,16 +146,27 @@ protect {
 		};
 
 		~protoID = \clStepGen;
-		~patternStringKeys = #[valueGen, rhythmGen];
+		~patternStringKeys = #[valueGen, rhythmGen, dur, isPitch, parm];
 	}, parentKeys: #[protoID, patternStringKeys]) => PR(\clStepGen);
 
 	// default parm must expose 'dur' separately: Use Ptuple
 	PR(\clStepGen).clone({
 		~embedInStream = { |inval|
+			var convertPitch = if(~isPitch.()) {
+				// if isPitch, Ptuple yields [[pitch, legato], dur]
+				// but it's not necessarily safe to just "flat"ten it
+				{ |next| next[0] ++ next[1] }
+			} {
+				{ |next| next }
+			};
 			Ptuple([~valueGen.asStream, ~makeRhythmStream.()], 1).embedInStream(inval)
 		};
 
 		~protoID = \clRhythmGen;
+
+		~yieldsKeys = {
+			if(~isPitch.()) { [~parm, \legato, \dur] } { [~parm, \dur] };
+		};
 	}, parentKeys: #[protoID, patternStringKeys]) => PR(\clRhythmGen);
 
 } { AbstractChuckArray.defaultSubType = saveType };

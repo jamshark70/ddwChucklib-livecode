@@ -844,8 +844,16 @@ x.args[0][3].args.asCompileString;
 
 // pitch?
 x = f.(CollStream("\\rand(\"1,2_3.4'\")"), isPitch: true);
+x.listMethods;
 x.listVars;
+x.isPitch;
+x.yieldsKeys;
+x.args.asCompileString;
+x.args[0].collect { |str| x.decodePitch(str) };
+x.dur = inf;
 
+r = x.asStream;
+r.next(());
 
 // mix with others?
 f = { |string, isPitch(false)|
@@ -874,3 +882,33 @@ a = Pn(
 ).play;
 
 a.stop;
+
+
+// test patternWith(out)Dividers
+// use BP(\k) above
+a = PR(\clPatternSet).copy;
+a.putAll((clClass: BP, objKey: \k));
+a.patternWithoutDividers(" = \"abcd\"");
+#[levels, times, deltas].do { |key| a[key].debug(key) }; ""
+
+f = { |code|
+	a = PR(\clPatternSet).copy;
+	a.putAll((clClass: BP, objKey: \k));
+	a.patternWithoutDividers(code);
+	#[levels, times, deltas].do { |key| a[key].debug(key) }; ""
+};
+
+f.(" = \"\\rand()\"");  // OK
+f.(" = \" \\rand()\"");  // OK
+f.(" = \" \\rand() b\"");  // OK
+
+f = { |code|
+	a = PR(\clPatternSet).copy;
+	a.putAll((clClass: BP, objKey: \k));
+	a.patternWithDividers(code);
+	#[levels, times, deltas].do { |key| a[key].debug(key) }; ""
+};
+
+f.(" = \"|\\rand()\"");  // OK
+f.(" = \" \\rand()|| a|\"");  // OK
+f.(" = \" \\rand() b\"");  // OK
