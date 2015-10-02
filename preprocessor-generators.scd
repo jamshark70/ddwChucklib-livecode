@@ -9,13 +9,10 @@ protect {
 	Proto({
 		// use Func collection for generator "plugins"
 		// i.e., avoid creating a PR "subclass" for every generator func
-		~func = \rand;
+		// ~func = \rand;
 		~bpKey = nil;  // supply to 'use' this environment while inside the pattern
 		~args = nil;   // override with an array
 		~parm = \value;
-
-		// optional argument 'bp' to access process variables
-		~asPattern = { Pseq(~args[0], inf) };
 
 		~convertPitch = { |next|
 			var pitch;
@@ -100,6 +97,26 @@ protect {
 	}, parentKeys: #[canEmbed, protoID, isClGen, patternStringKeys, patternStringFuncs])
 	.import((clPatternSet: #[decodePitch])) => PR(\clGen);
 
+	PR(\clGen).clone {
+		// optional argument 'bp' to access process variables
+		~asPattern = { Pseq(~args[0], inf) };
+	} => PR(\clGenSeq);
+
+	PR(\clGen).clone {
+		~asPattern = { Prand(~args[0], inf) };
+	} => PR(\clGenRand);
+
+	PR(\clGen).clone {
+		~asPattern = { Pxrand(~args[0], inf) };
+	} => PR(\clGenXrand);
+
+	PR(\clGen).clone {
+		~asPattern = {
+			var weights = ~args[1..].normalizeSum;
+			Pwrand((1 .. weights.size), weights, inf) * ~args[0]
+		};
+	} => PR(\clGenRandRhy);
+
 	// non-default parameter with rhythm generator: Use Pstep
 	PR(\clGen).clone({
 		~valueGen = 0;
@@ -132,4 +149,7 @@ protect {
 		};
 	}, parentKeys: #[protoID, patternStringKeys]) => PR(\clRhythmGen);
 
+	PR.allOfType(\clGenerator).do { |pr|
+		pr[\protoID] = pr.collIndex;
+	};
 } { AbstractChuckArray.defaultSubType = saveType };

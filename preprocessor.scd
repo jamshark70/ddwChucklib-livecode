@@ -532,7 +532,7 @@ Proto {
 	// returns generator object
 	~parseGenerator = { |stream|
 		var /*genObj,*/ name = String.new,
-		argList, inArgList = false, args = Array.new, pitchStr, ch;
+		argList, inArgList = false, args = Array.new, pitchStr, ch, gen, rhythmGen;
 		// assumes stream has already gotten \
 		while { (ch = stream.next).notNil and: { ch.isAlphaNum or: { ch == $_ } } } {
 			name = name.add(ch);
@@ -585,6 +585,10 @@ Proto {
 					while { (ch = stream.next).notNil and: { ch.isSpace } }
 				};
 			}
+			{ ch == $: } {
+				// \rand("abc":\rhy())
+				rhythmGen = ~parseGenerator.(stream);
+			}
 			{   // default case
 				if(argList.isKindOf(String).not) {
 					argList = String.new;
@@ -598,13 +602,22 @@ Proto {
 		// LATER: call parseGenerator recursively to get rhythm and/or legato generator
 		// LATER: separate PR() for every generator type
 		~hasGen = true;
-		PR(\clGen).copy.putAll((
-			func: name.asSymbol,
+		gen = PR(("clGen" ++ name.copy.put(0, name[0].toUpper)).asSymbol).copy.putAll((
+			// func: name.asSymbol,
 			bpKey: ~objKey,
 			isPitch: ~isPitch,
 			parm: ~parm,
 			args: args
 		));
+		if(rhythmGen.notNil) {
+			if(~isMain) {
+				PR(\clRhythmGen).copy.putAll((valueGen: gen, rhythmGen: rhythmGen))
+			} {
+				PR(\clStepGen).copy.putAll((valueGen: gen, rhythmGen: rhythmGen))
+			}
+		} {
+			gen
+		};
 	};
 
 	// matchOverride needs refactoring
