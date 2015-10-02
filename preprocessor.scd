@@ -548,9 +548,12 @@ Proto {
 				if(inArgList) {  // beginning an arg string
 					inArgList = false;
 					while { (ch = stream.next).notNil and: { ch.isSpace } };
-					if(",)".includes(ch)) {
+					if(":,)".includes(ch)) {
 						args = args.add(argList);
 						inArgList = false;
+						if(ch == $:) {
+							stream.pos = stream.pos - 1;
+						};
 					} {
 						Error("Generator '%' bad argument list syntax".format(name)).throw;
 					};
@@ -847,9 +850,13 @@ Proto {
 	};
 	~splitGenerators = {
 		var sizes;
-		~levels = ~levels.separate { |a, b|
-			(a.tryPerform(\isClGen) ?? { false })
-			or: { b.tryPerform(\isClGen) ?? { false } }
+		if(~levels.size == 1) {
+			~levels = [~levels]
+		} {
+			~levels = ~levels.separate { |a, b|
+				(a.tryPerform(\isClGen) ?? { false })
+				or: { b.tryPerform(\isClGen) ?? { false } }
+			};
 		};
 		if(~isMain) {
 			if(~isPitch) {
