@@ -791,6 +791,8 @@ a.process("k..pitch = \"1  3+\"").postln; "";
 a.process("k..alias = \"ab  \"").postln; "";
 a.process("k..array = \"a| b\"").postln; "";
 
+a.process("k.x*2 = \"ab\"").postln; "";
+
 a.process("k = \"  ab\"").postln; "";
 
 /k = "ab";
@@ -908,7 +910,7 @@ a.deltas;
 
 f = { |code|
 	a = PR(\clPatternSet).copy;
-	a.putAll((clClass: BP, objKey: \k));
+	a.putAll((clClass: BP, objKey: \k, parm: \test));
 	a.patternWithDividers(code);
 	#[levels, times, deltas].do { |key| a[key].debug(key) }; ""
 };
@@ -916,6 +918,10 @@ f = { |code|
 f.(" = \"|\\rand()\"");  // OK
 f.(" = \" \\rand()|| a|bc\"");  // OK
 f.(" = \" \\rand() b\"");  // OK
-f.(" = \" \\rand()|| \\rand2()|\"");  // OK
+f.(" = \" \\rand(\"abc\")|| \\rand2(\"def\")|\"");  // failed in parseGenerators
 
 f.(" = \"ab|cd|e|f\"");
+a.splitGenerators;
+a.buildPatString;
+
+// test refactor -- needs 'k' above

@@ -708,11 +708,7 @@ Proto {
 		var stmt = CollStream.new;
 		if(~parm.notNil) {
 			~splitGenerators.();
-			if(~isMain) {
-				~patString = ~buildSimplePattern.(~levels);
-			} {
-				~patString = ~buildStepPattern.(~levels, ~deltas);
-			};
+			~patString = ~buildPatString.();
 			if(~numToApply.notNil) {
 				~numToApply.do { |i|
 					if(i > 0) { stmt << ";\n" };
@@ -729,6 +725,50 @@ Proto {
 		};
 	};
 
+	~buildPatString = {
+		var str = CollStream.new;
+		if(~levels.size > 1) {
+			str << "Pseq([";
+		};
+		~levels.do { |split, i|
+			if(i > 0) { str << ", " };
+			if(split[0].tryPerform(\isClGen) ?? { false }) {
+				str << "Pfintime(" << ~deltas[i][0] << ", ";
+				split[0].asPatternString(str);
+				str << ")";
+			} {
+				if(~isMain) {
+					if(~isPitch) {
+						// stream, keyArray, patternArray
+						str << "Ptuple(" << [
+							~buildSimplePattern.(split),
+							~buildSimplePattern.(~legatos),
+							~buildSimplePattern.(~deltas)
+						] << ")";
+					} {
+						str << "Ptuple(" << [
+							~buildSimplePattern.(split),
+							~buildSimplePattern.(~deltas)
+						] << ")";
+					}
+				} {
+					if(~isPitch) {
+						str << "Ptuple(" << [
+							~buildStepPattern.(split, ~deltas[i]),
+							~buildStepPattern.(~legatos, ~deltas)
+						] << ")";
+					} {
+						str << ~buildStepPattern.(split, ~deltas[i]);
+					}
+				};
+			};
+		};
+		if(~levels.size > 1) {
+			str << "], 1)";
+		};
+		str.collection
+	};
+
 	~buildOneStatement = { |stream, i|
 		var phrase;
 		if(i.notNil) {
@@ -741,29 +781,12 @@ Proto {
 				~clClass, ~objKey.asCompileString,
 				phrase, ~beatsPerBar
 			);
-			if(~isPitch) {
-				// stream, keyArray, patternArray
-				~buildArrayKeyPat.(stream, phrase, [~parm, \legato, \dur], [
-					~patString, Pseq(~legatos).asCompileString, Pseq(~deltas).asCompileString
-				])
-			} {
-				~buildArrayKeyPat.(stream, phrase, [~parm, \dur], [
-					~patString, Pseq(~deltas).asCompileString
-				])
-			}
-		} {
-			if(~isPitch) {
-				~buildArrayKeyPat.(stream, phrase, [~parm, \legato], [
-					~patString, ~buildStepPattern.(~legatos, ~deltas)
-				])
-			} {
-				stream << "%(%).setPattern(%, %, %, %, %)".format(
-					~clClass, ~objKey.asCompileString,
-					phrase, ~parm.asCompileString,
-					~patString, ~inString.asCompileString, ~quant
-				);
-			}
 		};
+		stream << "%(%).setPattern(%, %, %, %, %)".format(
+			~clClass, ~objKey.asCompileString,
+			phrase, ~yieldsKeys.asCompileString,
+			~patString, ~inString.asCompileString, ~quant
+		);
 		currentEnvironment
 	};
 	~buildArrayKeyPat = { |stream, phrase, keyArray, patStringArray|
@@ -777,7 +800,7 @@ Proto {
 		currentEnvironment
 	};
 	~buildStepPattern = { |levels, deltas|
-		"Pstep(Pseq(%, 1), Pseq(%, 1), 1)".format(levels.asCompileString, deltas.asCompileString).postcs;
+		"Pstep(Pseq(%, 1), Pseq(%, 1), 1)".format(levels.asCompileString, deltas.asCompileString);
 	};
 	~buildSimplePattern = { |levels|
 		"Pseq(%, 1)".format(levels.asCompileString)
@@ -788,14 +811,27 @@ Proto {
 			(a.tryPerform(\isClGen) ?? { false })
 			or: { b.tryPerform(\isClGen) ?? { false } }
 		};
+		if(~isMain) {
+			if(~isPitch) {
+				~yieldsKeys = [~parm, \legato, \dur];
+			} {
+				~yieldsKeys = [~parm, \dur];
+			}
+		} {
+			if(~isPitch) {
+				~yieldsKeys = [~parm, \legato];
+			} {
+				~yieldsKeys = ~parm;
+			}
+		};
 		~levels.do { |split|
 			var yk;
 			split = split[0];
 			if(split.tryPerform(\isClGen) ?? { false }) {
 				yk = split.yieldsKeys;
-				if(~yieldsKeys.isNil) { ~yieldsKeys = yk };
+				// if(~yieldsKeys.isNil) { ~yieldsKeys = yk };
 				if(yk != ~yieldsKeys) {
-					Error("Generators must all return the same shape of output").throw;
+					Error("Generator's output shape must match parm: %".format(~yieldsKeys)).throw;
 				};
 			};
 		};
