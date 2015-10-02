@@ -17,30 +17,31 @@ protect {
 		// optional argument 'bp' to access process variables
 		~asPattern = { Pseq(~args[0], inf) };
 
+		~convertPitch = { |next|
+			var pitch;
+			pitch = ~decodePitch.(next);
+			if(pitch.notNil) {
+				[pitch.key, pitch.value]  // [degree, legato]
+			} {
+				"Generator produced pitch string '%', could not decode"
+				.format(next).warn;
+				nil
+			};
+		};
+
 		~embedInStream = { |inval|
 			var dur = ~dur.(),
 			startTime = thisThread.clock.beats,
-			next, pitch, bp, rout,
-			convertPitch = if(~isPitch.() ?? { false }) {
-				{ |next|
-					var pitch;
-					pitch = ~decodePitch.(next);
-					if(pitch.notNil) {
-						[pitch.key, pitch.value]  // [degree, legato]
-					} {
-						"Generator produced pitch string '%', could not decode"
-						.format(next).warn;
-						nil
-					};
-				}
-			} {
-				{ |next| next }
-			};
+			next, pitch, bp, rout;
 			if(BP.exists(~bpKey)) {  // this also avoids 'nil'
 				bp = BP(~bpKey);
 			};
 
-			~asPattern.(bp).collect(convertPitch).embedInStream(inval);
+			if(~isPitch.()) {
+				~asPattern.(bp).collect(~convertPitch).embedInStream(inval);
+			} {
+				~asPattern.(bp).embedInStream(inval);
+			};
 		};
 		~asStream = {
 			Routine { |inval| ~embedInStream.(inval) }
@@ -112,18 +113,16 @@ protect {
 		~patternStringKeys = #[valueGen, rhythmGen, dur, isPitch, parm];
 	}, parentKeys: #[protoID, patternStringKeys]) => PR(\clStepGen);
 
+	// if isPitch, Ptuple yields [[pitch, legato], dur]
+	// but it's not necessarily safe to just "flat"ten it
+	~convertPitch = { |next| next[0] ++ next[1] };
+
 	// default parm must expose 'dur' separately: Use Ptuple
 	PR(\clStepGen).clone({
 		~embedInStream = { |inval|
-			var convertPitch = if(~isPitch.()) {
-				// if isPitch, Ptuple yields [[pitch, legato], dur]
-				// but it's not necessarily safe to just "flat"ten it
-				{ |next| next[0] ++ next[1] }
-			} {
-				{ |next| next }
-			};
-			Ptuple([~valueGen.asStream, ~rhythmGen.asStream], 1)
-			.collect(convertPitch).embedInStream(inval)
+			var pat = Ptuple([~valueGen.asStream, ~rhythmGen.asStream], 1);
+			if(~isPitch.()) { pat = pat.collect(~convertPitch) };
+			pat.embedInStream(inval)
 		};
 
 		~protoID = \clRhythmGen;
