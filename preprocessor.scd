@@ -742,8 +742,8 @@ Proto {
 			);
 			if(~isPitch) {
 				// stream, keyArray, patternArray
-				~buildArrayKeyPat.(stream, phrase, [~parm, \dur, \legato], [
-					~patString, Pseq(~deltas).asCompileString, Pseq(~legatos).asCompileString
+				~buildArrayKeyPat.(stream, phrase, [~parm, \legato, \dur], [
+					~patString, Pseq(~legatos).asCompileString, Pseq(~deltas).asCompileString
 				])
 			} {
 				~buildArrayKeyPat.(stream, phrase, [~parm, \dur], [
@@ -2012,7 +2012,7 @@ Proto {
 			} {
 				result  // nil if not specified
 			};
-		};
+		}
 	};
 	~parmIsPitch = { |parm|
 		~parmMap[parm].notNil and: { ~parmMap[parm][\isPitch] == true }
