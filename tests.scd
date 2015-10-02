@@ -902,6 +902,10 @@ f.(" = \"\\rand()\"");  // OK
 f.(" = \" \\rand()\"");  // OK
 f.(" = \" \\rand() b\"");  // OK
 
+a.splitGenerators;
+a.levels;
+a.deltas;
+
 f = { |code|
 	a = PR(\clPatternSet).copy;
 	a.putAll((clClass: BP, objKey: \k));
@@ -910,5 +914,8 @@ f = { |code|
 };
 
 f.(" = \"|\\rand()\"");  // OK
-f.(" = \" \\rand()|| a|\"");  // OK
+f.(" = \" \\rand()|| a|bc\"");  // OK
 f.(" = \" \\rand() b\"");  // OK
+f.(" = \" \\rand()|| \\rand2()|\"");  // OK
+
+f.(" = \"ab|cd|e|f\"");

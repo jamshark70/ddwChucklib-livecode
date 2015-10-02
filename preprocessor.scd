@@ -707,6 +707,7 @@ Proto {
 	~buildStatement = {
 		var stmt = CollStream.new;
 		if(~parm.notNil) {
+			~splitGenerators.();
 			if(~isMain) {
 				~patString = ~buildSimplePattern.(~levels);
 			} {
@@ -780,6 +781,29 @@ Proto {
 	};
 	~buildSimplePattern = { |levels|
 		"Pseq(%, 1)".format(levels.asCompileString)
+	};
+	~splitGenerators = {
+		var sizes;
+		~levels = ~levels.separate { |a, b|
+			(a.tryPerform(\isClGen) ?? { false })
+			or: { b.tryPerform(\isClGen) ?? { false } }
+		};
+		~levels.do { |split|
+			var yk;
+			split = split[0];
+			if(split.tryPerform(\isClGen) ?? { false }) {
+				yk = split.yieldsKeys;
+				if(~yieldsKeys.isNil) { ~yieldsKeys = yk };
+				if(yk != ~yieldsKeys) {
+					Error("Generators must all return the same shape of output").throw;
+				};
+			};
+		};
+		sizes = ~levels.collect(_.size);
+		~times = ~times.clumps(sizes);
+		~deltas = ~deltas.clumps(sizes);
+		~legatos = ~legatos.clumps(sizes);
+		currentEnvironment
 	};
 }.import((chucklibLiveCode: #[tokens, replaceRegexpMacros, removeRegexpDups, removeDupIndices]), #[tokens]) => PR(\clPatternSet);
 
