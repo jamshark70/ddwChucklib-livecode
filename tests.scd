@@ -918,7 +918,7 @@ f = { |code|
 f.(" = \"|\\rand()\"");  // OK
 f.(" = \" \\rand()|| a|bc\"");  // OK
 f.(" = \" \\rand() b\"");  // OK
-f.(" = \" \\rand(\"abc\")|| \\rand2(\"def\")|\"");  // failed in parseGenerators
+f.(" = \" \\rand(\"abc\")|| \\rand2(\"def\")|\"");  // OK
 
 f.(" = \"ab|cd|e|f\"");
 a.splitGenerators;

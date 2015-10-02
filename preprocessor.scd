@@ -355,8 +355,8 @@ Proto {
 		if(group.repeats.isNil) { group.repeats = inf };
 		~inString = "\"\"";
 	};
-	~unquoteString = { |str, pos = 0, delimiter = $"|
-		var i = str.indexOf(delimiter), j, escaped = false;
+	~unquoteString = { |str, pos = 0, delimiter = $", ignoreInParens(false)|
+		var i = str.indexOf(delimiter), j, escaped = false, parenCount = 0;
 		if(i.isNil) {
 			str
 		} {
@@ -367,9 +367,36 @@ Proto {
 					escaped or: { str[j] != delimiter }
 				}
 			} {
-				if(str[j] == $\\) { escaped = escaped.not } { escaped = false };
+				switch(str[j])
+				{ $\\ } { escaped = escaped.not }
+				{ $( } {
+					if(ignoreInParens) {
+						parenCount = parenCount + 1;
+						escaped = true;
+					} {
+						escaped = false;
+					};
+				}
+				{ $) } {
+					if(ignoreInParens) {
+						parenCount = parenCount - 1;
+						if(parenCount < 0) {
+							"unquoteString: paren mismatch in '%'".format(str).warn;
+						} {
+							escaped = parenCount > 0;
+						};
+					} {
+						escaped = false;
+					};
+				}
+				{
+					if(ignoreInParens.not or: { parenCount <= 0 }) {
+						escaped = false;
+					};
+				}
+				// if(str[j] == $\\) { escaped = escaped.not } { escaped = false };
 			};
-			if(j - i == 1) {
+			if(j - i <= 1) {
 				String.new  // special case: two adjacent quotes = empty string
 			} {
 				str[i + 1 .. j - 1];
@@ -394,7 +421,7 @@ Proto {
 			Error("clPatternSet: Couldn't find pattern string").throw
 		};
 		pat = pat[0][1];
-		pat = ~unquoteString.(pat).split($|).collectAs(~divideEvents, Array);
+		pat = ~unquoteString.(pat, ignoreInParens: true).split($|).collectAs(~divideEvents, Array);
 		~segments = pat;
 		~parseBeatsPerBar.(code, pat);
 		i = 0;
@@ -434,7 +461,7 @@ Proto {
 		};
 		pat = pat[0][1];
 		// pat = [pat[1 .. pat.size-2].collectAs(~divideEvents, Array)];
-		pat = [~divideEvents.(~unquoteString.(pat))];
+		pat = [~divideEvents.(~unquoteString.(pat, ignoreInParens: true))];
 		~segments = pat;
 		~parseBeatsPerBar.(code, pat, $/);
 		division = ~beatsPerSeg[0] / pat[0].size;
