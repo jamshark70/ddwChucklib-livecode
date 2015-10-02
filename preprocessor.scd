@@ -72,19 +72,18 @@ this.preProcessor = { |code|
 			continue = true;
 			str = str ++ ch;
 			while { continue and: { (ch = code.next).notNil } } {
+				str = str ++ ch;
 				switch(ch)
 				{ $\\ } {
 					escape = escape.not;
 				}
 				{ $\" } {
-					str = str ++ ch;
 					if(escape) {
 						escape = false;
 					} {
 						continue = false;
 					}
 				}
-				{ str = str ++ ch }
 			}
 		}
 		{ ch == $\" } {
