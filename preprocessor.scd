@@ -782,20 +782,20 @@ Proto {
 						// stream, keyArray, patternArray
 						str << "Ptuple(" << [
 							~buildSimplePattern.(split),
-							~buildSimplePattern.(~legatos),
-							~buildSimplePattern.(~deltas)
+							~buildSimplePattern.(~legatos[i]),
+							~buildSimplePattern.(~deltas[i])
 						] << ")";
 					} {
 						str << "Ptuple(" << [
 							~buildSimplePattern.(split),
-							~buildSimplePattern.(~deltas)
+							~buildSimplePattern.(~deltas[i])
 						] << ")";
 					}
 				} {
 					if(~isPitch) {
 						str << "Ptuple(" << [
 							~buildStepPattern.(split, ~deltas[i]),
-							~buildStepPattern.(~legatos, ~deltas)
+							~buildStepPattern.(~legatos[i], ~deltas[i])
 						] << ")";
 					} {
 						str << ~buildStepPattern.(split, ~deltas[i]);
