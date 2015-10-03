@@ -924,4 +924,84 @@ f.(" = \"ab|cd|e|f\"");
 a.splitGenerators;
 a.buildPatString;
 
-// test refactor -- needs 'k' above
+// test the whole ball of wax...
+(
+BP(\x).free;
+PR(\abstractLiveCode).chuck(BP(\x), nil, (
+	defaultParm: \rate,
+	parmMap: (
+		rate: ($5: 1, $4: 0.9, $3: 0.8, $2: 0.7, $1: 0.6,
+			$6: 1.1, $7: 1.2, $8: 1.3, $9: 1.4),
+		test: ($a: 1, $b: 2)
+	),
+	defaults: (
+		instrument: \bufGrainPan,
+		time: 0.15
+	),
+	postDefaults: Pbind(
+		\start, Plazy { Pwhite(0, ~buf.numFrames - (0.15 * ~buf.sampleRate), inf) }
+	),
+	userprep: {
+		~buf = Buffer.readAndQuery(s, Platform.resourceDir +/+ "sounds/a11wlk01.wav");
+		~defaults.put(\bufnum, ~buf);
+	},
+	userfree: {
+		~buf.free;
+	}
+));
+)
+
+/x = "5555";
+/x+;
+/x-;
+
+/x = "\seq("5":randRhy(1, 1))";
+/x = "\seq("5":randRhy(1, 1))";
+a = PR(\chucklibLiveCode).v.instance;
+a.listVars
+a.levels[0][0].listVars
+a.levels[0][0].rhythmGen.listVars  // oh... arglist (1, 1) parses as (1)???
+
+PR(\clPatternSet).copy.unquoteString("\"\\seq\"");
+
+BP(\x).phrases[\main].postcs
+
+b = a.levels[0][0];
+b.valueGen.listVars;
+c = b.valueGen.asStream;
+c.next(());
+
+d = b.rhythmGen.asStream;
+d.next(());
+
+f = { |code|
+	a = PR(\clPatternSet).copy;
+	a.putAll((clClass: BP, objKey: \x, parm: \rate));
+	a.patternWithoutDividers(code);
+	// #[levels, times, deltas].do { |key| a[key].debug(key) }; ""
+	a.splitGenerators;
+	a.buildPatString;
+};
+f.(" = \"\\seq(\"5\":randRhy(1, 1))\"");  // OK
+a.levels[0].listVars
+
+\seq("5":randRhy(1, 1))
+                      ^
+
+/x = "\seq("5":randRhy(1, 1))";
+a = PR(\chucklibLiveCode).v.instance;
+a.patString
+
+f = { |code|
+	a = PR(\clPatternSet).copy;
+	a.putAll((clClass: BP, objKey: \x, parm: \test));
+	a.patternWithoutDividers(code);
+	// #[levels, times, deltas].do { |key| a[key].debug(key) }; ""
+	a.splitGenerators;
+	a.buildPatString;
+};
+f.(" = \"aaaa\"");  // OK
+f.(" = \"a\\rand(\"ab\") a\"");  // OK
+
+a\rand("ab") a
+           ^

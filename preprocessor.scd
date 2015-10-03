@@ -544,7 +544,7 @@ Proto {
 			ch = stream.next;
 			case
 			{ ch == $" } {
-				if(inArgList) {  // beginning an arg string
+				if(inArgList) {  // ending an arg string
 					inArgList = false;
 					while { (ch = stream.next).notNil and: { ch.isSpace } };
 					if(":,)".includes(ch)) {
@@ -584,7 +584,8 @@ Proto {
 					argList = nil;
 				};
 				if(ch != $)) {
-					while { (ch = stream.next).notNil and: { ch.isSpace } }
+					while { (ch = stream.next).notNil and: { ch.isSpace } };
+					stream.pos = stream.pos - 1;
 				};
 			}
 			{ ch == $: } {
@@ -613,9 +614,15 @@ Proto {
 		));
 		if(rhythmGen.notNil) {
 			if(~isMain) {
-				PR(\clRhythmGen).copy.putAll((valueGen: gen, rhythmGen: rhythmGen))
+				PR(\clRhythmGen).copy.putAll((
+					valueGen: gen, rhythmGen: rhythmGen,
+					bpKey: ~objKey, parm: ~parm
+				))
 			} {
-				PR(\clStepGen).copy.putAll((valueGen: gen, rhythmGen: rhythmGen))
+				PR(\clStepGen).copy.putAll((
+					valueGen: gen, rhythmGen: rhythmGen,
+					bpKey: ~objKey, parm: ~parm
+				))
 			}
 		} {
 			gen
@@ -2252,7 +2259,7 @@ Proto {
 					};
 					inevent = pat.embedInStream(inevent);
 				};
-			}, //.trace(prefix: "phrase: "),
+			}, // .trace(prefix: "phrase: "),
 			BPStream(\defaults) //.trace(prefix: "\n\ndefaults: ")
 		)
 	};
