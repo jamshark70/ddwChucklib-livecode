@@ -127,7 +127,8 @@ protect {
 		};
 
 		~protoID = \clStepGen;
-		~patternStringKeys = #[valueGen, rhythmGen, dur, isPitch, parm];
+		~patternStringKeys = #[valueGen, rhythmGen, /*isPitch,*/ parm];
+		~isPitch = { ~valueGen.tryPerform(\isPitch) ?? { false } };
 	}, parentKeys: #[protoID, patternStringKeys]) => PR(\clStepGen);
 
 	// if isPitch, Ptuple yields [[pitch, legato], dur]

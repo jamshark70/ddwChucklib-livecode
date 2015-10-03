@@ -956,7 +956,7 @@ PR(\abstractLiveCode).chuck(BP(\x), nil, (
 /x-;
 
 /x = "\seq("5":randRhy(1, 1))";
-/x = "\seq("5":randRhy(1, 1))";
+/x = "\rand("123456789":randRhy(0.25, 3, 2, 1))";
 a = PR(\chucklibLiveCode).v.instance;
 a.listVars
 a.levels[0][0].listVars
