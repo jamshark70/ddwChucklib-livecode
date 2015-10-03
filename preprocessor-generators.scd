@@ -123,11 +123,15 @@ protect {
 		~rhythmGen = 1;
 
 		~embedInStream = { |inval|
-			Pstep(~valueGen.asStream, ~rhythmGen.asStream, 1).embedInStream(inval)
+			var dur = ~dur.(),
+			durStream = if(dur.notNil and: { dur < inf }) {
+				Pconst(dur, ~rhythmGen).asStream
+			} { ~rhythmGen.asStream };
+			Pstep(~valueGen.asStream, durStream, 1).embedInStream(inval)
 		};
 
 		~protoID = \clStepGen;
-		~patternStringKeys = #[valueGen, rhythmGen, /*isPitch,*/ parm];
+		~patternStringKeys = #[valueGen, rhythmGen, dur, /*isPitch,*/ parm];
 		~isPitch = { ~valueGen.tryPerform(\isPitch) ?? { false } };
 	}, parentKeys: #[protoID, patternStringKeys]) => PR(\clStepGen);
 
@@ -138,7 +142,11 @@ protect {
 	// default parm must expose 'dur' separately: Use Ptuple
 	PR(\clStepGen).clone({
 		~embedInStream = { |inval|
-			var pat = Ptuple([~valueGen.asStream, ~rhythmGen.asStream], 1);
+			var dur = ~dur.(),
+			durStream = if(dur.notNil and: { dur < inf }) {
+				Pconst(dur, ~rhythmGen).asStream
+			} { ~rhythmGen.asStream };
+			var pat = Ptuple([~valueGen.asStream, durStream], 1);
 			if(~isPitch.()) { pat = pat.collect(~convertPitch) };
 			pat.embedInStream(inval)
 		};

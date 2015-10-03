@@ -1005,3 +1005,8 @@ f.(" = \"a\\rand(\"ab\") a\"");  // OK
 
 a\rand("ab") a
            ^
+
+
+/k = "\seq("ab":randRhy(0.75, 1))\seq("cd":randRhy(0.75, 1))";
+/k+
+/k-

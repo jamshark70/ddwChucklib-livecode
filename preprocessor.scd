@@ -775,16 +775,15 @@ Proto {
 	};
 
 	~buildPatString = {
-		var str = CollStream.new;
-		if(~levels.size > 1) {
+		var str = CollStream.new,
+		wrapInPseq = ~levels.size > 1 or: { ~levels[0][0].tryPerform(\isClGen) ?? { false } };
+		if(wrapInPseq) {
 			str << "Pseq([";
 		};
 		~levels.do { |split, i|
 			if(i > 0) { str << ", " };
 			if(split[0].tryPerform(\isClGen) ?? { false }) {
-				str << "Pfintime(" << ~deltas[i][0] << ", ";
 				split[0].asPatternString(str);
-				str << ")";
 			} {
 				if(~isMain) {
 					if(~isPitch) {
@@ -812,7 +811,7 @@ Proto {
 				};
 			};
 		};
-		if(~levels.size > 1) {
+		if(wrapInPseq) {
 			str << "], 1)";
 		};
 		str.collection
@@ -877,10 +876,15 @@ Proto {
 				~yieldsKeys = ~parm;
 			}
 		};
-		~levels.do { |split|
+		sizes = ~levels.collect(_.size);
+		~times = ~times.clumps(sizes);
+		~deltas = ~deltas.clumps(sizes);
+		~legatos = ~legatos.clumps(sizes);
+		~levels.do { |split, i|
 			var yk;
 			split = split[0];
 			if(split.tryPerform(\isClGen) ?? { false }) {
+				split.dur = ~deltas[i][0];
 				yk = split.yieldsKeys;
 				// if(~yieldsKeys.isNil) { ~yieldsKeys = yk };
 				if(yk != ~yieldsKeys) {
@@ -888,10 +892,6 @@ Proto {
 				};
 			};
 		};
-		sizes = ~levels.collect(_.size);
-		~times = ~times.clumps(sizes);
-		~deltas = ~deltas.clumps(sizes);
-		~legatos = ~legatos.clumps(sizes);
 		currentEnvironment
 	};
 }.import((chucklibLiveCode: #[tokens, replaceRegexpMacros, removeRegexpDups, removeDupIndices]), #[tokens]) => PR(\clPatternSet);
