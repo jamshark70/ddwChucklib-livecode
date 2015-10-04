@@ -2146,7 +2146,7 @@ Proto {
 	};
 	~setPattern = { |phrase, parm, inParm, pattern, inString, newQuant|
 		var pat = ~phrases[phrase],
-		storeParm = ~parmMap[parm].tryPerform(\at, \alias) ?? { parm };
+		storeParm = ~parmMap[inParm].tryPerform(\at, \alias) ?? { parm };
 		if(pat.isNil) {
 			pat = PbindProxy.new;
 			~phrases[phrase] = pat;
@@ -2182,9 +2182,10 @@ Proto {
 						result
 					});
 				}
-				{ storeParm.size > 0 } {
+				// arrayed *non-default* parm with alias
+				{ storeParm.size > 0 and: { parm.asArray.includes(\dur).not } } {
 					pat.set(parm, pattern.collect { |valueID, event|
-						var result = ~valueForParm.(valueID, parm);
+						var result = ~valueForParm.(valueID, inParm);
 						if(result.isNil) {
 							result = [Rest(valueID)];
 						} {
@@ -2200,6 +2201,27 @@ Proto {
 							.warn;
 						};
 						result
+					});
+				}
+				// arrayed *default* parm with alias -- assuming [id, dur] here
+				{ storeParm.size > 0 } {
+					pat.set(parm, pattern.collect { |valueID, event|
+						var result = ~valueForParm.(valueID[0], inParm);
+						if(result.isNil) {
+							result = [Rest(valueID[0])];
+						} {
+							result = result.asArray;
+						};
+						if(storeParm.size >= result.size) {
+							storeParm.do { |key, i|
+								event.put(key, result.wrapAt(i));
+							};
+						} {
+							"Alias for % allows % values, but too many (%) were provided"
+							.format(parm.asCompileString, storeParm.size, result.size)
+							.warn;
+						};
+						[result[0], valueID[1]]  // this may be wrong
 					});
 				}
 				{

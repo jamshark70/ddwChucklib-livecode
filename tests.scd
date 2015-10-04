@@ -1010,3 +1010,8 @@ a\rand("ab") a
 /k = "\seq("ab":randRhy(0.75, 1))\seq("cd":randRhy(0.75, 1))";
 /k+
 /k-
+
+/k = "aaaa";
+/k..pitch = "\xrand("12345")";
+
+/k..pitch = "\xrand("12345":randRhy(1, 1, 1))";
