@@ -81,6 +81,9 @@ protect {
 			{ |obj| obj.tryPerform(\isClGen) ? false } -> { |obj, stream|
 				obj.asPatternString(stream);
 			},
+			{ |obj| obj.isString } -> { |obj, stream|
+				stream <<< obj
+			},
 			{ |obj| obj.isSequenceableCollection } -> { |obj, stream|
 				if(obj.isMemberOf(Array).not) {
 					stream << obj.class.name;
