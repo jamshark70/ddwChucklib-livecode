@@ -711,7 +711,7 @@ Proto {
 	~decodePitch = { |pitchStr|
 		var degree, legato = 0.9;
 		case
-		{ ~isPitch } {
+		{ ~isPitch and: { pitchStr.isString } } {
 			pitchStr = pitchStr.asString;
 			case
 			{ pitchStr[0].isDecDigit } {
