@@ -768,7 +768,7 @@ Proto {
 		} {
 			"%(%).setPattern(%, %, %, %, %)".format(
 				~clClass, ~objKey.asCompileString,
-				~phrase.asCompileString, nil,  // we already know ~parm is nil in this branch
+				~phrase.asCompileString, nil, nil,  // we already know ~parm is nil in this branch
 				~group.asPatString, ~inString.asCompileString, ~quant
 			);
 		};
@@ -832,7 +832,7 @@ Proto {
 		};
 		stream << "%(%).setPattern(%, %, %, %, %)".format(
 			~clClass, ~objKey.asCompileString,
-			phrase, ~yieldsKeys.asCompileString,
+			phrase, ~yieldsKeys.asCompileString, ~parm.asCompileString,
 			~patString, ~inString.asCompileString, ~quant
 		);
 		currentEnvironment
@@ -841,7 +841,7 @@ Proto {
 		stream << "%(%).setPattern(%, %, Ptuple(%), %)".format(
 			~clClass, ~objKey.asCompileString,
 			phrase,
-			keyArray.asCompileString,
+			keyArray.asCompileString, ~parm.asCompileString,
 			patStringArray,
 			~inString.asCompileString
 		);
@@ -2143,7 +2143,7 @@ Proto {
 		NotificationCenter.notify(\clLiveCode, \phraseString, [~collIndex, phrase, parm, string]);
 		currentEnvironment
 	};
-	~setPattern = { |phrase, parm, pattern, inString, newQuant|
+	~setPattern = { |phrase, parm, inParm, pattern, inString, newQuant|
 		var pat = ~phrases[phrase],
 		storeParm = ~parmMap[parm].tryPerform(\at, \alias) ?? { parm };
 		if(pat.isNil) {
@@ -2151,7 +2151,7 @@ Proto {
 			~phrases[phrase] = pat;
 		};
 		if(parm.notNil) {
-			~prSetPhraseString.(phrase, parm, inString);
+			~prSetPhraseString.(phrase, inParm, inString);
 			~clock.schedAbs(BP(~collIndex).eventSchedTime(-1) - 0.001, e {
 				case
 				{ parm == \dur or: { parm == \legato } } {
