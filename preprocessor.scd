@@ -511,14 +511,18 @@ Proto {
 			{ ch == $\\ } {
 				result = result.add(~parseGenerator.(stream));
 			}
-			{ ~isPitch and: { ch.isDecDigit } } {
+			{ ~isPitch } {
 				// ~isPitch = true;
-				str = String.with(ch);
-				while { (ch = stream.next).notNil and: { "+-',~_.".includes(ch) } } {
-					str = str.add(ch);
+				if(ch.isDecDigit) {
+					str = String.with(ch);
+					while { (ch = stream.next).notNil and: { "+-',~_.".includes(ch) } } {
+						str = str.add(ch);
+					};
+					result = result.add(str);
+					if(ch.notNil) { stream.pos = stream.pos - 1 };
+				} {
+					result = result.add(String.with(ch));
 				};
-				result = result.add(str);
-				if(ch.notNil) { stream.pos = stream.pos - 1 };
 			}
 			{
 				result = result.add(ch);
