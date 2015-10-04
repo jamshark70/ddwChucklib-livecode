@@ -771,7 +771,7 @@ Proto {
 			} { ~buildOneStatement.(stmt) };
 			stmt.collection
 		} {
-			"%(%).setPattern(%, %, %, %, %)".format(
+			"%(%).setPattern(%, %, %, %, %, %)".format(
 				~clClass, ~objKey.asCompileString,
 				~phrase.asCompileString, nil, nil,  // we already know ~parm is nil in this branch
 				~group.asPatString, ~inString.asCompileString, ~quant
