@@ -830,7 +830,7 @@ Proto {
 				phrase, ~beatsPerBar
 			);
 		};
-		stream << "%(%).setPattern(%, %, %, %, %)".format(
+		stream << "%(%).setPattern(%, %, %, %, %, %)".format(
 			~clClass, ~objKey.asCompileString,
 			phrase, ~yieldsKeys.asCompileString, ~parm.asCompileString,
 			~patString, ~inString.asCompileString, ~quant
@@ -838,7 +838,7 @@ Proto {
 		currentEnvironment
 	};
 	~buildArrayKeyPat = { |stream, phrase, keyArray, patStringArray|
-		stream << "%(%).setPattern(%, %, Ptuple(%), %)".format(
+		stream << "%(%).setPattern(%, %, %, Ptuple(%), %)".format(
 			~clClass, ~objKey.asCompileString,
 			phrase,
 			keyArray.asCompileString, ~parm.asCompileString,
