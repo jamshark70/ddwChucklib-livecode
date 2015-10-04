@@ -529,7 +529,7 @@ Proto {
 	};
 
 	// returns generator object
-	~parseGenerator = { |stream|
+	~parseGenerator = { |stream, isPitchOverride|
 		var /*genObj,*/ name = String.new,
 		argList, inArgList = false, args = Array.new, pitchStr, ch, gen, rhythmGen;
 		// assumes stream has already gotten \
@@ -589,8 +589,9 @@ Proto {
 				};
 			}
 			{ ch == $: } {
-				// \rand("abc":\rhy())
-				rhythmGen = ~parseGenerator.(stream);
+				// \rand("abc":rhy())
+				// rhythmGen may *never* be pitch
+				rhythmGen = ~parseGenerator.(stream, false);
 			}
 			{   // default case
 				if(argList.isKindOf(String).not) {
@@ -608,7 +609,7 @@ Proto {
 		gen = PR(("clGen" ++ name.copy.put(0, name[0].toUpper)).asSymbol).copy.putAll((
 			// func: name.asSymbol,
 			bpKey: ~objKey,
-			isPitch: ~isPitch,
+			isPitch: isPitchOverride ?? { ~isPitch },
 			parm: ~parm,
 			args: args
 		));
