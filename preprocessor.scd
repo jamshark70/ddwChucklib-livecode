@@ -402,6 +402,43 @@ Proto {
 			};
 		};
 	};
+	~splitByDividers = { |str|
+		var parenCount = 0, oneSeg = String.new, segs = Array.new,
+		stream = CollStream(str), ch;
+		while { (ch = stream.next).notNil } {
+			case
+			{ ch == $\\ } {
+				// skip up to paren
+				while {
+					oneSeg = oneSeg.add(ch);
+					(ch = stream.next).notNil and: { ch != $( }
+				};
+				if(ch.isNil) {
+					Error("Generator '%' is missing open paren".format(oneSeg)).throw;
+				};
+				oneSeg = oneSeg.add(ch);
+				// skip nested paren group
+				parenCount = 1;
+				while { parenCount >= 1 and: { (ch = stream.next).notNil } } {
+					oneSeg = oneSeg.add(ch);
+					switch(ch)
+					{ $( } { parenCount = parenCount + 1 }
+					{ $) } { parenCount = parenCount - 1 }
+				};
+			}
+			{ ch == $| } {
+				segs = segs.add(oneSeg);
+				oneSeg = String.new;
+			}
+			{
+				oneSeg = oneSeg.add(ch);
+			}
+		};
+		if(parenCount > 0) {
+			Error("Paren mismatch in pattern string '%'".format(str)).throw;
+		};
+		segs.add(oneSeg)  // add last string before returning
+	};
 	~getQuantFrom = { |stream|
 		var ch, str;
 		while { (ch = stream.next).notNil and: { ch.isSpace } };  // skip spaces
@@ -420,7 +457,8 @@ Proto {
 			Error("clPatternSet: Couldn't find pattern string").throw
 		};
 		pat = pat[0][1];
-		pat = ~unquoteString.(pat, ignoreInParens: true).split($|).collectAs(~divideEvents, Array);
+		pat = ~splitByDividers.(~unquoteString.(pat, ignoreInParens: true))
+		.collectAs(~divideEvents, Array);
 		~segments = pat;
 		~parseBeatsPerBar.(code, pat);
 		i = 0;

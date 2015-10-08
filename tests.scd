@@ -1015,3 +1015,12 @@ a\rand("ab") a
 /k..pitch = "\xrand("12345")";
 
 /k..pitch = "\xrand("12345":randRhy(1, 1, 1))";
+
+// split logic
+PR(\clPatternSet).v.splitByDividers("abc|def").asCompileString;
+PR(\clPatternSet).v.splitByDividers("abc|def|\\rand(\"ghi\")|").asCompileString;
+PR(\clPatternSet).v.splitByDividers("abc|def|\\rand(\"ghi|jkl\")|mno").asCompileString;
+
+PR(\clPatternSet).v.splitByDividers("abc|def|\\rand(\"\\rand(\"ghi|jkl\")\")|mno").asCompileString;
+
+PR(\clPatternSet).v.splitByDividers("\\rand(\"abc|def\")").asCompileString;
