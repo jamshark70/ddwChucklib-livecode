@@ -620,6 +620,10 @@ Proto {
 					argList = argList.add(ch);
 				};
 			}
+			{ ch == $\\ } {
+				args = args.add(~parseGenerator.(stream));
+				while { (ch = stream.next).notNil and: { ch.isSpace } };
+			}
 			{ ",)".includes(ch) } {
 				if(argList.isKindOf(String)) {
 					args = args.add(argList.interpret);
