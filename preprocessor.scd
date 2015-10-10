@@ -2132,7 +2132,8 @@ Proto {
 				} {
 					inEvent[\legato] = event.length
 				};
-				event.asFloat
+				// not asFloat: We already know this is a SeqNote, and asFloat breaks Rests here.
+				event.freq
 			} {
 				if(event == \rest) {
 					~parmMap[parm][\rest] ?? { 0 }

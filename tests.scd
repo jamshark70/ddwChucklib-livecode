@@ -619,6 +619,8 @@ PR(\abstractLiveCode).chuck(BP(\k), nil, (
 /k..alias = "ab  ";
 /k..array = "a| b";
 
+// /k = "1_ x3+.";
+
 /k+;
 /k-;
 
