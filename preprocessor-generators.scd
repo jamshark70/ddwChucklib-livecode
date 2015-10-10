@@ -14,18 +14,6 @@ protect {
 		~args = nil;   // override with an array
 		~parm = \value;
 
-		~convertPitch = { |next|
-			var pitch;
-			pitch = ~decodePitch.(next);
-			if(pitch.notNil) {
-				[pitch.key, pitch.value]  // [degree, legato]
-			} {
-				"Generator produced pitch string '%', could not decode"
-				.format(next).warn;
-				nil
-			};
-		};
-
 		~embedInStream = { |inval|
 			var dur = ~dur.(),
 			startTime = thisThread.clock.beats,
@@ -34,11 +22,7 @@ protect {
 				bp = BP(~bpKey);
 			};
 
-			if(~isPitch.()) {
-				~asPattern.(bp).collect(~convertPitch).embedInStream(inval);
-			} {
-				~asPattern.(bp).embedInStream(inval);
-			};
+			~asPattern.(bp).embedInStream(inval);
 		};
 		~asStream = {
 			Routine { |inval| ~embedInStream.(inval) }
@@ -46,7 +30,8 @@ protect {
 		~canEmbed = true;  // do not override!
 
 		~yieldsKeys = {
-			if(~isPitch.()) { [~parm, \legato] } { ~parm }
+			~parm
+			// if(~isPitch.()) { [~parm, \legato] } { ~parm }
 		};
 
 		// code generation
@@ -138,10 +123,6 @@ protect {
 		~isPitch = { ~valueGen.tryPerform(\isPitch) ?? { false } };
 	}, parentKeys: #[protoID, patternStringKeys]) => PR(\clStepGen);
 
-	// if isPitch, Ptuple yields [[pitch, legato], dur]
-	// but it's not necessarily safe to just "flat"ten it
-	~convertPitch = { |next| next[0] ++ next[1] };
-
 	// default parm must expose 'dur' separately: Use Ptuple
 	PR(\clStepGen).clone({
 		~embedInStream = { |inval|
@@ -150,14 +131,14 @@ protect {
 				Pconst(dur, ~rhythmGen).asStream
 			} { ~rhythmGen.asStream };
 			var pat = Ptuple([~valueGen.asStream, durStream], 1);
-			if(~isPitch.()) { pat = pat.collect(~convertPitch) };
 			pat.embedInStream(inval)
 		};
 
 		~protoID = \clRhythmGen;
 
 		~yieldsKeys = {
-			if(~isPitch.()) { [~parm, \legato, \dur] } { [~parm, \dur] };
+			[~parm, \dur]
+			// if(~isPitch.()) { [~parm, \legato, \dur] } { [~parm, \dur] };
 		};
 	}, parentKeys: #[protoID, patternStringKeys]) => PR(\clRhythmGen);
 
