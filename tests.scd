@@ -615,14 +615,36 @@ PR(\abstractLiveCode).chuck(BP(\k), nil, (
 /k = "";
 
 /k = "a  b";
-/k..pitch = "1  3+";
+/k..pitch = "1~  3+.";
 /k..alias = "ab  ";
 /k..array = "a| b";
+
+/k+;
+/k-;
+
+/k..pitch = "\rand("1.2_3~4.")";
+
+BP(\k).phrases[\main].pairs[3].source.pattern.list[0].listVars
 
 BP(\k).phraseSeq = Pfunc { \main.debug("phrase") };
 
 BP(\k).prepareForPlay;
 BP(\k).reset;
+
+e = BP(\k).eventStream.next(BP(\k).event.copy);
+
+SequenceNote.new == \dur
+
+x = PR(\chucklibLiveCode).instance;
+x.patString
+x.levels
+x.deltas
+
+x.levels[0][0].listVars
+
+BP(\k).phrases[\main].postcs
+BP(\k).phrases[\main].pairs[1].source.func.def.dumpByteCodes
+BP(\k).phrases[\main].pairs[1].source.func.def.selectors[0].dumpByteCodes
 
 r = fork {
 	while { (e = BP(\k).eventStream.next(BP(\k).event.copy)).notNil } {

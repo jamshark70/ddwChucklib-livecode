@@ -451,7 +451,7 @@ Proto {
 	~patternWithDividers = { |code|
 		var obj = ~clClass.new(~objKey),
 		time = 0, division, value,
-		levels = List.new, times = List.new, legatos = List.new, deltas, i,
+		levels = List.new, times = List.new, deltas, i,
 		pat = code.findRegexp("\".*\"");
 		if(pat.size == 0 or: { pat.first.size <= 0 }) {
 			Error("clPatternSet: Couldn't find pattern string").throw
@@ -470,28 +470,27 @@ Proto {
 					if(value.size > 0) {
 						division = division / value.size;
 						value.do { |item|
-							~prAddEntries.(item, levels, times, legatos, time, division, i);
+							~prAddEntries.(item, levels, times, time, division, i);
 							i = i + 1;
 						};
 					} {
-						~prAddEntries.(value, levels, times, legatos, time, division, i);
+						~prAddEntries.(value, levels, times, time, division, i);
 						i = i + 1;
 					};
 				};
 			};
 			time = time + ~beatsPerSeg.wrapAt(segI);
 		};
-		#deltas, levels, legatos = ~timesToDeltas.(times, levels, legatos);
+		#deltas, levels = ~timesToDeltas.(times, levels);
 		~deltas = deltas;
 		~levels = levels;
 		~times = times;
-		~legatos = legatos;
 	};
 
 	~patternWithoutDividers = { |code|
 		var obj = ~clClass.new(~objKey),
 		time = 0, division, value,
-		levels = List.new, times = List.new, legatos = List.new, deltas, i,
+		levels = List.new, times = List.new, deltas, i,
 		pat = code.findRegexp("\".*\"");
 		if(pat.size == 0 or: { pat.first.size <= 0 }) {
 			Error("clPatternSet: Couldn't find pattern string").throw
@@ -508,34 +507,25 @@ Proto {
 			if(value.size > 0) {
 				division = division / value.size;
 				value.do { |item|
-					~prAddEntries.(item, levels, times, legatos, time, division, i);
+					~prAddEntries.(item, levels, times, time, division, i);
 					i = i + 1;
 				};
 			} {
-				~prAddEntries.(value, levels, times, legatos, time, division, i);
+				~prAddEntries.(value, levels, times, time, division, i);
 				i = i + 1;
 			};
 		};
-		#deltas, levels, legatos = ~timesToDeltas.(times, levels, legatos);
+		#deltas, levels = ~timesToDeltas.(times, levels);
 		~deltas = deltas;
 		~levels = levels;
 		~times = times;
-		~legatos = legatos;
 	};
 
-	~prAddEntries = { |value, levels, times, legatos, time, division, i|
-		case
-		{ value.isKindOf(Association) } {
-			levels.add(value.key);
-			times.add(time + (division * i));
-			legatos.add(value.value);
-		}
-		{ value.notNil } {
+	~prAddEntries = { |value, levels, times, time, division, i|
+		if(value.notNil) {
 			levels.add(value);
 			times.add(time + (division * i));
-			legatos.add(0.98);
 		};
-		[levels, times, legatos]  //.debug("after prAddEntries");
 	};
 
 	~divideEvents = { |seg|
@@ -610,7 +600,7 @@ Proto {
 					while {
 						(ch = stream.next).notNil and: {  "+-',~_.".includes(ch) }
 					} { pitchStr = pitchStr.add(ch) };
-					argList = argList.add(pitchStr);
+					argList = argList.add(~decodePitch.(pitchStr));
 					stream.pos = stream.pos - 1;
 				}
 				{ ch == $\\ } {
@@ -713,7 +703,7 @@ Proto {
 		~beatsPerBar // .debug("<< parseBeatsPerBar -- bpb");
 	};
 
-	~timesToDeltas = { |times, levels, legatos|
+	~timesToDeltas = { |times, levels|
 		var deltas;
 		if(levels.size == 0 or: { levels.every(_.isNil) }) {
 			"%(%): No recognized values for %. Substituting a rest.".format(
@@ -721,7 +711,6 @@ Proto {
 			).warn;
 			deltas = [Rest(~beatsPerBar)];
 			levels = #[rest];
-			legatos = [1];
 		} {
 			deltas = (times ++ ~beatsPerBar).differentiate;
 			if(times.first == 0) {
@@ -729,13 +718,9 @@ Proto {
 			} {
 				deltas[0] = Rest(times[0]);
 				levels = levels.insert(0, \rest);
-				legatos = legatos.insert(0, 0.8);
-			};
-			legatos = legatos.collect { |lg, i|
-				if(lg == 0.4) { min(0.4, 0.15 / deltas[i].value) } { lg }
 			};
 		};
-		[deltas, levels, legatos]
+		[deltas, levels]
 	};
 
 	// ~valueForParm = { |event, obj, parm|
@@ -773,10 +758,12 @@ Proto {
 					{ $_ } { legato = 0.9 }
 					{ $. } { legato = 0.4 }
 				};
-				degree -> legato  // Association identifies pitch above
+				// degree -> legato  // Association identifies pitch above
+				SequenceNote(degree, nil, legato)
 			}
 			{ pitchStr[0] != $  } {
-				Rest(0) -> legato
+				// Rest(0) -> legato
+				SequenceNote(Rest(0), nil, legato)
 			}
 			{ nil }
 		}
@@ -787,8 +774,9 @@ Proto {
 	// pitchNum is a scale degree, assuming 0 as neutral-octave tonic
 	// accidentals encoded by +/- 0.1
 	// currently assuming 7 notes per octave -- will have to fix this
-	~encodePitch = { |pitchNum|
-		var natural = pitchNum.round,
+	~encodePitch = { |seqNote|
+		var pitchNum = seqNote.asFloat,
+		natural = pitchNum.round,
 		octave = natural div: 7,
 		class = natural - (octave * 7),
 		octaveChar = if(octave < 0) { $, } { $' },
@@ -796,6 +784,9 @@ Proto {
 		str = (class + 1).asString;
 		(pitchNum absdif: natural * 10).do { str = str ++ accidentalChar };
 		octave.abs.do { str = str ++ octaveChar };
+		case
+		{ seqNote.length <= 0.4 } { str = str ++ "." }
+		{ seqNote.length > 1 } { str = str ++ "~" };
 		str
 	};
 	// CODE GENERATION
@@ -833,28 +824,12 @@ Proto {
 				split[0].asPatternString(str);
 			} {
 				if(~isMain) {
-					if(~isPitch) {
-						// stream, keyArray, patternArray
-						str << "Ptuple(" << [
-							~buildSimplePattern.(split),
-							~buildSimplePattern.(~legatos[i]),
-							~buildSimplePattern.(~deltas[i])
-						] << ")";
-					} {
-						str << "Ptuple(" << [
-							~buildSimplePattern.(split),
-							~buildSimplePattern.(~deltas[i])
-						] << ")";
-					}
+					str << "Ptuple(" << [
+						~buildSimplePattern.(split),
+						~buildSimplePattern.(~deltas[i])
+					] << ")";
 				} {
-					if(~isPitch) {
-						str << "Ptuple(" << [
-							~buildStepPattern.(split, ~deltas[i]),
-							~buildStepPattern.(~legatos[i], ~deltas[i])
-						] << ")";
-					} {
-						str << ~buildStepPattern.(split, ~deltas[i]);
-					}
+					str << ~buildStepPattern.(split, ~deltas[i]);
 				};
 			};
 		};
@@ -911,29 +886,19 @@ Proto {
 			};
 		};
 		if(~isMain) {
-			if(~isPitch) {
-				~yieldsKeys = [~parm, \legato, \dur];
-			} {
-				~yieldsKeys = [~parm, \dur];
-			}
+			~yieldsKeys = [~parm, \dur];
 		} {
-			if(~isPitch) {
-				~yieldsKeys = [~parm, \legato];
-			} {
-				~yieldsKeys = ~parm;
-			}
+			~yieldsKeys = ~parm;
 		};
 		sizes = ~levels.collect(_.size);
 		~times = ~times.clumps(sizes);
 		~deltas = ~deltas.clumps(sizes);
-		~legatos = ~legatos.clumps(sizes);
 		~levels.do { |split, i|
 			var yk;
 			split = split[0];
 			if(split.tryPerform(\isClGen) ?? { false }) {
 				split.dur = ~deltas[i][0];
 				yk = split.yieldsKeys;
-				// if(~yieldsKeys.isNil) { ~yieldsKeys = yk };
 				if(yk != ~yieldsKeys) {
 					Error("Generator's output shape must match parm: %".format(~yieldsKeys)).throw;
 				};
@@ -2156,14 +2121,25 @@ Proto {
 		~userfree.();
 	};
 
-	~valueForParm = { |event, parm|
+	~valueForParm = { |event, parm, inEvent|
 		var dict, result;
-		if(parm == \dur or: { parm == \legato or: { ~parmIsPitch.(parm) } }) {
-			if(event == \rest) {
-				~parmMap[parm][\rest] ?? { 0 }
+		case
+		{ parm == \dur } { event }
+		{ ~parmIsPitch.(parm) } {
+			if(event.isKindOf(SequenceNote)) {
+				if(event.length <= 0.4) {
+					inEvent[\sustain] = 0.15
+				} {
+					inEvent[\legato] = event.length
+				};
+				event.asFloat
 			} {
-				event
-			}
+				if(event == \rest) {
+					~parmMap[parm][\rest] ?? { 0 }
+				} {
+					event
+				}
+			};
 		} {
 			dict = ~parmMap[parm];
 			result = if(dict.notNil) { dict[event] };
@@ -2201,29 +2177,30 @@ Proto {
 			~prSetPhraseString.(phrase, inParm, inString);
 			~clock.schedAbs(BP(~collIndex).eventSchedTime(-1) - 0.001, e {
 				case
-				{ parm == \dur or: { parm == \legato } } {
+				// does this ever happen?
+				{ parm == \dur } {
 					pat.set(parm, pattern);
 				}
 				{ storeParm === parm } {
 					if(parm.isArray) {
 						// special case: This should happen only for [key, \dur] type keys
 						// constructed by clPattern
-						pat.set(parm, pattern.collect { |valueIDs|
+						pat.set(parm, pattern.collect { |valueIDs, inEvent|
 							valueIDs.collect { |valueID, i|
-								~valueForParm.(valueID, parm[i]) ?? { Rest(valueID) }
+								~valueForParm.(valueID, parm[i], inEvent) ?? { Rest(valueID) }
 							}
 						});
 					} {
 						// single key, no alias: optimize by simply converting and returning
-						pat.set(parm, pattern.collect { |valueID|
-							~valueForParm.(valueID, parm) ?? { Rest(valueID) }
+						pat.set(parm, pattern.collect { |valueID, inEvent|
+							~valueForParm.(valueID, parm, inEvent) ?? { Rest(valueID) }
 						});
 					};
 				}
 				{ storeParm.size == 0 } {
 					// alias is a single symbol: optimize by converting and storing directly
 					pat.set(parm, pattern.collect { |valueID, event|
-						var result = ~valueForParm.(valueID, parm) ?? { Rest(valueID) };
+						var result = ~valueForParm.(valueID, parm, event) ?? { Rest(valueID) };
 						event.put(storeParm, result);
 						result
 					});
@@ -2231,7 +2208,7 @@ Proto {
 				// arrayed *non-default* parm with alias
 				{ storeParm.size > 0 and: { parm.asArray.includes(\dur).not } } {
 					pat.set(parm, pattern.collect { |valueID, event|
-						var result = ~valueForParm.(valueID, inParm);
+						var result = ~valueForParm.(valueID, inParm, event);
 						if(result.isNil) {
 							result = [Rest(valueID)];
 						} {
@@ -2252,7 +2229,7 @@ Proto {
 				// arrayed *default* parm with alias -- assuming [id, dur] here
 				{ storeParm.size > 0 } {
 					pat.set(parm, pattern.collect { |valueID, event|
-						var result = ~valueForParm.(valueID[0], inParm);
+						var result = ~valueForParm.(valueID[0], inParm, event);
 						if(result.isNil) {
 							result = [Rest(valueID[0])];
 						} {
