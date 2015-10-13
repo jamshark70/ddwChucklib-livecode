@@ -606,8 +606,15 @@ Proto {
 				{ ch == $\\ } {
 					argList = argList.add(~parseGenerator.(stream));
 				}
-				{
+				{ ch == $| } {
 					argList = argList.add(ch);
+				}
+				{
+					if(~isPitch) {
+						argList = argList.add(~decodePitch.(ch.asString));
+					} {
+						argList = argList.add(ch);
+					};
 				};
 			}
 			{ ch == $\\ } {
