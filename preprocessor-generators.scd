@@ -99,6 +99,10 @@ protect {
 	} => PR(\clGenXrand);
 
 	PR(\clGen).clone {
+		~asPattern = { Pwrand(~args[0], ~args[1..].normalizeSum, inf) };
+	} => PR(\clGenWrand);
+
+	PR(\clGen).clone {
 		~asPattern = {
 			var weights = ~args[1..].normalizeSum;
 			Pwrand((1 .. weights.size), weights, inf) * ~args[0]
