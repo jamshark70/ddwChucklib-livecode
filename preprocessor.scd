@@ -2130,7 +2130,8 @@ Proto {
 
 	~valueForParm = { |event, parm, inEvent|
 		var dict, result;
-		case
+		if(~debug ?? { false }) { [event, parm, inEvent].debug(">> valueForParm") };
+		result = case
 		{ parm == \dur } { event }
 		{ ~parmIsPitch.(parm) } {
 			if(event.isKindOf(SequenceNote)) {
@@ -2156,7 +2157,9 @@ Proto {
 			} {
 				result  // nil if not specified
 			};
-		}
+		};
+		if(~debug ?? { false }) { result.debug("<< valueForParm") };
+		result
 	};
 	~parmIsPitch = { |parm|
 		~parmMap[parm].notNil and: { ~parmMap[parm][\isPitch] == true }
@@ -2209,7 +2212,7 @@ Proto {
 					// alias is a single symbol: optimize by converting and storing directly
 					pat.set(parm, pattern.collect { |valueID, event|
 						var result = ~valueForParm.(valueID, parm, event) ?? { Rest(valueID) };
-						event.put(storeParm, result);
+						event.put(storeParm, result.processRest(event));
 						result
 					});
 				}
@@ -2224,7 +2227,7 @@ Proto {
 						};
 						if(storeParm.size >= result.size) {
 							storeParm.do { |key, i|
-								event.put(key, result.wrapAt(i));
+								event.put(key, result.wrapAt(i).processRest(event));
 							};
 						} {
 							"Alias for % allows % values, but too many (%) were provided"
@@ -2245,7 +2248,7 @@ Proto {
 						};
 						if(storeParm.size >= result.size) {
 							storeParm.do { |key, i|
-								event.put(key, result.wrapAt(i));
+								event.put(key, result.wrapAt(i).processRest(event));
 							};
 						} {
 							"Alias for % allows % values, but too many (%) were provided"
@@ -2291,9 +2294,9 @@ Proto {
 		~playHook.();
 		Pchain(
 			Pif(
-				Pfunc { phr != \rest },
-				BPStream(\postDefaults), //.trace(prefix: "postDefaults: "),
+				Pfunc { |ev| phr == \rest or: { ev.isRest } },
 				(),
+				BPStream(\postDefaults), //.trace(prefix: "postDefaults: "),
 			),
 			Prout { |inevent|
 				var pat;
