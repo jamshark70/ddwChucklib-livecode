@@ -301,27 +301,27 @@ The inner dictionaries may contain two other items, optionally:
      converted into =instrument= in the pattern.
 
 *** Array arguments in the parameter map
-Array arguments must be enclosed in one extra array layer. That is, if
-you want to send an array of three frequencies such as =[200, 300,
-400]=, this must be given in the parameter map as =[ [200, 300, 400] ]=.
+Array arguments are valid, and will be placed into resulting events as
+given in the parameter map. In Listing [[parmMapArray1]], =freqs= will
+receive the array =[200, 300, 400]= and process that array according
+to the event prototype's rules.
 
 #+name: parmMapArray1
 #+caption: How to write arrays in the parameter map.
 #+BEGIN_SRC {SuperCollider} -i
 parmMap: (
    freqs: (
-      $2: [[200, 300, 400]],
+      $2: [200, 300, 400],
    ),
    parmName: (...)
 )
 #+END_SRC
 
 Envelopes may be passed to arrayed Synth controls in the same way:
-=[Env.perc(0.01, 0.5).asArray]=.
+=Env.perc(0.01, 0.5).asArray=.
 
 #+BEGIN_boxnote
-The advice above---to wrap arrays in one more array level---is valid
-for the event prototype used by default in
+The above is valid for the event prototype used by default in
 =PR(\abstractLiveCode)=. This is not SuperCollider's default event;
 it's a custom event prototype defined in /chucklib/ that plays single
 nodes and integrates more easily with =MixerChannel=. Because each
@@ -335,11 +335,9 @@ requires a third level of wrapping.
 |------------------------+-----------------------------+--------------------------------------------|
 | *parmMap array format* | *singleSynthPlayer meaning* | *Default event meaning*                    |
 |------------------------+-----------------------------+--------------------------------------------|
-| \texttt{[1, 2, 3]}     | Invalid                     | Invalid                                    |
+| \texttt{[1, 2, 3]}     | Pass the array to one node  | Distribute the three values to three nodes |
 |------------------------+-----------------------------+--------------------------------------------|
-| \texttt{[[1, 2, 3]]}       | Pass the array to one node  | Distribute the three values to three nodes |
-|------------------------+-----------------------------+--------------------------------------------|
-| \texttt{[[[1, 2, 3]]]}     | Invalid                     | Pass the array to one node                 |
+| \texttt{[[1, 2, 3]]}       | Invalid                     | Pass the array to one node                 |
 |------------------------+-----------------------------+--------------------------------------------|
 #+END_boxnote
 
@@ -354,7 +352,7 @@ an array for the alias!
 parmMap: (
    filt: (
       alias: [\ffreq, \rq],
-      $x: [[2000, 0.05]]
+      $x: [2000, 0.05]
    )
 )
 #+END_SRC
