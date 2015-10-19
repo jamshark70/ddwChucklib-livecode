@@ -129,7 +129,8 @@ hand, by copying them into the Extensions directory.
   implemented as a [[Classes/PbindProxy][PbindProxy]], so that its contents can be changed at
   any time.)
 - Each /parameter/ is defined by a pattern string, parsed and rendered
-  into SuperCollider pattern syntax by the /[[Set pattern statement][Set pattern]]/ statement.
+  into SuperCollider pattern syntax by the /Set pattern/ statement
+  (Section [[Set pattern statement]]).
 - Parameter values are defined by the /parameter map/ (=parmMap=).
 
 # The BP also keeps a copy of the strings, for easier editing later.
@@ -144,6 +145,9 @@ hand, by copying them into the Extensions directory.
 - =rest= :: An empty phrase, which only occupies time.
 
 ** PR(\textbackslash abstractLiveCode)
+   :PROPERTIES:
+   :ID:       e438e90b-fcb0-43b7-85bf-faffde1918b4
+   :END:
 #+begin_figure
 #+name: instance1
 #+caption: A simple cll process.
@@ -207,8 +211,9 @@ details. Parameters to include in the dictionary:
      require.
 - =userfree= :: A function, called when the process is
      destroyed. Clean up any resources allocated in =userprep=.
-- =defaultParm= :: The name of the default parameter affected by /[[Set pattern statement][Set pattern]]/
-     statements. The default parameter also controls rhythm.
+- =defaultParm= :: The name of the default parameter affected by /Set
+     pattern/ statements (Section [[Set pattern statement]]). The
+     default parameter also controls rhythm.
 - =parmMap= :: A nested dictionary of parameters, their allowed
      values, and the characters that will identify these values in
      pattern strings.
@@ -248,14 +253,15 @@ Clearly, the code to initialize the process in @@latex:Listing
 \ref{instance1}@@ is too long to be practical to type in the middle of
 a performance. For practical purposes, you should place all of the
 process definitions into a separate file, which you would load once at
-the beginning of a performance. See also the /[[Make statement][Make]]/ statement, which
-makes it easy to instantiate the processes as needed during the
-performance, reducing the overhead of initial loading. (In fact,
-Chucklib was designed from the beginning to "package" complex musical
-behaviors into objects that are simpler to use, once defined. /cll/ is
-an even more compact layer of control on top of this, following the
-same design principle: /definition/ and /performance usage/ are
-different, and call for different types of code.)
+the beginning of a performance. See also the /Make/ statement (Section
+[[Make statement]]), which makes it easy to instantiate the processes
+as needed during the performance, reducing the overhead of initial
+loading. (In fact, Chucklib was designed from the beginning to
+"package" complex musical behaviors into objects that are simpler to
+use, once defined. /cll/ is an even more compact layer of control on
+top of this, following the same design principle: /definition/ and
+/performance usage/ are different, and call for different types of
+code.)
 #+end_boxnote
 
 ** Parameter map
@@ -280,7 +286,7 @@ strings that represent "notes" are characters.
 
 The inner dictionaries may contain two other items, optionally:
 
-- =isPitch= :: If =true=, enables [[Pitch notation][pitch notation]] for this parameter.
+- =isPitch= :: If =true=, enables pitch notation for this parameter (Section [[Pitch notation]]).
 - =alias= :: An alternate name for this parameter, to use in the
      pattern. For example, if the parameter should choose from a
      number of SynthDefs, it would be inconvenient to type
@@ -376,8 +382,8 @@ in the parameter map, or to check for invalid values.
 of phrases. When you play the process, it chooses the phrases one by
 one using a pattern stored as =phraseSeq=. "Set pattern" has a compact
 way to express phrase sequences, allowing sequences, random selection
-(with or without weights) and wildcard matching. See [[Phrase selection][Phrase selection]]
-for details.
+(with or without weights) and wildcard matching. See Phrase selection
+for details (Section [[Phrase selection]]).
 
 This design supports musical contrast. The performer can create
 divergent materials under different phrase identifiers. Then, during
@@ -387,6 +393,7 @@ phrase-selection pattern at once. For this, [[Register]] commands can save
 sequences of statements to reuse quickly and easily.
 
 ** TODO Importing the cll API into another process prototype	   :noexport:
+** TODO Document registers					   :noexport:
 
 * Livecoding statement reference
 ** Statement types
@@ -444,6 +451,9 @@ by semicolons and submitted as a batch.
     - [X] \clPatternToDoc -> "^ *`id(\\.|`id)*[`spc]*$"
 
 ** Set pattern statement
+   :PROPERTIES:
+   :ID:       a9588fdc-4350-4a6c-8e69-e1b9f284922c
+   :END:
 /Set pattern/ is the primary interface for composing or improvising
 musical materials. As such, it's the most complicated of all the
 commands.
@@ -742,7 +752,7 @@ process on the next bar line; =/proc+8= will start on the next
 event-numbered bar line (i.e., every other bar). =quant= is optional;
 if not given, each process will use its own internal =quant=
 setting. By default, this is one bar; however, the =setm= 
-[[Helper functions][helper function]] overrides this for the given number of bars.
+helper function overrides this for the given number of bars (Section [[Helper functions]]).
 
 ** Generator statement
 Generators create randomized variations on a given string:
@@ -826,8 +836,8 @@ The generator's algorithm is:
 3. Randomly choose =k= time points, and add =i= at each of these
    points.
 
-4. Write the results into a pattern string, and call the /[[Set pattern statement][Set pattern]]/
-   statement to add the pattern into the process.
+4. Write the results into a pattern string, and call the /Set pattern/
+   statement (Section [[Set pattern statement]]) to add the pattern into the process.
 
 5. Do the above =n= times.
 
@@ -930,8 +940,9 @@ BP(\snr) => MCG(0);
 
 ** Func call statement
 The =Func= call statement is a shortcut to evaluate a function saved
-in /chucklib/'s =Func= collection. This makes it easier to use 
-[[Helper functions][helper functions]]. No syntax checking is done in the preprocessor.
+in /chucklib/'s =Func= collection. This makes it easier to use helper
+functions (Section [[Helper functions]]). No syntax checking is done
+in the preprocessor.
 
 #+name: clFunc1
 #+caption: Syntax template for func-call statements.
@@ -1014,13 +1025,13 @@ uses new features introduced in SC 3.7).
 
 ** Helper functions
 Three =Func= definitions are provided to make it easier to work with
-multi-bar phrase groups. I will introduce them using /cll/ [[Func call statement][Func call
-statement]] syntax.
+multi-bar phrase groups. I will introduce them using /cll/ Func call
+statement syntax (Section [[Func call statement]]).
 
 - =/setupbars.(\proc, n, \prefix)= :: Create empty phrases for
-     =prefix0=, =prefix1= up to $n-1$. This also inserts /[[Set pattern][Set pattern]]/
-     templates into the code document, for you to start filling in
-     musical material.
+     =prefix0=, =prefix1= up to $n-1$. This also inserts /Set pattern/
+     (Section [[Set pattern statement]]) templates into the code
+     document, for you to start filling in musical material.
 - =/setm.(\proc, n, \prefix)= :: Set the process's phrase selection
      pattern to play this phrase group. It also changes =quant= in the
      process, so that starting and stopping the process will align to
@@ -1046,6 +1057,247 @@ I want, and then launch the process with =/kick+=. In this example,
 the phrase group occupies two bars. =setm= automatically sets the
 process's =quant= to two bars, so the process will then launch on an
 even-numbered barline.
+
+* Generators
+The basic syntax of the /Set pattern/ statement (Section
+[[id:a9588fdc-4350-4a6c-8e69-e1b9f284922c]]) denotes fixed note
+sequences, which always play exactly the same events. /Generators/
+create phrases whose contents can change on each iteration, adding
+another dimension of musical interest.
+
+** Generator usage
+*** Generators and pattern strings
+Generators are invoked using the syntax =\name(arguments)= within a
+"set pattern" string.
+
+As noted earlier, every character in a pattern string corresponds to a
+metrical position within the bar.[fn:2bc61fa0] The entire generator string, from
+the opening backslash to the closing parenthesis, likewise occupies
+/one and only one/ metrical position. The generator remains active
+until the next event, which may be a literal item or another
+generator. Spaces in the pattern string are placeholders, and indicate
+how long the generator should be in force. Listing [[genRhythm]]
+illustrates. (Argument lists call for further discussion and are not
+relevant to generators' rhythmic position; so, the examples omit
+arguments.)
+
+In example 3 of Listing [[genRhythm]], beat 2 contains four items: space,
+=\rand(...)=, space and space. Thus beat 2 is subdivided into
+16th-notes, and the generator begins on the second of those.
+
+#+name: genRhythm
+#+caption: Interaction between generator syntax and "set pattern" rhythmic notation.
+#+BEGIN_SRC {SuperCollider} -i
+// 1. \rand starts on the downbeat and occupies the whole bar.
+/bp = "\rand(...)";
+
+// 2. \rand starts on beat 2
+/bp = "|\rand(...)||";
+
+// 3. \rand starts on the 2nd 16th-note of beat 2
+/bp = "| \rand(...)  ||";
+
+// 4. \rand starts on the 2nd 16th-note of beat 2
+// and stops on the 'and' of 4
+/bp = "| \rand(...)  || x";
+#+END_SRC
+
+*** Generator arguments
+Every generator expression currently requires an argument list in
+parentheses following the generator's name. (If a generator doesn't
+require arguments, an empty pair of parentheses is currently still
+required. I may remove this requirement later, but for now, it's not
+optional.)
+
+Arguments are separated by commas. Each argument should be one of the following:
+
+- A /quoted/ string containing items to use for subsequent events. An
+  "item" may be a single character or a generator; if the pattern
+  string is for a pitch parameter, the item may consist of more than
+  one character (including octave, accidental and articulation
+  modifiers). Quotes for these strings should /not/ be escaped with
+  backslashes, even though these quoted strings appear within
+  quotes. The set pattern parser reads the pattern string up to a
+  closing quote that appears /outside/ generator expressions.
+
+- A subordinate generator expression (which must begin with a
+  backslash and end with a closing parenthesis).
+
+- An /unquoted/ string, consisting of a value that will be
+  interpreted. Especially useful for literal numbers (0.25) or
+  numbers resulting from calculations (1/4).
+
+See Listing [[genRhythm1]] for examples.
+
+Each generator object defines its own expected inputs. The built-in
+generators are documented below; other generators need not conform to
+these specifications.
+
+** Generators and rhythm
+
+# Every chucklib-livecode process has a default parameter, which
+# determines rhythm. That is to say, one rhythm must always be
+# primary. Other parameters may
+# 
+# At minimum, a generator must supply
+# 
+# Every process must have a primary rhythm. In chucklib-livecode, the
+# primary rhythm comes from the default parameter
+
+Every process must have a primary rhythm. In chucklib-livecode, the
+primary rhythm comes from the /default parameter/ (see Section
+[[id:e438e90b-fcb0-43b7-85bf-faffde1918b4]]). The process will generate
+events at the metrical positions of notes given for the default
+parameter, and not at other times.
+
+A generator given to the default parameter must, therefore, produce
+rhythm. It can do this in one of two ways:
+
+- The generator can yield two-element arrays =[item, delta]=. The
+  second will become the process's rhythm as long as the generator is
+  active.
+
+- Or, a rhythm generator can be added to a simple-value generator, by
+  using a colon in place of the comma that normally separates
+  arguments. The backslash is omitted after this colon. This generator
+  should return numbers, to be used as event deltas. (The value and
+  rhythm generators will be wrapped in a =Ptuple=, returning the
+  required =[item, delta]= arrays.)
+
+A rhythm generator is optional for non-default parameters. If one is
+omitted, the value generator will be called according to the default
+parameter's rhythm. Otherwise, non-default parameters use rhythm to
+"sample-and-hold" their values. Adding a rhythm generator to a value
+generator for a non-default parameter wraps both generators within a
+=Pstep=; the generator returns only the items, polling the
+sample-and-hold signal at times determined by the default parameter's
+rhythm.
+
+Listing [[genRhythm1]] uses the example process from Listing [[instance1]].
+Note that the last example produces an error message: /ERROR:
+Generator's output shape must match parm: [ amp, dur ]/. This tells
+you that rhythm is required for this parameter, because it's
+controlling both the default parameter name =amp= /and/ timing by
+=dur=.
+
+#+name: genRhythm1
+#+caption: Examples of generators, with rhythm handling.
+#+BEGIN_SRC {SuperCollider} -i
+// non-default parameter, generates values per main rhythm
+/beep..pan = "\xrand("<(-)>")";
+
+// non-default parameter, sample-and-hold once per quarter
+/beep..pan = "\xrand("<(-)>":randRhy(1, 1))";
+
+// easier to hear with sequence
+/beep..pan = "\seq("<>":randRhy(1, 1))";
+
+// default parameter with rhythm generator
+// beginning the pattern string with '^' means
+// every bar will have a strong downbeat
+/beep = "^\rand("-.":randRhy(0.25, 2, 1, 1))  |||";
+
+// switch to triplets, weight the return items
+/beep = "^\wrand("-.", 1, 3:randRhy(1/3, 2, 1)) |||";
+
+// default parameter, no rhythm: Error
+/beep = "^\rand("-.")  |||";
+#+END_SRC
+
+** Built-in generators
+
+The following generators are defined in /cl-livecode/:
+
+- =\seq("items")= :: Reads the items in sequence, like =Pseq= (with
+     =inf= repeats).
+
+- =\rand("items")= :: Reads the items in random order, like =Prand=.
+
+- =\xrand("items")= :: Reads the items in random order without
+     repeating the same item twice in a row, like =Pxrand=.
+
+- =\shuf("items")= :: Shuffles the items into random order, and
+     returns each one before choosing a new order, like
+     =Pn(Pshuf(items, 1), inf)=.
+
+- =\wrand("items", weight0, weight1, weight2...)= :: Weighted random
+     selection, like =Pwrand=. The generator automatically does
+     =normalizeSum= on the weights, so you don't have to worry about
+     making them add up to 1.0. Do not enclose the weights in array
+     brackets.
+
+- =\randRhy(base, weight1, weight2, weight3...)= :: Random rhythm
+     generation. =weight1= is the probability of returning =base * 1=;
+     =weight2= is the probability of =base * 2= and so on. Typically
+     used after a colon (and /without/ the leading backslash).
+
+Two additional generators are defined: =\clStepGen= and
+=\clRhythmGen=. These are for internal use. You should not override
+their behavior.
+
+** Writing new generators
+Generators inherit from =PR(\clGen)=,[fn:a395111b] and may override the following:
+
+- =~asPattern= :: A function returning a pattern to
+     evaluate. Generator arguments are available in the =~args=
+     array. The pattern may implement any logic that is required.
+  - In =~args=, item strings are converted to arrays. (They cannot
+    remain Strings, because they may contain values other than
+    characters.) For example:
+    - \texttt{"abc"} becomes =[ $a, $b, $c ]=.
+    - \texttt{"abc\textbackslash rand("def")"} becomes =[ $a, $b, $c, a Proto ]= (where the
+      =Proto= represents the =\rand()= generator).
+  - Item strings for pitch parameters become arrays of =SequenceNote=
+    objects: =SequenceNote(pitch, nil, legato)=. A pitch consists of a
+    pitch number (usually scale degree) and articulation (staccato,
+    portato or slurred). =SequenceNote= can maintain both values and
+    allow basic math operations on the pitch number.
+  - The pattern should have infinite length. =PR(\clGen)= includes
+    logic to stop the pattern after the expected duration.
+- =~protoID= :: The name of the =PR= for this generator. This is
+     required to render the generator's compile string. If this is not
+     populated, the wrong generator object will be produced and it
+     will not work as you expect. The name must be a symbol,
+     =\clGenName=; substitute the name of your object for =Name=, and
+     be sure it is capitalized. (Generator usage in /Set pattern/
+     strings will take the lowercase form.)
+- =~yieldsKeys= :: Override this for generators that produce rhythm as
+     well as the items to play. Simple value generators do /not/ need
+     to override this. Combination item-plus-rhythm generators should
+     specify: =~yieldsKeys = { [~parm, \dur] }=.
+- =~patternStringKeys= :: A list of =Proto= variable names to render
+     in the compile string. By default, these are =#[bpKey, args, dur,
+     isPitch, parm]=. In general, you should not need to override
+     this.
+
+The following =Proto= variables are populated by the /Set pattern/ compiler:
+
+- =~bpKey= :: The name of the =BP= object to which the generator is
+     assigned. The generator can access =BP= variables through
+     =BP(~bpKey)=.
+- =~isPitch= :: =true= if the parameter is for pitch, =false=
+     otherwise.
+- =~parm= :: The parameter name.
+
+Listing [[newGen]] defines a simple "pyramid" generator, which yields
+the first item, then the first two items, then the first three and so
+on. In a simple case like this, it is sufficient only to provide
+=~asPattern= and =~protoID=.
+
+#+name: newGen
+#+caption: Defining a new "pyramid" generator object.
+#+BEGIN_SRC {SuperCollider} -i
+(
+PR(\clGen).clone {
+	~asPattern = {
+		Pn(Pser(~args[0], Pseries(1, 1, inf).asStream), inf)
+	};
+	~protoID = \clGenPyr;  // note: *capital* Pyr
+} => PR(\clGenPyr);
+)
+
+/beep..pan = "\pyr("-()<>")";  // lowercase in Set pattern
+#+END_SRC
 
 * Extending cll
 /cll/ is designed to be extensible: adding new statements is
@@ -1183,14 +1435,23 @@ you will have any notes slur across the barline, make sure to include
 
 [fn:3ac66514] It does this by producing a =compileString= from the
 phrase selection pattern, performing string replacement, and then
-recompiling the pattern. This should work with all /cll/ [[Phrase selection][phrase
-selection]] strings. It is not guaranteed to work with hand-written
-patterns that generate phrase names algorithmically.
+recompiling the pattern. This should work with all /cll/ phrase
+selection strings (Section [[Phrase selection]]). It is not guaranteed
+to work with hand-written patterns that generate phrase names
+algorithmically.
 
 [fn:9e282b21] McLean, Alex. "Making Programming Languages to Dance to:
 Live Coding with Tidal." Proceedings of the 2nd ACM SIGPLAN
 international workshop on Functional art, music, modeling &
 design, September 6, 2014, Gothenburg, Sweden, pp. 63--70.
+
+[fn:2bc61fa0] The exception is pitch, where a scale degree number may
+be followed by accidental, octave and articulation designations. In
+this case, for instance, the four characters =4,+.= make up a single
+metrical instant.
+
+[fn:a395111b] In =Proto=, inheritance is handled by "cloning" the
+Proto: =PR(\clGen).clone { ... overrides... }=.
 
 * To-do								   :noexport:
 ** DONE Doc: Mention not to set prep or freeCleanup
