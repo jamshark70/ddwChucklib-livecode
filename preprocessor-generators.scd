@@ -37,7 +37,7 @@ protect {
 		// code generation
 		~protoID = \clGen;
 		~isClGen = true;
-		~patternStringKeys = #[func, bpKey, args, dur, isPitch, parm];
+		~patternStringKeys = #[bpKey, args, dur, isPitch, parm];
 		~asPatternString = { |stream(CollStream.new)|
 			var needComma = false, obj;
 			stream << "PR(" <<< ~protoID << ").copy.putAll((";
@@ -101,6 +101,10 @@ protect {
 	PR(\clGen).clone {
 		~asPattern = { Pwrand(~args[0], ~args[1..].normalizeSum, inf) };
 	} => PR(\clGenWrand);
+
+	PR(\clGen).clone {
+		~asPattern = { Pn(Pshuf(~args[0], 1), inf) };
+	} => PR(\clGenShuf);
 
 	PR(\clGen).clone {
 		~asPattern = {
