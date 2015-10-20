@@ -83,23 +83,30 @@ Thanks are due to:
 First, you must install the "ddwChucklib" quark and its
 dependencies. Consult Quarks documentation for details.
 
-/cll/'s functionality is contained in two files:
+/cll/'s functionality is contained in three files:
 
 - =preprocessor.scd= :: Installs the preprocessor to convert /cll/
      statements into SuperCollider language syntax.
 
+- =preprocessor-generators.scd= :: Installs /generator/ objects
+     (Section [[Generators]]).
+
 - =helper-functions.scd= :: A handful of useful =Func= definitions.
 
 To use /cll/ in a session, simply load the =scd= files in the
-interpreter. If you place both files into your user application
+interpreter. If you place the three files into your user application
 support directory (run =Platform.userAppSupportDir= to find out where
 that is), then you can load them easily by:
 
 #+name: install1
 #+caption: Instructions to load cll into a SC language session.
 #+BEGIN_SRC {SuperCollider} -i
-(Platform.userAppSupportDir +/+ "preprocessor.scd").load;
-(Platform.userAppSupportDir +/+ "helper-functions.scd").load;
+[  "preprocessor.scd",
+   "preprocessor-generators.scd",
+   "helper-functions.scd"
+].do { |name|
+   (Platform.userAppSupportDir +/+ name).load;
+};
 #+END_SRC
 
 #+BEGIN_boxnote
@@ -304,7 +311,7 @@ The inner dictionaries may contain two other items, optionally:
      /proc.phrase.def = "s";
      #+END_SRC
      Written this way, =def= in the /Set pattern/ statement will be
-     converted into =instrument= in the pattern.
+     populate =instrument= in the resulting events.
 
 *** Array arguments in the parameter map
 Array arguments are valid, and will be placed into resulting events as
@@ -421,7 +428,7 @@ by semicolons and submitted as a batch.
 |--------------+-----------------------------------------------------------------+------------------------------------------|
 | Start/stop   | Start or stop one or more procesess                             | \texttt{/proc/proc/proc+} or \texttt{-}  |
 |--------------+-----------------------------------------------------------------+------------------------------------------|
-| Generator    | Create several randomized patterns at once                      | \texttt{/proc.phrase.parm *n +ki "base"} |
+| Randomizer    | Create several randomized patterns at once                      | \texttt{/proc.phrase.parm *n +ki "base"} |
 |--------------+-----------------------------------------------------------------+------------------------------------------|
 | Make         | Instantiate a process or voicer                                 | \texttt{/make(factory/factory)}          |
 |--------------+-----------------------------------------------------------------+------------------------------------------|
@@ -543,6 +550,17 @@ quarter rests; it's actually two half notes! If you need to silence
 notes explicitly, then you should define an item in the parameter map
 whose value is a =Rest= object.
 #+END_boxnote
+
+#+begin_boxnote
+/Set pattern/ writes the character identifiers for the values into the
+pattern: for example, a pattern string @@latex:\texttt{"--"}@@ becomes
+=Pseq([$-, $-], 1)=. =PR(\abstractLiveCode)= post-processes each
+parameter, ensuring that the right event keys receive the right
+values. The conversion from identifier value occurs for each
+parameter; you should be able to rely on accessing the final values by
+Pkey. This supports /Generators/ (Section [[Generators]]), which
+should also return the value identifiers.
+#+end_boxnote
 
 **** TODO Set pattern examples					   :noexport:
 
@@ -672,8 +690,12 @@ the following in the "chuck" parameter dictionary, as in
 #+END_boxnote
 
 #+BEGIN_boxnote
-Items in pitch sequences may include more than one character:
- =3= is one note, as is =6+,~=.
+Items in pitch sequences may include more than one character: =3= is
+ one note, as is =6+,~=. They are converted into =SequenceNote=
+ objects in the pattern, because =SequenceNotes= can encode pitch and
+ articulation information. Post-processing in =PR(\abstractLiveCode)=
+ extracts the articulation value and assigns it to =\legato= (or
+ =\sustain= for staccato notes).
 #+END_boxnote
 
 @@latex:Listing \ref{pitchSet1}@@ illustrates the kind of articulation
@@ -754,11 +776,11 @@ if not given, each process will use its own internal =quant=
 setting. By default, this is one bar; however, the =setm= 
 helper function overrides this for the given number of bars (Section [[Helper functions]]).
 
-** Generator statement
-Generators create randomized variations on a given string:
+** Randomizer statement
+Randomizers create randomized variations on a given string:
 
 #+name: clGen1
-#+caption: Syntax template for generator statement.
+#+caption: Syntax template for randomizer statement.
 #+BEGIN_SRC {SuperCollider} -i
 /proc.prefix.parm *n +ki %q "string"
 #+END_SRC
@@ -788,7 +810,7 @@ passing a string without dividers will cause an error.
 
 #+begin_figure
 #+name: gen1
-#+caption: Examples of generator statements.
+#+caption: Examples of randomizer statements.
 #+BEGIN_SRC {SuperCollider} -i
 // assuming BP(\snr) defines:
 // "-" (normal note)
@@ -824,7 +846,7 @@ passing a string without dividers will cause an error.
 #+END_SRC
 #+end_figure
 
-The generator's algorithm is:
+The randomizer's algorithm is:
 
 1. Use =q= to determine the valid time points at which to place
    notes. In 4/4 time, with the default =q= = 0.25, there will be 16
@@ -1299,6 +1321,49 @@ PR(\clGen).clone {
 /beep..pan = "\pyr("-()<>")";  // lowercase in Set pattern
 #+END_SRC
 
+A final example, Listing [[pitchGen]], demonstrates a simple use of
+pitch in a generator by playing an ascending scale starting with a
+given note. The starting note is given as a quoted-string argument,
+which parses pitches as =SequenceNotes=. The first argument is
+=~args[0]=, and we are interested only in the first pitch in this
+argument, hence =~args[0][0]=. =SequenceNotes= respond to basic math
+operations, meaning they may be used in =Pseries=. Each subsequent
+value coming from this =Pseries= will add 1 to the previous
+=SequenceNote=, raising the pitch by one scale degree. =:randRhy()=
+specifies 16th-notes.
+
+Because each generator runs until the next event in the enclosing
+pattern string, true rests---the =x= characters---indicate the
+generators' durations. The first rest occurs on the second 16th of
+beat 2; this allows the first generator to play through the first 16th
+of that beat, for five 16ths in total.
+
+#+name: pitchGen
+#+caption: A pitch generator definition, with rests for duration.
+#+BEGIN_SRC {SuperCollider} -i
+(
+BP(\pgen).free;
+PR(\abstractLiveCode).chuck(BP(\pgen), nil, (
+	event: (eventKey: \default),
+	defaultParm: \degree,
+	parmMap: (degree: (isPitch: true))
+));
+
+PR(\clGen).clone {
+	// ~args[0] comes from e.g. "1", which becomes
+	// [SequenceNote(0, nil, 0.9)]. So ~args[0][0]
+	// is the starting note.
+	~asPattern = { Pseries(~args[0][0], 1, inf) };
+	~protoID = \clGenUpscale;
+} => PR(\clGenUpscale);
+)
+
+/pgen = "\upscale("1":randRhy(0.25, 1))| x  |\upscale("6,":randRhy(0.25, 1))|   x";
+
+/pgen+;
+/pgen-;
+#+END_SRC
+
 * Extending cll
 /cll/ is designed to be extensible: adding new statements is
 relatively straightforward.
@@ -1421,7 +1486,7 @@ PR(\chucklibLiveCode).clMyNewStatement = { |code|
 
 [fn:5b6ef116] Harkins, H. James. (2011). "Composition for Live
 Performance with dewdrop\textunderscore lib and chucklib." In Wilson,
-S. / Cottle, D. / Collins N. [eds.] /The SuperCollider
+S., Cottle, D., Collins N. [eds.] /The SuperCollider
 Book/. Cambridge, Mass.: MIT Press. pp. 589--612.
 
 [fn:8ae1bb90] http://github.com/jamshark70/chucklib-livecode
