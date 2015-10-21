@@ -29,6 +29,7 @@
 
 #+LATEX_HEADER: \usepackage{caption}
 #+LATEX_HEADER: \captionsetup[figure]{font={it,footnotesize},labelfont={it,footnotesize},singlelinecheck=false}
+#+LATEX_HEADER: \captionsetup[table]{font={it,footnotesize},labelfont={it,footnotesize},singlelinecheck=false}
 #+LATEX_HEADER: \captionsetup[lstlisting]{font={it,footnotesize},labelfont={it,footnotesize},singlelinecheck=false}
 
 #+LATEX_HEADER: \usepackage{sclang-prettifier}
@@ -167,10 +168,11 @@ PR(\abstractLiveCode).chuck(BP(\beep), nil, (
          4982, 10320
       );
       ~defaults[\bufnum] = ~buf;
-      SynthDef(\buf1, { |out, bufnum, pan, amp|
+      SynthDef(\buf1, { |out, bufnum, pan, amp, time = 1|
          var sig = PlayBuf.ar(1, bufnum),
          eg = EnvGen.kr(
-            Env.linen(0.02, BufDur.ir(bufnum) - 0.04, 0.02),
+            Env.linen(0.02,
+               min(time, BufDur.ir(bufnum) - 0.04), 0.02),
             doneAction: 2
          );
          Out.ar(out, Pan2.ar(sig, pan, amp * eg));
@@ -404,23 +406,10 @@ sequences of statements to reuse quickly and easily.
 
 * Livecoding statement reference
 ** Statement types
-/cll/ statements begin with a slash: =/=. Statements may be separated
-by semicolons and submitted as a batch.
-
-#+name: cllStmt1
-#+caption: Cll statements, one by one or as a batch.
-#+BEGIN_SRC {SuperCollider} -i
-// run one at a time
-/kick.fotf = "----";
-/snare.bt24 = " - -";
-
-// or as a batch
-/kick.fotf = "----"; /snare.bt24 = " - -";
-#+END_SRC
-
-/cll/ supports the following statements, in order of importance.
-
-#+ATTR_LATEX: :align |l|p{0.35\textwidth}|p{0.35\textwidth}|
+# Add early for page placement
+#+name: cllStatements
+#+caption: List of available chucklib-livecode statements.
+#+ATTR_LATEX: :align |l|p{0.35\textwidth}|p{0.35\textwidth}| :float t :placement [tb!]
 |--------------+-----------------------------------------------------------------+------------------------------------------|
 | *Type*       | *Function*                                                      | *Syntax outline*                         |
 |--------------+-----------------------------------------------------------------+------------------------------------------|
@@ -444,6 +433,22 @@ by semicolons and submitted as a batch.
 |--------------+-----------------------------------------------------------------+------------------------------------------|
 | Show pattern | Copies a phrase pattern's string into the document, for editing | \texttt{/proc.phrase.parm}               |
 |--------------+-----------------------------------------------------------------+------------------------------------------|
+
+/cll/ statements begin with a slash: =/=. Statements may be separated
+by semicolons and submitted as a batch.
+
+#+name: cllStmt1
+#+caption: Cll statements, one by one or as a batch.
+#+BEGIN_SRC {SuperCollider} -i
+// run one at a time
+/kick.fotf = "----";
+/snare.bt24 = " - -";
+
+// or as a batch
+/kick.fotf = "----"; /snare.bt24 = " - -";
+#+END_SRC
+
+/cll/ supports the statements shown in Table [[cllStatements]], in order of importance.
 
 *** types							   :noexport:
     - [X] \clMake -> "^ *make\\(.*\\)",
