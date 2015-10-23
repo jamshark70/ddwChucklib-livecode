@@ -1279,8 +1279,12 @@ Generators inherit from =PR(\clGen)=,[fn:a395111b] and may override the followin
     pitch number (usually scale degree) and articulation (staccato,
     portato or slurred). =SequenceNote= can maintain both values and
     allow basic math operations on the pitch number.
-  - The pattern should have infinite length. =PR(\clGen)= includes
-    logic to stop the pattern after the expected duration.
+  - If the generator is returning items /and/ rhythm, it should ensure
+    that the sum of the outgoing rhythm values is exactly =~dur=. The
+    easiest way is to generate an infinite-length pattern and wrap the
+    time pattern: =Pconst(~dur, timePattern)=. (Item-only generators do
+    not need to worry about this; attaching a rhythm generator by a
+    colon automatically applies =Pconst=.)
 - =~protoID= :: The name of the =PR= for this generator. This is
      required to render the generator's compile string. If this is not
      populated, the wrong generator object will be produced and it
