@@ -2136,7 +2136,8 @@ Proto {
 		{ ~parmIsPitch.(parm) } {
 			if(event.isKindOf(SequenceNote)) {
 				if(event.length <= 0.4) {
-					inEvent[\sustain] = 0.15
+					// this must be a function because ~dur is not populated yet!
+					inEvent[\sustain] = { min(0.15, ~dur * event.length) };
 				} {
 					inEvent[\legato] = event.length
 				};
