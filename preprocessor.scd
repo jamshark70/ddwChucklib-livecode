@@ -768,6 +768,7 @@ Proto {
 				// degree -> legato  // Association identifies pitch above
 				SequenceNote(degree, nil, legato)
 			}
+			{ "~_.".includes(pitchStr[0]) } { pitchStr[0] }
 			{ pitchStr[0] != $  } {
 				// Rest(0) -> legato
 				SequenceNote(Rest(0), nil, legato)
