@@ -2146,7 +2146,8 @@ Proto {
 				event.freq
 			} {
 				if(event == \rest) {
-					~parmMap[parm][\rest] ?? { 0 }
+					inEvent[\legato] = 0.9;
+					Rest(~parmMap[parm][\rest] ?? { 0 })
 				} {
 					event
 				}
