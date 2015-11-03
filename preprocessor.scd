@@ -408,22 +408,32 @@ Proto {
 		while { (ch = stream.next).notNil } {
 			case
 			{ ch == $\\ } {
-				// skip up to paren
-				while {
-					oneSeg = oneSeg.add(ch);
-					(ch = stream.next).notNil and: { ch != $( }
-				};
-				if(ch.isNil) {
-					Error("Generator '%' is missing open paren".format(oneSeg)).throw;
-				};
 				oneSeg = oneSeg.add(ch);
-				// skip nested paren group
-				parenCount = 1;
-				while { parenCount >= 1 and: { (ch = stream.next).notNil } } {
+				ch = stream.next;
+				if(ch.isDecDigit) {
+					while {
+						oneSeg = oneSeg.add(ch);
+						(ch = stream.next).notNil and: { ch.isDecDigit }
+					};
+					if(ch.notNil) { stream.pos = stream.pos - 1 };
+				} {
+					// skip up to paren
+					while {
+						oneSeg = oneSeg.add(ch);
+						(ch = stream.next).notNil and: { ch != $( }
+					};
+					if(ch.isNil) {
+						Error("Generator '%' is missing open paren".format(oneSeg)).throw;
+					};
 					oneSeg = oneSeg.add(ch);
-					switch(ch)
-					{ $( } { parenCount = parenCount + 1 }
-					{ $) } { parenCount = parenCount - 1 }
+					// skip nested paren group
+					parenCount = 1;
+					while { parenCount >= 1 and: { (ch = stream.next).notNil } } {
+						oneSeg = oneSeg.add(ch);
+						switch(ch)
+						{ $( } { parenCount = parenCount + 1 }
+						{ $) } { parenCount = parenCount - 1 }
+					};
 				};
 			}
 			{ ch == $| } {
@@ -537,7 +547,7 @@ Proto {
 		while { (ch = stream.next).notNil } {
 			case
 			{ ch == $\\ } {
-				result = result.add(~parseGenerator.(stream));
+				result = result.add(~parseGenerator.(stream, topLevel: true));
 			}
 			{ ~isPitch } {
 				// ~isPitch = true;
@@ -561,116 +571,130 @@ Proto {
 	};
 
 	// returns generator object
-	~parseGenerator = { |stream, isPitchOverride|
+	~parseGenerator = { |stream, isPitchOverride, topLevel(false)|
 		var /*genObj,*/ name = String.new,
-		argList, inArgList = false, args = Array.new, pitchStr, ch, gen, rhythmGen;
+		argList, inArgList = false, args = Array.new, pitchStr, ch, gen, rhythmGen, i;
 		// assumes stream has already gotten \
 		while { (ch = stream.next).notNil and: { ch.isAlphaNum or: { ch == $_ } } } {
 			name = name.add(ch);
 		};
 		while { ch.notNil and: { ch.isSpace } } { ch = stream.next };  // skip spaces
 		if(ch != $() {
-			Error("Generator '%' has no argument list".format(name)).throw;
-		};
-		while { ch.notNil and: { inArgList or: { ch != $) } } } {
-			ch = stream.next;
-			case
-			{ ch == $" } {
-				if(inArgList) {  // ending an arg string
-					inArgList = false;
-					while { (ch = stream.next).notNil and: { ch.isSpace } };
-					if(":,)".includes(ch)) {
-						args = args.add(argList);
+			// at top level, \number may refer to an earlier generator, by index
+			if(topLevel and: { name.every { |ch| ch.isDecDigit } }) {
+				i = name.asInteger - 1;
+				if(~topGenerators.tryPerform(\at, i).notNil) {
+					gen = ~topGenerators[i].copy;
+				} {
+					Error("Generator reference %% doesn't exist".format($\\, name)).throw;
+				};
+			} {
+				Error("Generator '%' has no argument list".format(name)).throw;
+			};
+		} {
+			while { ch.notNil and: { inArgList or: { ch != $) } } } {
+				ch = stream.next;
+				case
+				{ ch == $" } {
+					if(inArgList) {  // ending an arg string
 						inArgList = false;
-						if(ch == $:) {
-							stream.pos = stream.pos - 1;
+						while { (ch = stream.next).notNil and: { ch.isSpace } };
+						if(":,)".includes(ch)) {
+							args = args.add(argList);
+							inArgList = false;
+							if(ch == $:) {
+								stream.pos = stream.pos - 1;
+							};
+						} {
+							Error("Generator '%' bad argument list syntax".format(name)).throw;
 						};
 					} {
-						Error("Generator '%' bad argument list syntax".format(name)).throw;
+						argList = Array.new;
+						inArgList = true;
 					};
-				} {
-					argList = Array.new;
-					inArgList = true;
-				};
-			}
-			{ inArgList } {
-				case
-				{ ~isPitch and: { ch.isDecDigit } } {
-					pitchStr = String.with(ch);
-					while {
-						(ch = stream.next).notNil and: {  "+-',~_.".includes(ch) }
-					} { pitchStr = pitchStr.add(ch) };
-					argList = argList.add(~decodePitch.(pitchStr));
-					stream.pos = stream.pos - 1;
+				}
+				{ inArgList } {
+					case
+					{ ~isPitch and: { ch.isDecDigit } } {
+						pitchStr = String.with(ch);
+						while {
+							(ch = stream.next).notNil and: {  "+-',~_.".includes(ch) }
+						} { pitchStr = pitchStr.add(ch) };
+						argList = argList.add(~decodePitch.(pitchStr));
+						stream.pos = stream.pos - 1;
+					}
+					{ ch == $\\ } {
+						argList = argList.add(~parseGenerator.(stream));
+					}
+					{ ch == $| } {
+						argList = argList.add(ch);
+					}
+					{
+						if(~isPitch) {
+							argList = argList.add(~decodePitch.(ch.asString));
+						} {
+							argList = argList.add(ch);
+						};
+					};
 				}
 				{ ch == $\\ } {
-					argList = argList.add(~parseGenerator.(stream));
-				}
-				{ ch == $| } {
-					argList = argList.add(ch);
-				}
-				{
-					if(~isPitch) {
-						argList = argList.add(~decodePitch.(ch.asString));
-					} {
-						argList = argList.add(ch);
-					};
-				};
-			}
-			{ ch == $\\ } {
-				args = args.add(~parseGenerator.(stream));
-				while { (ch = stream.next).notNil and: { ch.isSpace } };
-			}
-			{ ",)".includes(ch) } {
-				if(argList.isKindOf(String)) {
-					args = args.add(argList.interpret);
-					argList = nil;
-				};
-				if(ch != $)) {
+					args = args.add(~parseGenerator.(stream));
 					while { (ch = stream.next).notNil and: { ch.isSpace } };
-					stream.pos = stream.pos - 1;
+				}
+				{ ",)".includes(ch) } {
+					if(argList.isKindOf(String)) {
+						args = args.add(argList.interpret);
+						argList = nil;
+					};
+					if(ch != $)) {
+						while { (ch = stream.next).notNil and: { ch.isSpace } };
+						stream.pos = stream.pos - 1;
+					};
+				}
+				{ ch == $: } {
+					// \rand("abc":rhy())
+					// rhythmGen may *never* be pitch
+					rhythmGen = ~parseGenerator.(stream, false);
+				}
+				{   // default case
+					if(argList.isKindOf(String).not) {
+						argList = String.new;
+					};
+					argList = argList.add(ch);
 				};
-			}
-			{ ch == $: } {
-				// \rand("abc":rhy())
-				// rhythmGen may *never* be pitch
-				rhythmGen = ~parseGenerator.(stream, false);
-			}
-			{   // default case
-				if(argList.isKindOf(String).not) {
-					argList = String.new;
-				};
-				argList = argList.add(ch);
+			};
+			if(ch != $)) {
+				Error("Generator '%' doesn't close its parentheses".format(name)).throw;
+			};
+			// LATER: call parseGenerator recursively to get rhythm and/or legato generator
+			// LATER: separate PR() for every generator type
+			~hasGen = true;
+			gen = PR(("clGen" ++ name.copy.put(0, name[0].toUpper)).asSymbol).copy.putAll((
+				// func: name.asSymbol,
+				bpKey: ~objKey,
+				isPitch: isPitchOverride ?? { ~isPitch },
+				parm: ~parm,
+				args: args
+			));
+			if(rhythmGen.notNil) {
+				if(~isMain) {
+					gen = PR(\clRhythmGen).copy.putAll((
+						valueGen: gen, rhythmGen: rhythmGen,
+						bpKey: ~objKey, parm: ~parm
+					))
+				} {
+					gen = PR(\clStepGen).copy.putAll((
+						valueGen: gen, rhythmGen: rhythmGen,
+						bpKey: ~objKey, parm: ~parm
+					))
+				}
 			};
 		};
-		if(ch != $)) {
-			Error("Generator '%' doesn't close its parentheses".format(name)).throw;
+		if(topLevel) {
+			if(~topGenerators.isNil) { ~topGenerators = Array.new };
+			~topGenerators = ~topGenerators.add(gen);
 		};
-		// LATER: call parseGenerator recursively to get rhythm and/or legato generator
-		// LATER: separate PR() for every generator type
-		~hasGen = true;
-		gen = PR(("clGen" ++ name.copy.put(0, name[0].toUpper)).asSymbol).copy.putAll((
-			// func: name.asSymbol,
-			bpKey: ~objKey,
-			isPitch: isPitchOverride ?? { ~isPitch },
-			parm: ~parm,
-			args: args
-		));
-		if(rhythmGen.notNil) {
-			if(~isMain) {
-				PR(\clRhythmGen).copy.putAll((
-					valueGen: gen, rhythmGen: rhythmGen,
-					bpKey: ~objKey, parm: ~parm
-				))
-			} {
-				PR(\clStepGen).copy.putAll((
-					valueGen: gen, rhythmGen: rhythmGen,
-					bpKey: ~objKey, parm: ~parm
-				))
-			}
-		} {
-			gen
-		};
+		gen
 	};
 
 	// matchOverride needs refactoring
