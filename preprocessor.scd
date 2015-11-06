@@ -578,13 +578,13 @@ Proto {
 		while { (ch = stream.next).notNil and: { ch.isAlphaNum or: { ch == $_ } } } {
 			name = name.add(ch);
 		};
-		while { ch.notNil and: { ch.isSpace } } { ch = stream.next };  // skip spaces
 		if(ch != $() {
 			// at top level, \number may refer to an earlier generator, by index
 			if(topLevel and: { name.every { |ch| ch.isDecDigit } }) {
 				i = name.asInteger - 1;
 				if(~topGenerators.tryPerform(\at, i).notNil) {
 					gen = ~topGenerators[i].copy;
+					stream.pos = stream.pos - 1;
 				} {
 					Error("Generator reference %% doesn't exist".format($\\, name)).throw;
 				};
