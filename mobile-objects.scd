@@ -667,12 +667,22 @@ protect {
 				(mixer: mixer, ctl: \level, label: mixer.name.asString + "level"));
 			~maps[~faderKeys[index]] = newMap;
 			~setNotification.(newMap, ~faderKeys[index]);
-			// mute button
+			// mute button -- some hackage here
 			if(parms.tryPerform(\at, \setMute) != false) {
 				~maps[~toggleKeys[index]].free;
 				newMap = PR(\abstrMobileResp).copy.prep(~toggleKeys[index],
 					(label: "M"));
 				newMap.prAction = { |msg| mixer.mute(msg[1] > 0) };
+				newMap[\update] = newMap[\update].addFunc({ |obj, what, ag|
+					if(what == \mixerFreed and: { ag === mixer }) {
+						~free.();
+						MixerChannel.removeDependant(currentEnvironment);
+					};
+				});
+				newMap.userfree = {
+					BP(~oscInKey).setGUIValue(~path[0], 0);
+				};
+				MixerChannel.addDependant(newMap);
 				~maps[~toggleKeys[index]] = newMap;
 				~setNotification.(newMap, ~toggleKeys[index]);
 			};
@@ -680,19 +690,25 @@ protect {
 		// both mixer and play/stop
 		~bindBP = { |bp, adverb, parms|
 			var index = ~getIndexFromAdverb.(adverb, 0, \fader),
-			mixer = bp[\chan],
+			mixer = bp.v.chan,
 			newMap;
 			if(mixer.isNil) {
 				mixer = bp.event[\voicer];  // mixer as temp here
 				if(mixer.notNil) { mixer = mixer.asMixer };  // mixer is really a Voicer at the start of this!
 			};
 			if(parms.isNil) {
-				parms = (setMute: false)
-			} {
-				parms = parms.copy.put(\setMute, false);
+				parms = ()  // setMute: false
 			};
-			if(mixer.notNil) {
-				~bindMixerChannel.(mixer, index, parms);
+			// may be multiple mixers
+			// note: 'do' handles [mixer, mixer...], and mixer, and nil
+			mixer.do { |mixer, i|
+				var localParms = parms;
+				if(i == 0) {
+					localParms = localParms.copy.put(\setMute, false);
+				};
+				if(index + i < ~faderKeys.size) {
+					~bindMixerChannel.(mixer, index + i, localParms);
+				};
 			};
 			~maps[~toggleKeys[index]].free;
 			newMap = PR(\bptrig).copy.prep(~toggleKeys[index],
