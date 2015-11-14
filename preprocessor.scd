@@ -584,7 +584,9 @@ Proto {
 				i = name.asInteger - 1;
 				if(~topGenerators.tryPerform(\at, i).notNil) {
 					gen = ~topGenerators[i].copy;
-					stream.pos = stream.pos - 1;
+					// if any chars are left, stream has absorbed 1 too many: rewind
+					// if ch isNil, we've hit the end of the string, shouldn't rewind
+					if(ch.notNil) { stream.pos = stream.pos - 1 };
 				} {
 					Error("Generator reference %% doesn't exist".format($\\, name)).throw;
 				};
