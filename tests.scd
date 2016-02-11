@@ -1048,3 +1048,10 @@ PR(\clPatternSet).v.splitByDividers("abc|def|\\rand(\"ghi|jkl\")|mno").asCompile
 PR(\clPatternSet).v.splitByDividers("abc|def|\\rand(\"\\rand(\"ghi|jkl\")\")|mno").asCompileString;
 
 PR(\clPatternSet).v.splitByDividers("\\rand(\"abc|def\")").asCompileString;
+
+
+// shift infloop bug:
+/fsn = "\shift("..|||", "..", 1, 0.25)";  // easy test
+/fsn = "\shift("..|||", "..", 2, 0.25)";  // the failure case
+/fsn = "\shift("..|||", "..", 3, 0.25)";  // wrong usage: now does what it can, but no infloop
+

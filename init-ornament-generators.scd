@@ -264,40 +264,56 @@ PR(\clGen).clone {
 // [source, shiftable items, numToShift, shiftDur]
 PR(\clGenSrc).clone {
 	~modifySource = {
-		var shiftItem, shiftIndex, pool, shiftedIndices = List.new,
-		shiftArray = (~args[3] ?? { 0.25 }) * [-1, 1], shift, newTime,
-		numToShift;
-		pool = (~args[1] ?? { ~items.collect(_[\item]) }).copy;
+		var pool = (~args[1] ?? { ~items.collect(_[\item]) }).copy,
+		possShifts = (~args[3] ?? { 0.25 }) * [-1, 1],
 		numToShift = min(pool.size, (~args[2] ?? { 1 }));
-		while { shiftedIndices.size < numToShift } {
-			shiftIndex = nil;
-			while { shiftIndex.isNil } {
-				shiftItem = pool.choose;
-				shiftIndex = ~items.collectIndices { |item, i|
-					item.item == shiftItem and: { shiftedIndices.includes(i).not }
-				};
-				shiftIndex = shiftIndex.choose;  // nil if array is empty
-			};
-			shiftArray = shiftArray.rotate(2.rand);
-			shift = block { |break|
-				shiftArray.do { |sh|
-					newTime = ~items[shiftIndex][\time] + sh;
-					if(newTime.inclusivelyBetween(0, ~dur - 0.001) and: {
-						newTime != ~items[shiftIndex + sh.sign].tryPerform(\at, \time)
-					}) {
-						break.(newTime);
-					};
-				};
-				nil
-			};
-			if(shift.notNil) {
-				pool.remove(shiftItem);
-				shiftedIndices.add(shiftIndex);
-				~items[shiftIndex][\time] = newTime;
-			};
-		};
+		~traverseShifts.(numToShift, ~items, pool, possShifts);
 		~updateDeltas.();
 		~source = ~makeSource.();
+	};
+
+	// This must be recursive. Consider: \shift("..|||", "..", 2, 0.25).
+	// If it first moves 0.5 to 0.25, there is nowhere for 0 to go.
+	// The correct solution is to backtrack and move 0.5 to 0.75.
+	// Backtracking = recursion.
+	~traverseShifts = { |numToShift, items, pool, shiftArray, shiftedIndices(List.new)|
+		var shiftItem, shiftIndex, shift, newTime, oldItem;
+
+		shiftIndex = nil;
+		while { shiftIndex.isNil } {
+			shiftItem = pool.choose;
+			shiftIndex = ~items.collectIndices { |item, i|
+				item.item == shiftItem and: { shiftedIndices.includes(i).not }
+			};
+			shiftIndex = shiftIndex.choose;  // nil if array is empty
+		};
+		shiftArray = shiftArray.rotate(2.rand);
+		shift = block { |break|
+			shiftArray.do { |sh|
+				newTime = ~items[shiftIndex][\time] + sh;
+				if(newTime.inclusivelyBetween(0, ~dur - 0.001) and: {
+					newTime != ~items[shiftIndex + sh.sign].tryPerform(\at, \time)
+				}) {
+					oldItem = ~items[shiftIndex];
+					~items[shiftIndex] = ~items[shiftIndex].copy.put(\time, newTime);
+					pool.remove(shiftItem);
+					shiftedIndices.add(shiftIndex);
+					if(numToShift > 1) {
+						if(~traverseShifts.(numToShift - 1, ~items, pool, shiftArray, shiftedIndices)) {
+							break.(newTime);
+						}
+					} {
+						break.(newTime);
+					};
+					// if we didn't break for success, undo for next iteration
+					pool = pool.add(shiftItem);
+					shiftedIndices.remove(shiftIndex);
+					~items[shiftIndex] = oldItem;
+				};
+			};
+			nil
+		};
+		shift.notNil  // true if successful
 	};
 	~protoID = \clGenShift;
 	~helpString = "\\shift(\"source\", \"shiftable items\", numToShift, shiftDur)";
