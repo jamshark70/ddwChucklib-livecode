@@ -363,18 +363,22 @@ PR(\clGenSrc).clone {
 	~getAvail = { |quant, tolerance = 0.001|
 		var i = 0, j = 0, time, avail = List.new,
 		times = ~items.collect(_[\time]) ++ [~dur];
+		time = i * quant;
 		while {
-			time = i * quant;
 			time < ~dur
 		} {
 			if(time absdif: times[j] < tolerance) {
 				if(~items[j][\initialRest] == true) { avail.add(time) };
+				// 'time' is matched at times[j], so we must advance by at least 1
 				j = j + 1;
 			} {
 				avail.add(time);
-				if(time - times[j] >= tolerance) {  // we crossed over times[j]
-					j = j + 1;
-				}
+				// times[j] is somewhere in the future; may not need to advance yet
+			};
+			time = (i+1) * quant;
+			// keep advancing 'j' as long as times[j] is earlier than the next 'time'
+			while { time - times[j] >= tolerance } {
+				j = j + 1;
 			};
 			i = i + 1;
 		};
