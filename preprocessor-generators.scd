@@ -88,22 +88,27 @@ protect {
 	PR(\clGen).clone {
 		// optional argument 'bp' to access process variables
 		~asPattern = { Pseq(~args[0], inf) };
+		~helpString = "\\seq(\"items\")";
 	} => PR(\clGenSeq);
 
 	PR(\clGen).clone {
 		~asPattern = { Prand(~args[0], inf) };
+		~helpString = "\\rand(\"items\")";
 	} => PR(\clGenRand);
 
 	PR(\clGen).clone {
 		~asPattern = { Pxrand(~args[0], inf) };
+		~helpString = "\\xrand(\"items\")";
 	} => PR(\clGenXrand);
 
 	PR(\clGen).clone {
 		~asPattern = { Pwrand(~args[0], ~args[1..].normalizeSum, inf) };
+		~helpString = "\\wrand(\"items\", weight0, weight1...)";
 	} => PR(\clGenWrand);
 
 	PR(\clGen).clone {
 		~asPattern = { Pn(Pshuf(~args[0], 1), inf) };
+		~helpString = "\\shuf(\"items\")";
 	} => PR(\clGenShuf);
 
 	PR(\clGen).clone {
@@ -111,6 +116,7 @@ protect {
 			var weights = ~args[1..].normalizeSum;
 			Pwrand((1 .. weights.size), weights, inf) * ~args[0]
 		};
+		~helpString = "\\randRhy(baseDur, weight1, weight2...)";
 	} => PR(\clGenRandRhy);
 
 	// non-default parameter with rhythm generator: Use Pstep
@@ -119,11 +125,24 @@ protect {
 		~rhythmGen = 1;
 
 		~embedInStream = { |inval|
-			var dur = ~dur.(),
+			var dur = ~dur.(), durStream;
+			~prepareChildren.(inval);
 			durStream = if(dur.notNil and: { dur < inf }) {
 				Pconst(dur, ~rhythmGen).asStream
 			} { ~rhythmGen.asStream };
-			Pstep(~valueGen.asStream, durStream, 1).embedInStream(inval)
+			PstepDur(~valueGen.asStream, durStream, 1).embedInStream(inval)
+		};
+		~prepareChildren = {
+			#[inItem, inDelta].do { |key|
+				var thing = key.envirGet;
+				if(thing.notNil) {
+					#[valueGen, rhythmGen].do { |childKey|
+						if(childKey.envirGet.tryPerform(\isClGen) ?? { false }) {
+							childKey.envirGet.put(key, thing);
+						};
+					};
+				};
+			};
 		};
 
 		~protoID = \clStepGen;
@@ -134,12 +153,12 @@ protect {
 	// default parm must expose 'dur' separately: Use Ptuple
 	PR(\clStepGen).clone({
 		~embedInStream = { |inval|
-			var dur = ~dur.(),
+			var dur = ~dur.(), durStream;
+			~prepareChildren.(inval);
 			durStream = if(dur.notNil and: { dur < inf }) {
 				Pconst(dur, ~rhythmGen).asStream
 			} { ~rhythmGen.asStream };
-			var pat = Ptuple([~valueGen.asStream, durStream], 1);
-			pat.embedInStream(inval)
+			Ptuple([~valueGen.asStream, durStream], 1).embedInStream(inval)
 		};
 
 		~protoID = \clRhythmGen;
