@@ -904,7 +904,7 @@ Proto {
 		currentEnvironment
 	};
 	~buildStepPattern = { |levels, deltas|
-		"Pstep(Pseq(%, 1), Pseq(%, 1), 1)".format(levels.asCompileString, deltas.asCompileString);
+		"PstepDur(Pseq(%, 1), Pseq(%, 1), 1)".format(levels.asCompileString, deltas.asCompileString);
 	};
 	~buildSimplePattern = { |levels|
 		"Pseq(%, 1)".format(levels.asCompileString)
@@ -2107,6 +2107,18 @@ Proto {
 
 // livecode-able process prototype
 
+// first: there's some ugliness about pitched note lengths
+// hard to work with PR(\voicerNote).
+// Here's a function to get the actual sustain time:
+
+{ |ev|
+	case
+	// even more ugliness: legato branch *must* come first. Really bad design.
+	{ ev[\legato].notNil } { ev[\dur] * ev[\legato] }
+	{ ev[\sustain].notNil } { ev.use { ev[\sustain].value } }
+	{ ev[\dur] }
+} => Func(\evLength);
+
 (
 Proto {
 	~event = (eventKey: \singleSynthPlayer);
@@ -2126,7 +2138,7 @@ Proto {
 	~prep = {
 		if(~phrases.isNil) {
 			~phrases = IdentityDictionary[
-				\main -> PbindProxy.new,
+				\main -> PbindProxy([~defaultParm, \dur], nil),
 				\rest -> PbindProxy(\dur, Pfuncn { Rest(~clock.beatsPerBar) })
 			];
 			~phraseDurs = IdentityDictionary[
@@ -2180,7 +2192,13 @@ Proto {
 			};
 		} {
 			dict = ~parmMap[parm];
-			result = if(dict.notNil) { dict[event] };
+			result = if(dict.notNil) {
+				if(dict[\convertFunc].notNil) {
+					dict[\convertFunc].value(event)
+				} {
+					dict[event]
+				};
+			};
 			if(event == \rest) {
 				Rest(result ?? { 0 })
 			} {
@@ -2210,7 +2228,7 @@ Proto {
 		var pat = ~phrases[phrase],
 		storeParm = ~parmMap[inParm].tryPerform(\at, \alias) ?? { parm };
 		if(pat.isNil) {
-			pat = PbindProxy.new;
+			pat = PbindProxy([~defaultParm, \dur], nil);
 			~phrases[phrase] = pat;
 		};
 		if(parm.notNil) {
