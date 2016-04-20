@@ -11,6 +11,7 @@ PR(\clGen).clone {
 		};
 		Pseq(~items).collect { |srcItem, inval|
 			var item, delta, stream, newPair, elapsed = 0, tolerance;
+			// srcItem.debug("clGenOrn ornamenting");
 			item = srcItem[\item];
 			delta = srcItem[\delta];
 			if(item != $  and: { delta >= ~args[1] }) {
@@ -25,10 +26,10 @@ PR(\clGen).clone {
 					newPair.notNil and: { (elapsed + newPair[1]).round(tolerance) < delta }
 				} {
 					elapsed = elapsed + newPair[1];
-					inval = [item, newPair[1]].yield;
+					inval = [item, newPair[1]]/*.debug("clGenOrn while")*/.yield;
 					item = newPair[0];
 				};
-				[item, delta - elapsed]
+				[item, delta - elapsed] //.debug("clGenOrn end ornament");
 			} {
 				[item, delta]
 			};
@@ -133,7 +134,7 @@ PR(\clGenOrn).clone({
 						insertDeltas = Pconst(phraseDur, rhythmStream).asStream.all;
 						insertItems = Pseries(
 							item,
-							intervalStream,
+							intervalStream.neg,
 							inf
 						).drop(1).asStream.nextN(insertDeltas.size).reverse;
 						inval = Ptuple([
@@ -359,9 +360,9 @@ PR(\clGenSrc).clone {
 				new = ~getNew.(pool, insertI ?? { ~items.size });
 				if(new.isNil) { break.() };
 				if(insertI.isNil) {
-					~items.add((item: new, time: avail[i]));
+					~items = ~items.add((item: new, time: avail[i]));
 				} {
-					~items.insert(insertI, (item: new, time: avail[i]));
+					~items = ~items.insert(insertI, (item: new, time: avail[i]));
 				};
 			};
 		};
