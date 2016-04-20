@@ -153,8 +153,8 @@ PR(\clGenOrn).clone({
 			};
 		};
 	};
-	~protoID = \clGenBass;
-}).import((clPatternSet: #[encodePitch], clRhythmGen: #[convertPitch])) => PR(\clGenBass);
+	~protoID = \clGenLeadTo;
+}).import((clPatternSet: #[encodePitch], clRhythmGen: #[convertPitch])) => PR(\clGenLeadTo);
 
 
 PR(\clGen).clone {
