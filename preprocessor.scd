@@ -1997,15 +1997,15 @@ Proto {
 					~checkStepForward.();
 				};
 
-				pos = Document.current.selectionStart + Document.current.selectionSize;
+				pos = 'Document'.asClass.current.selectionStart + 'Document'.asClass.current.selectionSize;
 				if(~numToApply.isNil) {
 					if(~stepForward and: {
-						Document.current.string(pos - 1, 1) == "\n"
+						'Document'.asClass.current.string(pos - 1, 1) == "\n"
 					}) { pos = pos - 1 };
-					Document.current.string_(" = %;".format(~strings[0]), pos, 0);
+					'Document'.asClass.current.string_(" = %;".format(~strings[0]), pos, 0);
 				} {
 					if(~parm == ~clClass.new(~objKey).defaultParm) { ~parm =nil };
-					Document.current.string_(
+					'Document'.asClass.current.string_(
 						~strings.collect { |string, i|
 							"/%.%% = %;\n".format(~objKey, ~phrases[i],
 								if(~parm.notNil) { "." ++ ~parm } { "" },
@@ -2108,7 +2108,7 @@ Proto {
 // livecode-able process prototype
 
 // first: there's some ugliness about pitched note lengths
-// hard to work with PR(\voicerNote).
+// hard to work with ProtoEvent(\voicerNote).
 // Here's a function to get the actual sustain time:
 
 { |ev|
@@ -2194,7 +2194,7 @@ Proto {
 			dict = ~parmMap[parm];
 			result = if(dict.notNil) {
 				if(dict[\convertFunc].notNil) {
-					dict[\convertFunc].value(event)
+					dict[\convertFunc].value(event, inEvent)
 				} {
 					dict[event]
 				};
