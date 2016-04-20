@@ -14,9 +14,9 @@ Library.put(\clLivecode, \setupbars, \addToDoc, Main.versionAtLeast(3, 7) and: {
 			stepForward = PR(\clPatternToDoc).checkStepForward;
 		};
 
-		pos = Document.current.selectionStart + Document.current.selectionSize;
+		pos = 'Document'.asClass.current.selectionStart + 'Document'.asClass.current.selectionSize;
 		if(stepForward.not) { pos = pos + 1 };
-		Document.current.string_(
+		'Document'.asClass.current.string_(
 			"\n" ++ (phrases.collect { |phr| "/%.% = \"\";\n".format(key, phr) }.join),
 			pos, 0
 		);
