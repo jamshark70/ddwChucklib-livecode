@@ -115,7 +115,7 @@ PR(\clGenOrn).clone({
 			while {
 				item = items.next(inval);
 				delta = deltas.next(inval);
-				delta.notNil  // item will be nil on last iteration
+				delta.notNil and: { delta > 0 }  // item will be nil on last iteration
 			} {
 				if(delta >= ~args[1] and: { ~itemIsRest.(prevItem).not }) {
 					phraseDur = (delta * ~args[2]).round(~args[3]);  // func? stream?
