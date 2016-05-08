@@ -1,5 +1,6 @@
 
 PR(\clGen).clone {
+	~addRestToEmpty = true;
 	// args: [string, minDur, itemGen:rhythmGen]
 	~asPattern = {
 		var parsed;
@@ -68,7 +69,20 @@ PR(\clGen).clone {
 			items.do { |item, i| item[\delta] = deltas[i] };
 			[items/*, deltas, times*/]  // retain array for possible future extensions
 		} {
-			[List.new]
+			if(~addRestToEmpty ? false) {
+				[List[(
+					item: if(~isPitch.()) {
+						SequenceNote(Rest(0), nil, 0.9)
+					} {
+						Rest(0)
+					},
+					time: 0,
+					delta: min(~dur, bpb),
+					initialRest: true
+				)]]
+			} {
+				[List.new]
+			};
 		};
 	};
 	~arraySplit = { |array, delimiter|
@@ -187,6 +201,7 @@ PR(\clGen).clone {
 // generators based on modifying a source pattern string
 
 PR(\clGen).clone {
+	~addRestToEmpty = false;
 	~asPattern = {
 		~getSource.();
 		~modifySource.();
