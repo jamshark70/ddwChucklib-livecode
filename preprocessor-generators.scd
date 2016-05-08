@@ -133,7 +133,7 @@ protect {
 			PstepDur(~valueGen.asStream, durStream, 1).embedInStream(inval)
 		};
 		~prepareChildren = {
-			#[inItem, inDelta].do { |key|
+			#[inItem, inDelta, dur].do { |key|
 				var thing = key.envirGet;
 				if(thing.notNil) {
 					#[valueGen, rhythmGen].do { |childKey|
