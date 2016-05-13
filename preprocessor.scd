@@ -1496,6 +1496,11 @@ Proto {
 	};
 
 	~copyPhraseStringCmd = { |key, objStr, srcPhrase, targetPhrase|
+		// default phrases have [\key, \dur]
+		// aliases need not be considered here
+		if(key.isArray and: { key.last == \dur }) {
+			key = key[0];
+		};
 		key = key.asCompileString;
 		"%.prSetPhraseString(%, %, %.phraseStringAt(%, %))".format(
 			objStr, targetPhrase, key,
