@@ -421,7 +421,9 @@ PR(\clGenSrc).clone {
 			};
 			time = (i+1) * quant;
 			// keep advancing 'j' as long as times[j] is earlier than the next 'time'
-			while { time - times[j] >= tolerance } {
+			// notNil: if ~dur is, say, 3.25 and quant is 0.5, then j may have advanced
+			// past the end of the array. Stop immediately in that case
+			while { times[j].notNil and: { time - times[j] >= tolerance } } {
 				j = j + 1;
 			};
 			i = i + 1;
