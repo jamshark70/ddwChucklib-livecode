@@ -209,7 +209,7 @@ PR(\clGen).clone {
 	};
 	~srcKeys = #[items/*, deltas, times*/];
 	~getSource = { |srcIndex(0)|
-		var parsed;
+		var parsed, source, flatten = false;
 		case
 		{ ~args[srcIndex].tryPerform(\isClGen) ?? { false } } {
 			~args[srcIndex].dur = ~dur;
@@ -219,7 +219,19 @@ PR(\clGen).clone {
 			};
 		}
 		{ ~args[srcIndex].isSequenceableCollection } {
-			~constrainDur.(~parse.(~args[srcIndex])).do { |array, i|
+			parsed = ~constrainDur.(~parse.(~args[srcIndex]));
+			parsed[0].do { |item, i|
+				if(item[\item].tryPerform(\isClGen) ?? { false }) {
+					item[\item][\dur] = item[\delta];
+					source = item[\item].asPattern;
+					parsed[0][i] = item[\item][\items].collect { |entry|
+						entry.copy.put(\time, entry[\time] + item[\time]);
+					};  // in place replacement, risky?
+					flatten = true;
+				};
+			};
+			if(flatten) { parsed[0] = List.new.array_(parsed[0].flatten(1)) };
+			parsed.do { |array, i|
 				~srcKeys[i].envirPut(array);
 			};
 			~source = ~makeSource.();
