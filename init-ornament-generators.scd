@@ -295,6 +295,12 @@ PR(\clGenSrc).clone {
 		var pool = (~args[1] ?? { ~items.collect(_[\item]) }).copy,
 		possShifts = (~args[3] ?? { 0.25 }) * [-1, 1],
 		numToShift = min(pool.size, (~args[2] ?? { 1 }));
+		// check number of source items present in the pool (but only if pool was explicitly given)
+		// it's possible to ask for 4 shifts but the source has only two shiftable items
+		// reduce to 2 in that case
+		if(~args[1].notNil) {
+			numToShift = min(numToShift, ~items.count { |item| pool.includes(item.item) });
+		};
 		~traverseShifts.(numToShift, ~items, pool, possShifts);
 		~updateDeltas.();
 		~source = ~makeSource.();
