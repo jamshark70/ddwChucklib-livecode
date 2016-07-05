@@ -1,3 +1,5 @@
+(thisProcess.nowExecutingPath.dirname +/+ "parsenodes.scd").loadPath;
+
 this.preProcessor = { |code|
 	if("/+(".includes(code.first)) {
 		\chucklibLiveCode.eval(code)
