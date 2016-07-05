@@ -17,6 +17,7 @@ Proto {
 	~textProperties = #[font, background, stringColor];
 	~str = "";
 	~displayBookmarks = false;
+	~keyDownPropagationReturn = nil;  // pretty vile hack
 
 	~prep = { |parentView(~parentView), bounds(~bounds)|
 		var currentEnv = currentEnvironment;
@@ -25,6 +26,7 @@ Proto {
 		~view = TextView(parentView, bounds)
 		.string_(~str)
 		.keyUpAction_(e { |... args| ~prKeyUpAction.(*args) })
+		.keyDownAction_(e { |... args| ~prKeyDownAction.(*args) })
 		.mouseUpAction_(e { |... args| ~prMouseUpAction.(*args) })
 		.focusGainedAction_({ currentEnv.changed(\focused, true) })
 		.focusLostAction_({ currentEnv.changed(\focused, false) });
@@ -100,6 +102,10 @@ Proto {
 		};
 		~getSelection.();
 		~keyUpAction.(view, char, mod, unicode, keycode, key);
+	};
+	~prKeyDownAction = { |view, char, mod, unicode, keycode, key|
+		~keyDownAction.(view, char, mod, unicode, keycode, key);
+		~keyDownPropagationReturn
 	};
 	~prMouseUpAction = { |view, x, y, mod|
 		~getSelection.();
@@ -205,6 +211,200 @@ Proto {
 	};
 } => PR(\clGuiString);
 
+// temporary object to parse the current statement and allow syntax-aware navigation
+Proto {
+	~bgColors = [QtGUI.palette.color(\base), QtGUI.palette.color(\base).copy.green_(0.25)];
+	~statementMap = IdentityDictionary[
+		\clPatternSet -> \clPatternSetNode
+	];
+
+	~prep = { |viewWrapper|
+		var match;
+		~wrapper = viewWrapper;
+		~view = viewWrapper.view;
+		~string = ~view.string;
+		~pos = ~view.selectionStart;
+		match = ~findStatement.();
+		if(match.notNil) {
+			~stmtPos = match[0];
+			~stmtKey = match[1];
+			~statement = ~getStatement.();
+			if(~statement.notNil) {
+				~selectUnit.();
+				~view.background = ~bgColors[1];
+				~keyFunc = e { |view, char, mods, unicode, keycode|
+					~doKey.(view, char, mods, unicode, keycode);
+					true  // while this is active, stop key event propagation (and no c++ response)
+				};
+				~wrapper.keyDownAction = ~wrapper[\keyDownAction].addFunc(~keyFunc);
+				currentEnvironment
+			}
+		}; // else nil
+	};
+	~free = {
+		~wrapper.keyDownAction = ~wrapper[\keyDownAction].removeFunc(~keyFunc);
+		~view.background = ~bgColors[0];
+		currentEnvironment.changed(\didFree);
+	};
+	~findStatement = { |str(~string), pos(~pos)|
+		var looking = true, cl = PR(\chucklibLiveCode), substr, match;
+		while { looking and: { pos >= 0 } } {
+			if(str[pos] == $/) {
+				match = cl.statements.detect { |assn|
+					cl.replaceRegexpMacros(assn.value).matchRegexp(str, pos + 1)
+				};
+				if(match.notNil) {
+					looking = false;
+				} {
+					pos = pos - 1;
+				};
+			} {
+				pos = pos - 1
+			}
+		};
+		if(match.notNil) { [pos, match.key] } { nil }
+	};
+	~getStatement = { |pos(~stmtPos), key(~stmtKey)|
+		var stream;
+		if(~statementMap[key].notNil) {
+			stream = CollStream(~view.string);
+			stream.pos = pos;
+			PR(~statementMap[key]).copy.prep(stream);
+		};  // else nil
+	};
+	~selectUnit = { |pos(~pos)|
+		var current, child, keepLooking;
+		current = ~statement;
+		keepLooking = true;
+		while { keepLooking and: { current.children.size > 0 } } {
+			child = current.children.detect { |ch|
+				// [~view.selectionStart, ch.begin, ch.end].debug("checking");
+				pos.inclusivelyBetween(ch.begin, ch.end);
+			};
+			if(child.notNil) {
+				// [~view.selectionStart, child.begin, child.end].debug("found");
+				current = child;
+			} {
+				keepLooking = false;
+			};
+		};
+		// [current.begin, current.selectionSize].debug("selecting");
+		~current = current;
+		~view.select(current.begin, current.selectionSize);
+		current.setLastSelected;
+	};
+	~doKey = { |view, char, mods, unicode, keycode|
+		var next, nextParent, sibs;
+		if(mods bitAnd: 0x000A0000 == 0x000A0000) {
+			~free.();
+		} {
+			case
+			{ keycode == 65362 } {
+				// ~current.listVars;
+				if(~current.parentNode.notNil) {
+					~current = ~current/*.parentSkipOne;*/ .parentNode;
+				};
+				// ~current.listVars;
+			}
+			{ keycode == 65364 } {
+				if(~current.children.size > 0) {
+					if(~current[\lastSelected].notNil) {
+						~current = ~current.children[~current.lastSelected];
+					} {
+						~current = ~current.children.middle;
+					}
+				}
+			}
+			{ keycode == 65363 } {
+				if(~current.parentNode.notNil) {
+					next = ~current.nearbySib(1);
+					if(next.notNil) {
+						~current = next;
+					} {
+						i = 0;  // count levels we had to go up to find a next-sibling
+						while {
+							i = i + 1;
+							nextParent = ~current.parentNode;
+							if(nextParent.notNil) {
+								next = nextParent.tryPerform(\nearbySib, 1);
+							} {
+								next = nil;
+							};
+							nextParent.notNil and: { next.isNil }
+						} {
+							~current = nextParent;
+						};
+						if(next.notNil) {
+							// now, go down no more than that many levels to find a leftmost leaf node
+							while {
+								i > 0 and: { next.children.size > 0 }
+							} {
+								i = i - 1;
+								next = next.children.first;
+							};
+							if(next.notNil) { ~current = next };
+						};
+					};
+				};
+			}
+			{ keycode == 65361 } {
+				if(~current.parentNode.notNil) {
+					next = ~current.nearbySib(-1);
+					if(next.notNil) {
+						~current = next;
+					} {
+						i = 0;  // count levels we had to go up to find a previous-sibling
+						while {
+							i = i + 1;
+							nextParent = ~current.parentNode;
+							if(nextParent.notNil) {
+								next = nextParent.tryPerform(\nearbySib, -1);
+							} {
+								next = nil;
+							};
+							nextParent.notNil and: { next.isNil }
+						} {
+							~current = nextParent;
+						};
+						if(next.notNil) {
+							// now, go down no more than that many levels to find a rightmost leaf node
+							while {
+								i > 0 and: { next.children.size > 0 }
+							} {
+								i = i - 1;
+								next = next.children.last;
+							};
+							if(next.notNil) { ~current = next };
+						};
+					};
+				};
+			}
+			{ char.isDecDigit } {
+				sibs = ~current.siblings;
+				if(sibs.notNil) {
+					i = (char.digit - 1).wrap(0, 9);
+					if(sibs[i].notNil) { ~current = sibs[i] };
+				};
+			}
+			{ "!@#$%^&*()".includes(char) } {
+				if(~current.children.notNil) {
+					i = "!@#$%^&*()".indexOf(char);
+					if(~current.children[i].notNil) {
+						~current = ~current.children[i];
+					};
+				};
+			};
+			if(~current.notNil) {
+				// [~current.begin, ~current.selectionSize].debug("selecting");
+				view.select(~current.begin, ~current.selectionSize);
+				~current.setLastSelected;
+			} {
+				"OOPS! Current is nil".warn;
+			};
+		};
+	};
+} => PR(\clGuiStringNav);
+
 Proto {
 	~name = "";
 	~defaultString = "\n\n//--- scratch\n";
@@ -303,9 +503,24 @@ Proto {
 		};
 		model.addDependant(currentEnvironment);
 		~view.addDependant(currentEnvironment);
-		~view.keyUpAction = e { |view, char|
+		~view.keyUpAction = e { |view, char, mods, unicode, keycode|
 			if(char.notNil and: { char.ascii == 27 }) {
 				~model.changed(\escKey);
+			};
+		};
+		~view.keyDownAction = e { |view, char, mods, unicode, keycode|
+			if(mods bitAnd: 0x000A0000 == 0x000A0000) {
+				if(~madSelector.isNil) {
+					~madSelector = PR(\clGuiStringNav).copy.prep(~view);
+					~madSelectorUpd = SimpleController(~madSelector)
+					.put(\didFree, e {
+						~madSelectorUpd.remove;
+						~madSelectorUpd = nil;
+						~madSelector = nil;
+						~view.keyDownPropagationReturn = nil;
+					});
+					~view.keyDownPropagationReturn = true;
+				};
 			};
 		};
 		currentEnvironment

@@ -200,3 +200,24 @@ t = TextView(nil, Rect(800, 200, 500, 400))
 
 t.currentLine;
 
+
+
+// adding parser-selector
+PR(\clEditGui).chuck(BP(\gui), nil, (bounds: Rect(800, 0, 500, Window.screenBounds.height)));
+p = BP(\gui);
+
+524288.asHexString(8)
+
+p.listVars;
+p.pages[p.currentPage].listVars
+p.currentSection.listVars
+p.currentSection.strings[0].listVars
+
+p.pages[p.currentPage].sections[1][1].listVars
+q = p.pages[p.currentPage].sections[1][1].madSelector;
+q.listVars
+
+q.statement.listVars
+q.statement.children[1].listVars
+q.statement.children[1].children[1].listVars
+
