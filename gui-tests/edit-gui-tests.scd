@@ -213,11 +213,29 @@ p.pages[p.currentPage].listVars
 p.currentSection.listVars
 p.currentSection.strings[0].listVars
 
-p.pages[p.currentPage].sections[1][1].listVars
-q = p.pages[p.currentPage].sections[1][1].madSelector;
+p.pages[p.currentPage].sections[0][1].listVars
+q = p.pages[p.currentPage].sections[0][1].madSelector;
 q.listVars
 
 q.statement.listVars
 q.statement.children[1].listVars
-q.statement.children[1].children[1].listVars
+q.statement.children[1].children[2].listVars
 
+// check ID
+q.statement.children[0].listVars
+
+d = q.statement.children[0];
+d.listVars
+d.clClass.new(d.objKey)
+d.clClass.new(d.objKey).tryPerform(\parmIsPitch, d.parm)  // nil
+d.clClass.new(d.objKey).parmIsPitch(d.parm)  // true -- fuck me why is tryPerform not working???
+d.clClass.new(d.objKey).perform(\parmIsPitch, d.parm)  // nil
+
+
+BP(\fml).free; Proto { ~fml = { "fml".debug } } => BP(\fml);
+BP(\fml).fml;
+BP(\fml).perform(\fml);
+BP(\fml).tryPerform(\fml);
+BP(\fml).class.findRespondingMethodFor(\tryPerform)
+
+BP(\fml).perform(\ohshit);

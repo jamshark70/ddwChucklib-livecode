@@ -6,6 +6,104 @@ var getTextProperties = {
 	result
 };
 
+// function to jump across a bracketed group
+(
+Proto {
+	~delimiters = IdentityDictionary[$( -> $), $) -> $(,
+		$[ -> $], $] -> $[,
+		${ -> $}, $} -> ${,
+		$\" -> $\",
+		$' -> $'
+	];
+	~pairs = ["()", "[]", "{}", "\"\"", "''"];
+
+	~skipToDelimiter = { |str, i, step = 1|
+		var ch;
+		while {
+			ch = str[i];
+			ch.notNil and: { ~delimiters[ch].isNil }
+		} {
+			i = i + step;
+		};
+		i
+	};
+
+	// at entry: i is on or before a bracket
+	// return 'i' is one after the closing bracket; Ref(i) if a bracket mismatch
+	~scanDelimiters = { |str, i, step = 1, lastMatchIndex(i), level = 0, assumeClosing, end = "\n"|
+		var return = nil, ch, pair, matchPair, hitEnd = false,
+		startI = (step < 0).binaryValue;
+		var saveI = i;
+		// [i, level, assumeClosing].debug(">> scanDelimiters");
+		// skip up to the next delimiter
+		if(~delimiters[str[i]].isNil) {
+			i = ~skipToDelimiter.(str, i + step, step);
+		};
+		// look for the matching delimiter
+		// must be a loop b/c of cases like ((abc)def(ghi))
+		matchPair = ~pairs.detect { |p| p.includes(str[i]) };
+		// [str, i, matchPair].debug("found delimiter");
+		i = i + step;
+		while { return.isNil and: {
+			(ch = str[i]).notNil and: { (hitEnd = end.includes(ch)).not }
+		} } {
+			if(~delimiters[ch].isNil) {
+				// ch.debug("ignoring");
+				i = i + step;  // misc characters inside the delimiter
+			} {
+				pair = ~pairs.detect { |p| p.includes(ch) };
+				// opening or closing?
+				case
+				{ ch == assumeClosing } {
+					return = (i + step); //.debug("return (assumeClosing)");
+				}
+				{ pair[startI] == ch } {
+					// ch.debug("opening bracket");
+					i = ~scanDelimiters.(str, i, step, lastMatchIndex, level + 1,
+						if(pair[0] == pair[1]) { pair[0] } { nil } // assumeClosing
+					);
+					if(i.isNumber) {
+						lastMatchIndex = i.value; // .debug("set lastMatch (recursion)");
+					} {
+						return = i; // .debug("return (recursion/mismatch)");
+					};
+				}
+				// done this level?
+				{ matchPair[1 - startI] == ch} {
+					return = (i + step); // .debug("return (closing)");
+				} {
+					// save last matched bracket and keep scanning
+					// mismatch: stop here
+					return = Ref(i + step); // .debug("return (mismatch)");
+				};
+			};
+		};
+		if(hitEnd or: { ch.isNil }) {
+			// end of string, treat as mismatch
+			return = Ref(lastMatchIndex); // .debug("return (end of string)");
+		};
+		// [saveI, level, return].debug("<< scanDelimiters");
+		return
+	};
+
+	~jumpInTextView = { |view, step = 1|
+		var str = view.string,
+		i = view.selectionStart,
+		newI;
+		if(step < 0) { i = i - 1 };
+		newI = ~scanDelimiters.(str, i, step, end: "\n");
+		if(newI.notNil) {
+			newI = newI.value;  // Ref(index) means mismatch, but I don't care
+			if(step < 0) { newI = newI + 1 };
+			if(newI.inclusivelyBetween(0, str.size)) {
+				view.select(newI, 0);
+			};
+		};
+		currentEnvironment
+	};
+} => PR(\clNavJumpBrackets);
+);
+
 // first: TEXTVIEW WRAPPERS for content change tracking
 
 Proto {
@@ -513,7 +611,12 @@ Proto {
 			};
 		};
 		~view.keyDownAction = e { |view, char, mods, unicode, keycode|
-			if(mods bitAnd: 0x000A0000 == 0x000A0000) {
+			case
+			{ mods == 262144 and: { #[65361, 65363].includes(keycode) } } {
+				PR(\clNavJumpBrackets).jumpInTextView(view, keycode - 65362);
+				true
+			}
+			{ mods bitAnd: 0x000A0000 == 0x000A0000 } {
 				if(~madSelector.isNil) {
 					~madSelector = PR(\clGuiStringNav).copy.prep(~view);
 					~madSelectorUpd = SimpleController(~madSelector)
