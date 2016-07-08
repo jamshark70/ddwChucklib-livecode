@@ -389,7 +389,9 @@ PR(\abstractClParseNode).clone {
 		if(stream.peek == $\") {
 			if(id.clClass.exists(id.objKey)) {
 				obj = id.clClass.new(id.objKey);
-				~isPitch = obj.tryPerform(\parmIsPitch, id.parm) ?? { false };
+				tryNoTrace {
+					~isPitch = obj.parmIsPitch(id.parm) ?? { false };
+				};
 			};
 			~children = ~children.add(
 				PR(\clPatStringNode).copy.put(\isPitch, ~isPitch).prep(stream, currentEnvironment)
