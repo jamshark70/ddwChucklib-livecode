@@ -17,7 +17,6 @@ Proto {
 	~textProperties = #[font, background, stringColor];
 	~str = "";
 	~displayBookmarks = false;
-	~keyDownPropagationReturn = nil;  // pretty vile hack
 
 	~prep = { |parentView(~parentView), bounds(~bounds)|
 		var currentEnv = currentEnvironment;
@@ -104,8 +103,10 @@ Proto {
 		~keyUpAction.(view, char, mod, unicode, keycode, key);
 	};
 	~prKeyDownAction = { |view, char, mod, unicode, keycode, key|
-		~keyDownAction.(view, char, mod, unicode, keycode, key);
-		~keyDownPropagationReturn
+		var return = ~keyDownAction.(view, char, mod, unicode, keycode, key);
+		if(return.isArray) {
+			if(return.any(_ == true)) { true } { nil }
+		} { return };
 	};
 	~prMouseUpAction = { |view, x, y, mod|
 		~getSelection.();
@@ -265,11 +266,14 @@ Proto {
 		if(match.notNil) { [pos, match.key] } { nil }
 	};
 	~getStatement = { |pos(~stmtPos), key(~stmtKey)|
-		var stream;
+		var stream, statement;
 		if(~statementMap[key].notNil) {
 			stream = CollStream(~view.string);
 			stream.pos = pos;
-			PR(~statementMap[key]).copy.prep(stream);
+			statement = PR(~statementMap[key]).copy;
+			try { statement.prep(stream) } { |error|
+
+			};
 		};  // else nil
 	};
 	~selectUnit = { |pos(~pos)|
@@ -517,9 +521,8 @@ Proto {
 						~madSelectorUpd.remove;
 						~madSelectorUpd = nil;
 						~madSelector = nil;
-						~view.keyDownPropagationReturn = nil;
 					});
-					~view.keyDownPropagationReturn = true;
+					true
 				};
 			};
 		};
