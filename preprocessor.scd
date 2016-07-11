@@ -325,7 +325,12 @@ Proto {
 	~parsePattern = { |code|
 		var case;
 
+		// bug here: should not include semicolon
+		// proper fix: after replacing the parser, find the \clPatStringNode and get its string
 		~inString = code = code[~eqIndex + 1 ..].trim;
+		if(code.last == $;) {
+			~inString = code = code.drop(-1);
+		};
 		// code.asCompileString.debug("code");
 
 		// cases
