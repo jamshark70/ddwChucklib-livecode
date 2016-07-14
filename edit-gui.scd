@@ -43,6 +43,9 @@ Proto {
 		// must be a loop b/c of cases like ((abc)def(ghi))
 		matchPair = ~pairs.detect { |p| p.includes(str[i]) };
 		// [str, i, matchPair].debug("found delimiter");
+		if(assumeClosing.isNil and: { "\"'".includes(str[i]) }) {
+			assumeClosing = str[i];
+		};
 		i = i + step;
 		while { return.isNil and: {
 			(ch = str[i]).notNil and: { (hitEnd = end.includes(ch)).not }
