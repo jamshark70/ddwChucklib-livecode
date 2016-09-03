@@ -2236,7 +2236,14 @@ Proto {
 	};
 	~setPattern = { |phrase, parm, inParm, pattern, inString, newQuant|
 		var pat = ~phrases[phrase],
-		storeParm = ~parmMap[inParm].tryPerform(\at, \alias) ?? { parm };
+		storeParm;
+		if(parm.size > 0) {
+			storeParm = parm.collect { |p|
+				~parmMap[p].tryPerform(\at, \alias) ?? { p };
+			}
+		} {
+			storeParm = ~parmMap[inParm].tryPerform(\at, \alias) ?? { parm };
+		};
 		if(pat.isNil) {
 			pat = PbindProxy([~defaultParm, \dur], nil);
 			~phrases[phrase] = pat;
@@ -2247,10 +2254,12 @@ Proto {
 				case
 				// does this ever happen?
 				{ parm == \dur } {
+					if(~debug ?? { false }) { "dur pattern".debug };
 					pat.set(parm, pattern);
 				}
-				{ storeParm === parm } {
+				{ storeParm == parm } {
 					if(parm.isArray) {
+						if(~debug ?? { false }) { "storeParm == parm array".debug };
 						// special case: This should happen only for [key, \dur] type keys
 						// constructed by clPattern
 						pat.set(parm, pattern.collect { |valueIDs, inEvent|
@@ -2259,6 +2268,7 @@ Proto {
 							}
 						});
 					} {
+						if(~debug ?? { false }) { "storeParm === parm single".debug };
 						// single key, no alias: optimize by simply converting and returning
 						pat.set(parm, pattern.collect { |valueID, inEvent|
 							~valueForParm.(valueID, parm, inEvent) ?? { Rest(valueID) }
@@ -2266,6 +2276,7 @@ Proto {
 					};
 				}
 				{ storeParm.size == 0 } {
+					if(~debug ?? { false }) { "storeParm.size == 0".debug };
 					// alias is a single symbol: optimize by converting and storing directly
 					pat.set(parm, pattern.collect { |valueID, event|
 						var result = ~valueForParm.(valueID, parm, event) ?? { Rest(valueID) };
@@ -2275,6 +2286,7 @@ Proto {
 				}
 				// arrayed *non-default* parm with alias
 				{ storeParm.size > 0 and: { parm.asArray.includes(\dur).not } } {
+					if(~debug ?? { false }) { "storeParm array without dur".debug };
 					pat.set(parm, pattern.collect { |valueID, event|
 						var result = ~valueForParm.(valueID, inParm, event);
 						if(result.isNil) {
@@ -2296,6 +2308,7 @@ Proto {
 				}
 				// arrayed *default* parm with alias -- assuming [id, dur] here
 				{ storeParm.size > 0 } {
+					if(~debug ?? { false }) { "storeParm array with dur".debug };
 					pat.set(parm, pattern.collect { |valueID, event|
 						var result = ~valueForParm.(valueID[0], inParm, event);
 						if(result.isNil) {
