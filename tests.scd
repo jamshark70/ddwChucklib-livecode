@@ -1086,7 +1086,6 @@ BP(\y).free;
 PR(\abstractLiveCode).chuck(BP(\y), nil, (
 	defaultParm: \a,
 	parmMap: (a: ($-: 1, $.: 0, alias: \z))
-	)
 ));
 )
 
