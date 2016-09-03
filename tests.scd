@@ -1055,3 +1055,40 @@ PR(\clPatternSet).v.splitByDividers("\\rand(\"abc|def\")").asCompileString;
 /fsn = "\shift("..|||", "..", 2, 0.25)";  // the failure case
 /fsn = "\shift("..|||", "..", 3, 0.25)";  // wrong usage: now does what it can, but no infloop
 
+
+
+
+// test new setPattern logic
+(
+BP(\x).free;
+PR(\abstractLiveCode).chuck(BP(\x), nil, (
+	defaultParm: \a,
+	parmMap: (a: ($-: 1, $.: 0), b: ($-: 1, $.: 0), c: ($-: 1, $.: 0, alias: \cc),
+		d: ($-: [1, 0], $.: [0, 1], alias: [\x, \y])
+	)
+));
+)
+
+BP(\x).debug = true;
+/x = "-";
+
+/x..b = ".";
+
+/x..c = "-";
+
+/x..d = "-";
+
+BP(\x).prepareForPlay;
+e = BP(\x).eventStream.next(BP(\x).event.copy);  // all good
+
+(
+BP(\y).free;
+PR(\abstractLiveCode).chuck(BP(\y), nil, (
+	defaultParm: \a,
+	parmMap: (a: ($-: 1, $.: 0, alias: \z))
+	)
+));
+)
+
+BP(\y).debug = true;
+/y = "-";
