@@ -1,3 +1,5 @@
+0+0;  // preprocessor chokes on opening paren, avoid it, that is really unfortunate
+
 (thisProcess.nowExecutingPath.dirname +/+ "parsenodes.scd").loadPath;
 
 this.preProcessor = { |code|
