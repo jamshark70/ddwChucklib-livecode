@@ -1095,7 +1095,7 @@ BP(\y).debug = true;
 /y = "-";
 
 BP(\y).prepareForPlay;
-e = BP(\y).eventStream.next(BP(\x).event.copy);
+e = BP(\y).eventStream.next(BP(\y).event.copy);
 
 // f: default parm array alias
 (
