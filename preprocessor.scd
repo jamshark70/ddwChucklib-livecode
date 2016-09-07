@@ -2310,22 +2310,24 @@ Proto {
 				{ storeParm.size > 0 } {
 					if(~debug ?? { false }) { "storeParm array with dur".debug };
 					pat.set(parm, pattern.collect { |valueID, event|
-						var result = ~valueForParm.(valueID[0], inParm, event);
+						var result = ~valueForParm.(valueID[0], inParm, event), sp0;
 						if(result.isNil) {
 							result = [Rest(valueID[0])];
 						} {
 							result = result.asArray;
 						};
-						if(storeParm.size >= result.size) {
-							storeParm.do { |key, i|
+						sp0 = storeParm[0].asArray;
+						if(sp0.size >= result.size) {
+							sp0.do { |key, i|
 								event.put(key, result.wrapAt(i).processRest(event));
 							};
 						} {
 							"Alias for % allows % values, but too many (%) were provided"
-							.format(parm.asCompileString, storeParm.size, result.size)
+							.format(parm.asCompileString, sp0, result.size)
 							.warn;
 						};
-						[result[0], valueID[1]]  // this may be wrong
+						// valueID[1] should be the dur value -- necessary to be second return value
+						[result, valueID[1]]
 					});
 				}
 				{

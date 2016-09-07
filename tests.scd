@@ -1059,6 +1059,10 @@ PR(\clPatternSet).v.splitByDividers("\\rand(\"abc|def\")").asCompileString;
 
 
 // test new setPattern logic
+// a: default parm no alias [a, dur]
+// b: non-default parm no alias \b
+// c: non-default parm alias \c != \cc
+// d: non-default parm array alias
 (
 BP(\x).free;
 PR(\abstractLiveCode).chuck(BP(\x), nil, (
@@ -1071,23 +1075,48 @@ PR(\abstractLiveCode).chuck(BP(\x), nil, (
 
 BP(\x).debug = true;
 /x = "-";
-
 /x..b = ".";
-
 /x..c = "-";
-
 /x..d = "-";
 
 BP(\x).prepareForPlay;
 e = BP(\x).eventStream.next(BP(\x).event.copy);  // all good
 
+// e: default parm simple alias
 (
 BP(\y).free;
 PR(\abstractLiveCode).chuck(BP(\y), nil, (
-	defaultParm: \a,
-	parmMap: (a: ($-: 1, $.: 0, alias: \z))
+	defaultParm: \e,
+	parmMap: (e: ($-: 1, $.: 0, alias: \z))
 ));
 )
 
 BP(\y).debug = true;
 /y = "-";
+
+BP(\y).prepareForPlay;
+e = BP(\y).eventStream.next(BP(\y).event.copy);
+
+// f: default parm array alias
+(
+BP(\z).free;
+PR(\abstractLiveCode).chuck(BP(\z), nil, (
+	defaultParm: \f,
+	parmMap: (f: ($-: [1, 0], $.: [0, 1], alias: [\x, \y]))
+));
+)
+
+// also try error condition
+(
+BP(\z).free;
+PR(\abstractLiveCode).chuck(BP(\z), nil, (
+	defaultParm: \f,
+	parmMap: (f: ($-: [1, 0, -1], $.: [-1, 0, 1], alias: [\x, \y]))
+));
+)
+
+BP(\z).debug = true;
+/z = ".";
+
+BP(\z).prepareForPlay;
+e = BP(\z).eventStream.next(BP(\z).event.copy);
