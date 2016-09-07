@@ -2316,8 +2316,8 @@ Proto {
 						} {
 							result = result.asArray;
 						};
-						if(storeParm.size >= result.size) {
-							storeParm.do { |key, i|
+						if(storeParm[0].size >= result.size) {
+							storeParm[0].do { |key, i|
 								event.put(key, result.wrapAt(i).processRest(event));
 							};
 						} {
@@ -2325,7 +2325,8 @@ Proto {
 							.format(parm.asCompileString, storeParm.size, result.size)
 							.warn;
 						};
-						[result[0], valueID[1]]  // this may be wrong
+						// valueID[1] should be the dur value -- necessary to be second return value
+						[result, valueID[1]]
 					});
 				}
 				{
