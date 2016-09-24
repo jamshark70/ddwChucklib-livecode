@@ -651,6 +651,7 @@ Proto {
 				{ ch == $\\ } {
 					args = args.add(~parseGenerator.(stream));
 					while { (ch = stream.next).notNil and: { ch.isSpace } };
+					if(ch == $:) { stream.pos = stream.pos - 1 };
 				}
 				{ ",)".includes(ch) } {
 					if(argList.isKindOf(String)) {
