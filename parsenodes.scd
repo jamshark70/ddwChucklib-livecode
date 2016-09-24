@@ -1,3 +1,4 @@
+var current;
 
 Proto {
 	~begin = nil;
@@ -401,3 +402,13 @@ PR(\abstractClParseNode).clone {
 		};
 	};
 } => PR(\clPatternSetNode);
+
+
+
+// set nodeType tags
+current = thisProcess.nowExecutingPath.basename;
+PR.all.do { |pr|
+	if(pr.path.basename == current) {
+		pr.v[\nodeType] = pr.collIndex;
+	};
+};
