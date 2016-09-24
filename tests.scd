@@ -1120,3 +1120,44 @@ BP(\z).debug = true;
 
 BP(\z).prepareForPlay;
 e = BP(\z).eventStream.next(BP(\z).event.copy);
+
+
+
+// test pat string refactor
+(
+BP(\x).free;
+PR(\abstractLiveCode).chuck(BP(\x), nil, (
+	defaultParm: \a,
+	parmMap: (a: ($.: 0.5, $-: 1), b: ($.: 0.25, $-: 0.75)),
+	debug: true
+));
+)
+
+/chucklibLiveCode.("/x = \"\\test(\"....\")\";");
+
+/x = "\test("....")";
+/x..b = "\test("-| .||-")";
+
+/x = "\test(".|   .|-  .| .  ")";
+
+// seems legit
+g = BP(\x).phrases[\main].pairs[1].source.pattern.list[0];
+g.items.do(_.postln); ""
+
+BP(\x).prepareForPlay;
+e = BP(\x).eventStream.next(BP(\x).event.copy);  // OK!
+
+// non-default
+// test PstepDurPair first
+p = Pbind(
+	\dur, 1,
+	\a, PstepDurPair(Ptuple([Pseries(0, 1, inf), Pn(Pseries(1, 1, 4), inf)]).trace(prefix: "tuple: "))
+).asStream;
+
+p.next(());
+
+/x = "\test("....")";
+/x..b = "\test("-| .||-")";
+
+BP(\x).prepareForPlay;
+e = BP(\x).eventStream.next(BP(\x).event.copy);

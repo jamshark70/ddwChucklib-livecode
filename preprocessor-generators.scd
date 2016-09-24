@@ -6,14 +6,37 @@ AbstractChuckArray.defaultSubType = \clGenerator;
 
 protect {
 
+	// clGen is abstract, *and* serves as the generic timed-sequence generator
 	Proto({
-		// use Func collection for generator "plugins"
-		// i.e., avoid creating a PR "subclass" for every generator func
-		// ~func = \rand;
 		~bpKey = nil;  // supply to 'use' this environment while inside the pattern
 		~args = nil;   // override with an array
 		~parm = \value;
+		~isMain = false;
+		~addRestToEmpty = true;
 
+		// responsible for parsing any time-sequence strings
+		// each generator may have different ones
+		// generic one assumes only ~args[0]
+		~prep = {
+			~baseItems = ~parse.(~args[0]);
+			currentEnvironment
+		};
+
+		~process = {
+			~items = ~baseItems;  // copy if you're modifying
+		};
+		~asPattern = { |bp|  // the BP() object
+			var pat;
+			~process.();
+			pat = Pseq(~items, 1).collect { |ev|
+				[ev[\item], ev[\dur]]
+			};
+			if(~isMain) {
+				pat
+			} {
+				PstepDurPair(pat.trace(prefix: "item/dur pair: "), 1)
+			}
+		};
 		~embedInStream = { |inval|
 			var dur = ~dur.(),
 			startTime = thisThread.clock.beats,
@@ -30,14 +53,78 @@ protect {
 		~canEmbed = true;  // do not override!
 
 		~yieldsKeys = {
-			~parm
+			if(~isMain) { [~parm, \dur] } { ~parm };
 			// if(~isPitch.()) { [~parm, \legato] } { ~parm }
+		};
+
+		// this is temporary, for early testing before replacing the upstream parser
+		~parse = { |array|
+			var bpb = if(BP.exists(~bpKey)) { BP(~bpKey).beatsPerBar } { thisThread.clock.beatsPerBar },
+			beatsPerSeg, beatsPerItem, items = List.new/*, times = List.new*/, deltas;
+			array = ~arraySplit.(array, $|);
+			beatsPerSeg = bpb / array.size;
+			array.do { |seg, i|
+				if(seg.size > 0) {
+					beatsPerItem = beatsPerSeg / seg.size;
+					seg.do { |item, j|
+						if(item.notNil and: { item != $  }) {
+							items.add((item: item, time: (beatsPerSeg * i) + (beatsPerItem * j)));
+						};
+					};
+				};
+			};
+			if(items.size > 0) {
+				deltas = (items.collect(_[\time]) ++ [min(~dur, bpb)]).differentiate;
+				if(items[0][\time] == 0) {
+					deltas = deltas.drop(1);
+				} {
+					items = items.insert(0, (
+						item: if(~isPitch.()) {
+							SequenceNote(Rest(0), nil, 0.9)
+						} {
+							Rest(0)
+						},
+						time: 0,
+						initialRest: true
+					));
+				};
+				items.do { |item, i| item[\dur] = deltas[i] };
+				// [items/*, deltas, times*/]  // retain array for possible future extensions
+				items.debug("parse return: processed deltas");
+			} {
+				if(~addRestToEmpty ? false) {
+					List[(
+						item: if(~isPitch.()) {
+							SequenceNote(Rest(0), nil, 0.9)
+						} {
+							Rest(0)
+						},
+						time: 0,
+						dur: min(~dur, bpb),
+						initialRest: true
+					)].debug("parse return: empty, added rest")
+				} {
+					[List.new].debug("parse return: empty")
+				};
+			};
+		};
+		~arraySplit = { |array, delimiter|
+			var new = Array.new, subArray = Array.new;
+			array.do { |item|
+				if(item == delimiter) {
+					new = new.add(subArray);
+					subArray = Array.new;
+				} {
+					subArray = subArray.add(item);
+				};
+			};
+			new.add(subArray);
 		};
 
 		// code generation
 		~protoID = \clGen;
 		~isClGen = true;
-		~patternStringKeys = #[bpKey, args, dur, isPitch, parm];
+		~patternStringKeys = #[bpKey, args, dur, isPitch, isMain, parm];
 		~asPatternString = { |stream(CollStream.new)|
 			var needComma = false, obj;
 			stream << "PR(" <<< ~protoID << ").copy.putAll((";
@@ -50,7 +137,7 @@ protect {
 					needComma = true;
 				};
 			};
-			stream << "))";
+			stream << ")).prep";
 			stream.collection
 		};
 		~objectToStream = { |obj, stream|
@@ -84,6 +171,8 @@ protect {
 		];
 	}, parentKeys: #[canEmbed, protoID, isClGen, patternStringKeys, patternStringFuncs])
 	.import((clPatternSet: #[decodePitch])) => PR(\clGen);
+
+	PR(\clGen).copy => PR(\clGenTest);
 
 	PR(\clGen).clone {
 		// optional argument 'bp' to access process variables

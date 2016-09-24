@@ -678,16 +678,16 @@ Proto {
 			if(ch != $)) {
 				Error("Generator '%' doesn't close its parentheses".format(name)).throw;
 			};
-			// LATER: call parseGenerator recursively to get rhythm and/or legato generator
-			// LATER: separate PR() for every generator type
 			~hasGen = true;
 			gen = PR(("clGen" ++ name.copy.put(0, name[0].toUpper)).asSymbol).copy.putAll((
 				// func: name.asSymbol,
 				bpKey: ~objKey,
 				isPitch: isPitchOverride ?? { ~isPitch },
 				parm: ~parm,
+				isMain: ~isMain,
 				args: args
 			));
+			// this may get deprecated
 			if(rhythmGen.notNil) {
 				if(~isMain) {
 					gen = PR(\clRhythmGen).copy.putAll((
