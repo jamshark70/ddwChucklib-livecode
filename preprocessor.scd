@@ -1,7 +1,5 @@
 0+0;  // preprocessor chokes on opening paren, avoid it, that is really unfortunate
 
-(thisProcess.nowExecutingPath.dirname +/+ "parsenodes.scd").loadPath;
-
 this.preProcessor = { |code|
 	if("/+(".includes(code.first)) {
 		\chucklibLiveCode.eval(code)
@@ -2448,4 +2446,6 @@ Proto {
 	};
 	~phraseSeq_.(\main);
 }.import((abstractProcess: #[makeStreamForKey])) => PR(\abstractLiveCode);
-)
+);
+
+(thisProcess.nowExecutingPath.dirname +/+ "parsenodes.scd").loadPath;
