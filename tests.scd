@@ -1295,6 +1295,15 @@ q.listVars
 r = Pbind(#[degree, dur], q).asStream;  // ok, asPattern makes a Rest appropriately
 r.next(())
 
-// ids not passed
-p.children[0].listVars
-p.children[1].children[0].children[0].children[1].children[0].children[0].listVars
+// surgery
+\chucklibLiveCode.eval("/y = (a.b);");  // ok
+
+\chucklibLiveCode.eval("/y = \"8~| 5~| 4~| 2~ 1~\";");
+/y = "8~| 5~| 4~| 2~ 1~";
+
+p = PR(\chucklibLiveCode).instance;
+p = p.parsed;
+p.children[1].listVars
+
+BP(\y).prepareForPlay;
+e = BP(\y).eventStream.next(BP(\y).event.copy);

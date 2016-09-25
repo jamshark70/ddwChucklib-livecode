@@ -250,7 +250,7 @@ Proto {
 		};
 		~parseIDs.(code);
 		~parsePattern.(code);
-		~buildStatement.();
+		// ~buildStatement.();
 		// code.quote
 	};
 
@@ -318,30 +318,30 @@ Proto {
 			// ".(".includes(code[i])  // want to use '.' as a segment char too
 			code[i] == $(
 		} -> \compositePattern,
-		{ |code| code.includes($|) } -> \patternWithDividers,
-		true -> \patternWithoutDividers
+		// { |code| code.includes($|) } -> \patternWithDividers,
+		true -> \patternString // \patternWithoutDividers
 	];
 
 	~parsePattern = { |code|
-		var case;
+		var case, rightHand;
 
 		// bug here: should not include semicolon
 		// proper fix: after replacing the parser, find the \clPatStringNode and get its string
-		~inString = code = code[~eqIndex + 1 ..].trim;
-		if(code.last == $;) {
-			~inString = code = code.drop(-1);
+		~inString = rightHand = code[~eqIndex + 1 ..].trim;
+		if(rightHand.last == $;) {
+			~inString = rightHand = rightHand.drop(-1);
 		};
 		// code.asCompileString.debug("code");
 
 		// cases
-		case = ~cases.detect { |case| case.key.(code) };
+		case = ~cases.detect { |case| case.key.(rightHand) };
 		if(case.isNil) {
 			Error("clPatternSet: Pattern does not match any known cases. This should never happen").throw;
 		};
-		case.value.envirGet.(code);
+		case.value.envirGet.(rightHand, code);
 	};
 
-	~compositePattern = { |code|
+	~compositePattern = { |code|  // compositePattern does not need full statement
 		var stream, group;
 		~isMain = false;
 		~isPitch = false;
@@ -360,7 +360,59 @@ Proto {
 		group.clumpOperators;
 		if(group.repeats.isNil) { group.repeats = inf };
 		~inString = "\"\"";
+		~buildStatement.();
 	};
+
+	~patternString = { |rightHand, code|  // ~patternString *does* need the full statement
+		var parsed = PR(\clPatternSetNode).copy.prep(CollStream(code)),
+		id, objKey, phrase, parm, bpb, stream, yieldsKeys, wrapArray = false;
+		~parsed = parsed;
+		id = parsed.children[0];
+		objKey = id.objKey;
+		phrase = id.phrase;
+		parm = id.parm;
+		if(parsed.isMain) {
+			yieldsKeys = [parm, \dur];
+		} {
+			yieldsKeys = parm;
+		};
+		if(BP.exists(objKey)) {
+			bpb = (BP(objKey).clock ?? { TempoClock.default }).beatsPerBar;
+		} {
+			bpb = 4;  // lame default
+		};
+		if(parsed.children[1].nodeType == \clPatStringNode) {
+			// wrap the clPatString in the abstract generator
+			// this is necessary to massage the event list into a playable stream
+			parsed.children[1] = PR(\clGeneratorNode).copy.putAll((
+				bpKey: objKey,
+				phrase: phrase,
+				parm: parm,
+				isMain: parsed.isMain,
+				isPitch: parsed.isPitch,
+				children: [
+					PR(\clStringNode).copy.put(\string, ""),
+					parsed.children[1]  // patString is the abstract generator's only argument
+				],
+				name: ""
+			));
+			// moderate hack: I should wrap the string in a patstring -> divider -> generator
+			// but I'm lazy
+			wrapArray = true;
+		};
+		parsed.children[1].setTime(0, bpb);
+
+		// write the code
+		stream = CollStream.new;
+		stream << "BP(" <<< objKey << ").setPattern(" <<< phrase << ", ";
+		stream <<< yieldsKeys << ", " <<< parm << ", Pseq(";
+		if(wrapArray) { stream << "[ " };
+		parsed.children[1].streamCode(stream);
+		if(wrapArray) { stream << " ]" };
+		stream << ", 1), " <<< rightHand << ", " << nil << ")";  // nil = quant... needed?
+		stream.collection;
+	};
+
 	~unquoteString = { |str, pos = 0, delimiter = $", ignoreInParens(false)|
 		var i = str.indexOf(delimiter), j, escaped = false, parenCount = 0;
 		if(i.isNil) {
@@ -502,6 +554,7 @@ Proto {
 		~deltas = deltas;
 		~levels = levels;
 		~times = times;
+		~buildStatement.();
 	};
 
 	~patternWithoutDividers = { |code|
