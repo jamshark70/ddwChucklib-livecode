@@ -122,7 +122,7 @@ Proto {
 	};
 
 	~streamCode = { |stream| stream << ~string; currentEnvironment };
-	~setTiming = { |onset(0), dur(4)|
+	~setTime = { |onset(0), dur(4)|
 		~time = onset;
 		~dur = dur;
 		currentEnvironment
@@ -147,6 +147,23 @@ PR(\abstractClParseNode).clone {
 	~symbol = { ~string.asSymbol };
 	~isSpacer = { ~string.every(_.isSpace) };
 } => PR(\clStringNode);
+
+PR(\clStringNode).clone {
+	~streamCode = { |stream|
+		stream << "(time: " << ~time << ", dur: " << ~dur << ", item: ";
+		if(~string.size == 1) {
+			stream <<< ~string[0];
+		} {
+			if(~isPitch ?? { false }) {
+				stream <<< ~decodePitch.(~string);
+			} {
+				stream <<< ~string;
+			};
+		};
+		stream << ")";
+		currentEnvironment
+	};
+}.import((clPatternSet: #[decodePitch])) => PR(\clEventStringNode);
 
 PR(\abstractClParseNode).clone {
 	~types = [
@@ -192,7 +209,9 @@ PR(\abstractClParseNode).clone {
 		case
 		{ ch == $\\ } {
 			stream.rewind(1);
-			new = PR(\clGeneratorNode).copy.put(\isPitch, ~isPitch).prep(stream, currentEnvironment);
+			new = PR(\clGeneratorNode).copy
+			.putAll((bpKey: ~bpKey, isPitch: ~isPitch, isMain: ~isMain, parm: ~parm))
+			.prep(stream, currentEnvironment);
 			~children = ~children.add(new);
 			new//.debug("<< parseItem");
 		}
@@ -204,9 +223,10 @@ PR(\abstractClParseNode).clone {
 				};
 				if(ch.notNil) { stream.rewind(1) };
 				~children = ~children.add(
-					PR(\clStringNode).copy
+					PR(\clEventStringNode).copy
 					.put(\parentNode, currentEnvironment)
 					.put(\string, new)
+					.put(\isPitch, ~isPitch)
 					.put(\begin, begin)
 					.put(\end, begin + new.size - 1);
 				);
@@ -214,9 +234,10 @@ PR(\abstractClParseNode).clone {
 			} {
 				new = String.with(ch);
 				~children = ~children.add(
-					PR(\clStringNode).copy
+					PR(\clEventStringNode).copy
 					.put(\parentNode, currentEnvironment)
 					.put(\string, new)
+					.put(\isPitch, ~isPitch)
 					.put(\begin, begin)
 					.put(\end, begin);  // one char only
 				);
@@ -225,9 +246,10 @@ PR(\abstractClParseNode).clone {
 		} {
 			new = String.with(ch);
 			~children = ~children.add(
-				PR(\clStringNode).copy
+				PR(\clEventStringNode).copy
 				.put(\parentNode, currentEnvironment)
 				.put(\string, new)
+				.put(\isPitch, ~isPitch)
 				.put(\begin, begin)
 				.put(\end, begin);
 			);
@@ -236,11 +258,15 @@ PR(\abstractClParseNode).clone {
 	};
 
 	~streamCode = { |stream|
-		if(~items.isNil) { ~setTiming.(~onset, ~dur) };
-
+		if(~children[0][\time].isNil) { ~setTime.(~time, ~dur) };
+		// no array brackets: divider delimiters are for humans, not machines
+		~children.do { |item, i|
+			if(i > 0) { stream << ", " };
+			item.streamCode(stream);
+		};
 		currentEnvironment
 	};
-	~setTiming = { |onset(0), dur(4), extraDur(0)|
+	~setTime = { |onset(0), dur(4), extraDur(0)|
 		var itemDur = dur / max(~children.size, 1), durs, lastI;
 		~time = onset;
 		~dur = dur;
@@ -256,7 +282,7 @@ PR(\abstractClParseNode).clone {
 		};
 		durs.putLast(durs.last + extraDur);
 		~children.do { |item, i|
-			item.setTiming(onset + (i * itemDur), durs[i]);
+			item.setTime(onset + (i * itemDur), durs[i]);
 		};
 	};
 } => PR(\clDividerNode);
@@ -311,17 +337,34 @@ PR(\abstractClParseNode).clone {
 		// new.listArgs; "<< parseArg".debug;
 		new
 	};
-	~streamCode = { |stream|
-		if(~children[0][\time].isNil) { ~setTiming.(~onset, ~dur) };
+//PR('clGenTest').copy.putAll((bpKey: 'x', args: [[$., $., $., $.]], dur: 4.0, isPitch: false, isMain: true, parm: 'a')).prep
 
+	~streamCode = { |stream|
+		var name = ~children[0].string;
+		if(~children[1][\time].isNil) { ~setTime.(~time, ~dur) };
+		stream << "PR(\\clGen";
+		if(name.size > 0) {
+			stream << name[0].toUpper << name[1..];
+		};
+		stream << ").copy.putAll((";
+		stream << "bpKey: " <<< ~bpKey;
+		stream << ", args: [ ";
+		(1 .. ~children.size - 1).do { |i|
+			~children[i].streamCode(stream);
+		};
+		stream << " ], dur: " << ~dur;
+		stream << ", isPitch: " << (~isPitch ?? { false });
+		stream << ", isMain: " << (~isMain ?? { false });
+		stream << ", parm: " <<< ~parm;
+		stream << ")).prep";
 		currentEnvironment
 	};
-	~setTiming = { |onset(0), dur(4)|
+	~setTime = { |onset(0), dur(4)|
 		var itemDur = dur / max(~children.size, 1);
 		~time = onset;
 		~dur = dur;
 		(1 .. ~children.size - 1).do { |i|
-			~children[i].setTiming(onset, dur);  // meaningful for gens and patstrings
+			~children[i].setTime(onset, dur);  // meaningful for gens and patstrings
 		};
 		currentEnvironment
 	};
@@ -345,18 +388,25 @@ PR(\abstractClParseNode).clone {
 			ch.notNil and: { didOpenQuote.not or: { ch != $\" } }
 		} {
 			~children = ~children.add(
-				PR(\clDividerNode).copy.put(\isPitch, ~isPitch).prep(stream, currentEnvironment)
+				PR(\clDividerNode).copy
+				.putAll((bpKey: ~bpKey, isPitch: ~isPitch, isMain: ~isMain, parm: ~parm))
+				.prep(stream, currentEnvironment)
 			);
 			didOpenQuote = true;
 		};
 		// stream.collection[~begin .. ~begin + 10].debug("<< clPatStringNode");
 	};
 	~streamCode = { |stream|
-		if(~items.isNil) { ~setTiming.(~onset, ~dur) };
-
+		if(~children[0][\time].isNil) { ~setTime.(~time, ~dur) };
+		stream << "[ ";
+		~children.do { |item, i|
+			if(i > 0) { stream << ", " };
+			item.streamCode(stream);
+		};
+		stream << " ]";
 		currentEnvironment
 	};
-	~setTiming = { |onset(0), dur(4)|
+	~setTime = { |onset(0), dur(4)|
 		var itemDur = dur / max(~children.size, 1), i, extraDur = 0, first;
 		~time = onset;
 		~dur = dur;
@@ -365,7 +415,7 @@ PR(\abstractClParseNode).clone {
 		i = ~children.size - 1;
 		~children.reverseDo { |item, j|
 			var itemOnset = onset + (i * itemDur);
-			item.setTiming(itemOnset, itemDur, extraDur);
+			item.setTime(itemOnset, itemDur, extraDur);
 			if(item.children.size == 0) {
 				extraDur = extraDur + itemDur;
 			} {
@@ -450,9 +500,8 @@ PR(\abstractClParseNode).clone {
 	};
 
 	~streamCode = { |stream|
-		if(~clClass != BP) { stream << ~clClass.name << "." };
-		stream << ~objKey << "." << ~phrase;
-		if(~parm.size > 0) { ~stream << "." << ~parm };
+		"clIDNode:streamCode not yet implemented".warn;
+		stream << "IDNode";
 		currentEnvironment
 	};
 } => PR(\clIDNode);
@@ -476,26 +525,32 @@ PR(\abstractClParseNode).clone {
 				obj = id.clClass.new(id.objKey);
 				tryNoTrace {
 					~isPitch = obj.parmIsPitch(id.parm) ?? { false };
+					~isMain = id.parm == obj.defaultParm ?? { false };
 				};
 			};
 			~children = ~children.add(
-				PR(\clPatStringNode).copy.put(\isPitch, ~isPitch).prep(stream, currentEnvironment)
+				PR(\clPatStringNode).copy
+				.putAll((bpKey: id.objKey, isPitch: ~isPitch, isMain: ~isMain, parm: id.parm))
+				.prep(stream, currentEnvironment)
 			);
 		} {
 			Error("Composite patterns not refactored yet").throw;
 		};
 	};
 
+	// ~setPattern = { |phrase, parm, inParm, pattern, inString, newQuant| };
+
+	// maybe caller should be responsible for this
 	~streamCode = { |stream|
-		if(~clClass != BP) { stream << ~clClass.name << "." };
-		stream << ~objKey << "." << ~phrase;
-		if(~parm.size > 0) { ~stream << "." << ~parm };
+		// var id = ~children[0];
+		// stream << id.clClass.name << "(" <<< id.name << ").setPattern(";
+		// stream <<< id.phrase << ", "
 		currentEnvironment
 	};
-	~setTiming = { |onset(0), dur(4)|
+	~setTime = { |onset(0), dur(4)|
 		~time = onset;
 		~dur = dur;
-		~children[1].setTiming(onset, dur);  // [1] is the patstring
+		~children[1].setTime(onset, dur);  // [1] is the patstring
 		currentEnvironment
 	};
 } => PR(\clPatternSetNode);

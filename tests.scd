@@ -1211,10 +1211,10 @@ z = ~scanPSNode.(p.children[1], 0, 4);
 z[0].listVars
 
 // object-oriented implementation, in nodes
-p.setTiming(0, 4);
+p.setTime(0, 4);
 
 p = PR(\clPatternSetNode).copy.prep(CollStream("/x = \"\\test(\".\\rand(\"....\", \".-\") .\")\";"));
-p.setTiming(0, 4);
+p.setTime(0, 4);
 
 p.children[1].children[0].children[0].children[1].children[0].children[1].listVars
 p.children[1].children[0].children[0].children[1].children[0].children[1].children[1].listVars
@@ -1228,7 +1228,7 @@ p.children[1].listVars
 p.children[1].children[0].listVars
 
 p = PR(\clPatternSetNode).copy.prep(CollStream("/x = \"..| .\";"));
-p.setTiming(0, 4);
+p.setTime(0, 4);
 p.children[1].listVars
 p.children[1].children[0].listVars
 p.children[1].children[0].children[0].listVars  // dur = 1 ok
@@ -1237,14 +1237,28 @@ p.children[1].children[1].children[0].listVars  // dur = 1 ok
 p.children[1].children[1].children[1].listVars  // dur = 1 ok
 
 p = PR(\clPatternSetNode).copy.prep(CollStream("/x = \"\\test(\".\\rand(\"....\", \".-\")| .\")\";"));
-p.setTiming(0, 4);
+p.setTime(0, 4);
 
 // gen format
 PR('clGenTest').copy.putAll((bpKey: 'x', args: [[$., $., $., $.]], dur: 4.0, isPitch: false, isMain: true, parm: 'a')).prep
 
-(
-f = { |genNode|
-	var out = CollStream.new;
-	out << "PR('clGen" << genNode.name.capitalize << "').copy.putAll((";
-	out << "bpKey: 'x', ";  // later: get from clPatternSet handler
-	out << 
+
+// codegen
+p = PR(\clPatternSetNode).copy.prep(CollStream("/x = \"\\test(\"....\")\";"));
+p.setTime(0, 4);
+c = CollStream.new;
+p.children[1].streamCode(c);
+c.collection
+
+// decodePitch
+n = PR(\clEventStringNode).copy
+.put(\parentNode, currentEnvironment)
+.put(\string, "2'+~")
+.put(\isPitch, true)
+.put(\begin, 0)
+.put(\end, 3);
+n.streamCode(Post)
+
+// ids not passed
+p.children[0].listVars
+p.children[1].children[0].children[0].children[1].children[0].children[0].listVars
