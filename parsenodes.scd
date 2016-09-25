@@ -120,6 +120,14 @@ Proto {
 		};
 		if(ch.notNil) { stream.rewind(1) };
 	};
+
+	~streamCode = { |stream| stream << ~string; currentEnvironment };
+	~setTiming = { |onset(0), dur(4)|
+		~time = onset;
+		~dur = dur;
+		currentEnvironment
+	};
+	~isSpacer = false;
 } => PR(\abstractClParseNode);
 
 PR(\abstractClParseNode).clone {
@@ -137,6 +145,7 @@ PR(\abstractClParseNode).clone {
 	};
 	~endTest = { |ch| ch == $\" };
 	~symbol = { ~string.asSymbol };
+	~isSpacer = { ~string.every(_.isSpace) };
 } => PR(\clStringNode);
 
 PR(\abstractClParseNode).clone {
@@ -225,6 +234,31 @@ PR(\abstractClParseNode).clone {
 			new//.debug("<< parseItem");
 		};
 	};
+
+	~streamCode = { |stream|
+		if(~items.isNil) { ~setTiming.(~onset, ~dur) };
+
+		currentEnvironment
+	};
+	~setTiming = { |onset(0), dur(4), extraDur(0)|
+		var itemDur = dur / max(~children.size, 1), durs, lastI;
+		~time = onset;
+		~dur = dur;
+		// children should be clStringNodes or clGeneratorNodes
+		durs = Array(~children.size);
+		~children.do { |item, i|
+			if(item.isSpacer and: { lastI.notNil }) {
+				durs[lastI] = durs[lastI] + itemDur;
+			} {
+				lastI = i;
+			};
+			durs.add(itemDur);
+		};
+		durs.putLast(durs.last + extraDur);
+		~children.do { |item, i|
+			item.setTiming(onset + (i * itemDur), durs[i]);
+		};
+	};
 } => PR(\clDividerNode);
 
 PR(\abstractClParseNode).clone {
@@ -277,6 +311,20 @@ PR(\abstractClParseNode).clone {
 		// new.listArgs; "<< parseArg".debug;
 		new
 	};
+	~streamCode = { |stream|
+		if(~children[0][\time].isNil) { ~setTiming.(~onset, ~dur) };
+
+		currentEnvironment
+	};
+	~setTiming = { |onset(0), dur(4)|
+		var itemDur = dur / max(~children.size, 1);
+		~time = onset;
+		~dur = dur;
+		(1 .. ~children.size - 1).do { |i|
+			~children[i].setTiming(onset, dur);  // meaningful for gens and patstrings
+		};
+		currentEnvironment
+	};
 } => PR(\clGeneratorNode);
 
 PR(\clGeneratorNode).clone {
@@ -302,6 +350,35 @@ PR(\abstractClParseNode).clone {
 			didOpenQuote = true;
 		};
 		// stream.collection[~begin .. ~begin + 10].debug("<< clPatStringNode");
+	};
+	~streamCode = { |stream|
+		if(~items.isNil) { ~setTiming.(~onset, ~dur) };
+
+		currentEnvironment
+	};
+	~setTiming = { |onset(0), dur(4)|
+		var itemDur = dur / max(~children.size, 1), i, extraDur = 0, first;
+		~time = onset;
+		~dur = dur;
+		// all children should be divider nodes
+		// what about items spanning a division? reverse order
+		i = ~children.size - 1;
+		~children.reverseDo { |item, j|
+			var itemOnset = onset + (i * itemDur);
+			item.setTiming(itemOnset, itemDur, extraDur);
+			if(item.children.size == 0) {
+				extraDur = extraDur + itemDur;
+			} {
+				first = item.children.detect { |ch| ch.isSpacer.not };
+				if(first.notNil) {
+					extraDur = first.time - itemOnset;
+				} {
+					extraDur = extraDur + itemDur;
+				}
+			};
+			i = i - 1;
+		};
+		currentEnvironment
 	};
 } => PR(\clPatStringNode);
 
@@ -371,6 +448,13 @@ PR(\abstractClParseNode).clone {
 		if(broke) { stream.rewind(1) };
 		currentEnvironment
 	};
+
+	~streamCode = { |stream|
+		if(~clClass != BP) { stream << ~clClass.name << "." };
+		stream << ~objKey << "." << ~phrase;
+		if(~parm.size > 0) { ~stream << "." << ~parm };
+		currentEnvironment
+	};
 } => PR(\clIDNode);
 
 PR(\abstractClParseNode).clone {
@@ -400,6 +484,19 @@ PR(\abstractClParseNode).clone {
 		} {
 			Error("Composite patterns not refactored yet").throw;
 		};
+	};
+
+	~streamCode = { |stream|
+		if(~clClass != BP) { stream << ~clClass.name << "." };
+		stream << ~objKey << "." << ~phrase;
+		if(~parm.size > 0) { ~stream << "." << ~parm };
+		currentEnvironment
+	};
+	~setTiming = { |onset(0), dur(4)|
+		~time = onset;
+		~dur = dur;
+		~children[1].setTiming(onset, dur);  // [1] is the patstring
+		currentEnvironment
 	};
 } => PR(\clPatternSetNode);
 

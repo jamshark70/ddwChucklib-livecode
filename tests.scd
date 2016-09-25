@@ -1134,6 +1134,7 @@ PR(\abstractLiveCode).chuck(BP(\x), nil, (
 )
 
 /chucklibLiveCode.("/x = \"\\test(\"....\")\";");
+BP('x').setPattern('main', [ 'a', 'dur' ], 'a', Pseq([PR('clGenTest').copy.putAll((bpKey: 'x', args: [[$., $., $., $.]], dur: 4.0, isPitch: false, isMain: true, parm: 'a')).prep], 1), "\"\\test(\"....\")\"", nil)
 
 /x = "\test("....")";
 /x..b = "\test("-| .||-")";
@@ -1142,7 +1143,8 @@ PR(\abstractLiveCode).chuck(BP(\x), nil, (
 
 // seems legit
 g = BP(\x).phrases[\main].pairs[1].source.pattern.list[0];
-g.items.do(_.postln); ""
+g.baseItems.do(_.postln); ""
+[ baseItems, List[ ( 'dur': 1, 'item': ., 'time': 0 ), ( 'dur': 1, 'item': ., 'time': 1 ), ( 'dur': 1, 'item': ., 'time': 2 ), ( 'dur': 1, 'item': ., 'time': 3 ) ] ]
 
 BP(\x).prepareForPlay;
 e = BP(\x).eventStream.next(BP(\x).event.copy);  // OK!
@@ -1161,3 +1163,88 @@ p.next(());
 
 BP(\x).prepareForPlay;
 e = BP(\x).eventStream.next(BP(\x).event.copy);
+
+
+// nested generators
+/chucklibLiveCode.("/x = \"\\test(\".\\rand(\"....\", \".-\") .\")\";");
+
+/x = "\test(".\rand("....", ".-") .")";
+
+// current parser does not set durations of sub-generators
+// the info can be derived from parsenodes
+p = PR(\clPatternSetNode).copy.prep(CollStream("/x = \"\\test(\".\\rand(\"....\", \".-\") .\")\";"));
+x = p.children[1].children[0].children[0].children[1].children[0];
+x.listVars;
+// ^^ note here, must remove space item when making event list
+
+// run scanPSNode in parse-tests, then...
+x[0].item.listVars
+Variables:
+[ begin, 6 ]
+[ children, [ a Proto, a Proto ] ]
+[ end, 36 ]
+[ idAllowed, _ ]
+[ isPitch, false ]
+[ name, test ]
+[ nodeType, clGeneratorNode ]
+[ parentNode, a Proto ]
+[ string, \test(".\rand("....", ".-") .") ]
+
+
+p = PR(\clPatternSetNode).copy.prep(CollStream("/x = \"\\test(\"....\")\";"));
+p.children[1].listVars
+p.children[1].children[0].listVars
+p.children[1].children[0].children[0].listVars  // gennode
+p.children[1].children[0].children[0].children[1].listVars  // psnode
+p.children[1].children[0].children[0].children[1].children[0].listVars  // divider, 4 items
+p.children[1].children[0].children[0].children[1].children[0].children[0].listVars  // item
+p.children[1].children[0].children[0].children[1].children[0].children[2].listVars  // item
+-> List[ ( 'dur': 1, 'item': ., 'time': 0 ), ( 'dur': 1, 'item': ., 'time': 1 ), ( 'dur': 1, 'item': ., 'time': 2 ), ( 'dur': 1, 'item': ., 'time': 3 ) ]
+
+/x = "\test("....")";
+
+z = ~scanPSNode.(p.children[1].children[0].children[0].children[1], 0, 4);
+z[0][\item].postcs
+
+// with recursion?
+z = ~scanPSNode.(p.children[1], 0, 4);
+z[0].listVars
+
+// object-oriented implementation, in nodes
+p.setTiming(0, 4);
+
+p = PR(\clPatternSetNode).copy.prep(CollStream("/x = \"\\test(\".\\rand(\"....\", \".-\") .\")\";"));
+p.setTiming(0, 4);
+
+p.children[1].children[0].children[0].children[1].children[0].children[1].listVars
+p.children[1].children[0].children[0].children[1].children[0].children[1].children[1].listVars
+p.children[1].children[0].children[0].children[1].children[0].children[1].children[1].children[0].children[0].listVars
+
+p = PR(\clPatternSetNode).copy.prep(CollStream("/x = \"\";"));
+p.children[1].children[0].listVars
+
+p = PR(\clPatternSetNode).copy.prep(CollStream("/x = \"|\";"));
+p.children[1].listVars
+p.children[1].children[0].listVars
+
+p = PR(\clPatternSetNode).copy.prep(CollStream("/x = \"..| .\";"));
+p.setTiming(0, 4);
+p.children[1].listVars
+p.children[1].children[0].listVars
+p.children[1].children[0].children[0].listVars  // dur = 1 ok
+p.children[1].children[0].children[1].listVars  // dur = 2 ok
+p.children[1].children[1].children[0].listVars  // dur = 1 ok
+p.children[1].children[1].children[1].listVars  // dur = 1 ok
+
+p = PR(\clPatternSetNode).copy.prep(CollStream("/x = \"\\test(\".\\rand(\"....\", \".-\")| .\")\";"));
+p.setTiming(0, 4);
+
+// gen format
+PR('clGenTest').copy.putAll((bpKey: 'x', args: [[$., $., $., $.]], dur: 4.0, isPitch: false, isMain: true, parm: 'a')).prep
+
+(
+f = { |genNode|
+	var out = CollStream.new;
+	out << "PR('clGen" << genNode.name.capitalize << "').copy.putAll((";
+	out << "bpKey: 'x', ";  // later: get from clPatternSet handler
+	out << 
