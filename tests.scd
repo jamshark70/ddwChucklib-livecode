@@ -1259,6 +1259,42 @@ n = PR(\clEventStringNode).copy
 .put(\end, 3);
 n.streamCode(Post)
 
+// real test of pitch
+(
+BP(\y).free;
+PR(\abstractLiveCode).chuck(BP(\y), nil, (
+	defaultParm: \a,
+	parmMap: (a: (isPitch: true))
+));
+TempoClock.default => BP(\y);
+)
+
+p = PR(\clPatternSetNode).copy.prep(CollStream("/y = \"8~| 5~| 4~| 2~ 1~\";"));
+p.setTime(0, 4);
+p.children[1].listVars  // psnode, 4 dividers
+p.children[1].children[0].listVars  // one child
+p.children[1].children[0].children[0].listVars  // eventstr, dur = 1.5 ok
+
+p.children[1].streamCode(Post);
+
+// I think it will not handle rests
+p = PR(\clPatternSetNode).copy.prep(CollStream("/y = \"8~| 5~| 4~| 2~1_x\";"));  // ok, if player can handle 'x'
+p.setTime(0, 4);
+
+p = PR(\clPatternSetNode).copy.prep(CollStream("/y = \"8~| 5~| 4~| 2~1_ \";"));  // ok!
+p.setTime(0, 4);
+
+// I think it will not handle rests -- how about, player's responsibility?
+// don't confuse manipulations with rest/no rest
+p = PR(\clPatternSetNode).copy.prep(CollStream("/y = \"\\test(\" 8~| 5~| 4~| 2~1_x\")\";"));
+p.setTime(0, 4);
+
+q = PR(\clGenTest).copy.putAll((bpKey: 'y', args: [ [ (time: 0.5, dur: 1, item: SequenceNote(7, nil, 1.01)), (time: 1.5, dur: 1, item: SequenceNote(4, nil, 1.01)), (time: 2.5, dur: 0.75, item: SequenceNote(3, nil, 1.01)), (time: 3.25, dur: 0.25, item: SequenceNote(1, nil, 1.01)), (time: 3.5, dur: 0.25, item: SequenceNote(0, nil, 0.9)), (time: 3.75, dur: 0.25, item: $x) ] ], dur: 4, isPitch: true, isMain: true, parm: 'a')).prep;
+
+q.listVars
+r = Pbind(#[degree, dur], q).asStream;  // ok, asPattern makes a Rest appropriately
+r.next(())
+
 // ids not passed
 p.children[0].listVars
 p.children[1].children[0].children[0].children[1].children[0].children[0].listVars
