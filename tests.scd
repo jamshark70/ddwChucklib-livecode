@@ -1295,6 +1295,17 @@ q.listVars
 r = Pbind(#[degree, dur], q).asStream;  // ok, asPattern makes a Rest appropriately
 r.next(())
 
+
+// check *n ids
+p = PR(\clPatternSetNode).copy.prep(CollStream("/y.a = \"8~| 5~| 4~| 2~ 1~\";"));
+p.children[0].listVars
+p.children[0].numToApply
+
+p = PR(\clPatternSetNode).copy.prep(CollStream("/y.a*4 = \"8~| 5~| 4~| 2~ 1~\";"));
+p.children[0].numToApply
+
+\chucklibLiveCode.eval("/y.a*2 = \"8~| 5~| 4~| 2~ 1~\";");  // ok
+
 // surgery
 \chucklibLiveCode.eval("/y = (a.b);");  // ok
 

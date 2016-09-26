@@ -365,7 +365,21 @@ Proto {
 
 	~patternString = { |rightHand, code|  // ~patternString *does* need the full statement
 		var parsed = PR(\clPatternSetNode).copy.prep(CollStream(code)),
-		id, objKey, phrase, parm, bpb, stream, yieldsKeys, wrapArray = false;
+		id, objKey, phrase, parm, bpb, stream, yieldsKeys, wrapArray = false,
+		streamOne = { |stream, i|
+			stream << "BP(" <<< objKey << ").setPattern(";
+			if(i.notNil) {
+				stream << "'" << phrase << i << "'";  // /proc.a*4 -> a0, a1 etc.
+			} {
+				stream <<< phrase;
+			};
+			stream << ", ";
+			stream <<< yieldsKeys << ", " <<< parm << ", Pseq(";
+			if(wrapArray) { stream << "[ " };
+			parsed.children[1].streamCode(stream);
+			if(wrapArray) { stream << " ]" };
+			stream << ", 1), " <<< rightHand << ", " << nil << ")";  // nil = quant... needed?
+		};
 		~parsed = parsed;
 		id = parsed.children[0];
 		objKey = id.objKey;
@@ -404,12 +418,14 @@ Proto {
 
 		// write the code
 		stream = CollStream.new;
-		stream << "BP(" <<< objKey << ").setPattern(" <<< phrase << ", ";
-		stream <<< yieldsKeys << ", " <<< parm << ", Pseq(";
-		if(wrapArray) { stream << "[ " };
-		parsed.children[1].streamCode(stream);
-		if(wrapArray) { stream << " ]" };
-		stream << ", 1), " <<< rightHand << ", " << nil << ")";  // nil = quant... needed?
+		if(parsed.children[0].numToApply.isNil) {
+			streamOne.(stream);
+		} {
+			parsed.children[0].numToApply.do { |i|
+				if(i > 0) { stream << ";\n" };
+				streamOne.(stream, i);
+			};
+		};
 		stream.collection;
 	};
 
