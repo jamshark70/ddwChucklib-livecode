@@ -18,17 +18,22 @@ protect {
 		// each generator may have different ones
 		// generic one assumes only ~args[0]
 		~prep = {
-			~baseItems = ~parse.(~args[0]);
+			// ~baseItems = ~parse.(~args[0]);
+			~baseItems = ~args[0];
 			currentEnvironment
 		};
 
 		~process = {
 			~items = ~baseItems;  // copy if you're modifying
 		};
-		~asPattern = { |bp|  // the BP() object
-			var pat;
-			~process.();
-			pat = Pseq(~items, 1).collect { |ev|
+		~asPattern = { |bp|  // the BP() object -- asPattern should be called @ top level only
+			var pat, rest;
+			~process.(bp);
+			if(~items[0].time > 0) {
+				rest = [(time: 0, dur: ~items[0].time, item: Rest(~items[0].item))];
+			};
+			// "rest ++" also works if 'rest' is nil
+			pat = Pseq(rest ++ ~items, 1).collect { |ev|
 				[ev[\item], ev[\dur]]
 			};
 			if(~isMain) {
@@ -181,8 +186,11 @@ protect {
 	} => PR(\clGenSeq);
 
 	PR(\clGen).clone {
-		~asPattern = { Prand(~args[0], inf) };
-		~helpString = "\\rand(\"items\")";
+		// ~asPattern = { Prand(~args[0], inf) };
+		~process = {
+
+		};
+		~helpString = "\\rand(\"timing\", \"items\")";
 	} => PR(\clGenRand);
 
 	PR(\clGen).clone {
