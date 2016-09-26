@@ -367,21 +367,18 @@ Proto {
 		var parsed = PR(\clPatternSetNode).copy.prep(CollStream(code)),
 		id, objKey, phrase, parm, bpb, stream, yieldsKeys, wrapArray = false,
 		streamOne = { |stream, i|
-			stream << "BP(" <<< objKey << ").setPattern(";
-			if(i.notNil) {
-				stream << "'" << phrase << i << "'";  // /proc.a*4 -> a0, a1 etc.
-			} {
-				stream <<< phrase;
-			};
-			stream << ", ";
+			var phraseSym = if(i.notNil) { (phrase ++ i).asSymbol } { phrase };
+			stream << "BP(" <<< objKey << ").setPhraseDur("
+			<<< phraseSym << ", " << bpb << ");\n";
+			stream << "BP(" <<< objKey << ").setPattern(" <<< phraseSym << ", ";
 			stream <<< yieldsKeys << ", " <<< parm << ", Pseq(";
 			if(wrapArray) { stream << "[ " };
-			parsed.children[1].streamCode(stream);
+			parsed.patStringNode.streamCode(stream);
 			if(wrapArray) { stream << " ]" };
 			stream << ", 1), " <<< rightHand << ", " << nil << ")";  // nil = quant... needed?
 		};
 		~parsed = parsed;
-		id = parsed.children[0];
+		id = parsed.idNode;
 		objKey = id.objKey;
 		phrase = id.phrase;
 		parm = id.parm;
@@ -390,15 +387,20 @@ Proto {
 		} {
 			yieldsKeys = parm;
 		};
-		if(BP.exists(objKey)) {
-			bpb = (BP(objKey).clock ?? { TempoClock.default }).beatsPerBar;
-		} {
-			bpb = 4;  // lame default
+		if(parsed.hasQuant) {
+			bpb = parsed.quantNode.quant;
 		};
-		if(parsed.children[1].nodeType == \clPatStringNode) {
+		if(bpb.isNil) {
+			if(BP.exists(objKey)) {
+				bpb = (BP(objKey).clock ?? { TempoClock.default }).beatsPerBar;
+			} {
+				bpb = 4;  // lame default
+			};
+		};
+		if(parsed.patStringNode.nodeType == \clPatStringNode) {
 			// wrap the clPatString in the abstract generator
 			// this is necessary to massage the event list into a playable stream
-			parsed.children[1] = PR(\clGeneratorNode).copy.putAll((
+			parsed.patStringNode = PR(\clGeneratorNode).copy.putAll((
 				bpKey: objKey,
 				phrase: phrase,
 				parm: parm,
@@ -406,7 +408,7 @@ Proto {
 				isPitch: parsed.isPitch,
 				children: [
 					PR(\clStringNode).copy.put(\string, ""),
-					parsed.children[1]  // patString is the abstract generator's only argument
+					parsed.patStringNode  // patString is the abstract generator's only argument
 				],
 				name: ""
 			));
@@ -414,7 +416,7 @@ Proto {
 			// but I'm lazy
 			wrapArray = true;
 		};
-		parsed.children[1].setTime(0, bpb);
+		parsed.patStringNode.setTime(0, bpb);
 
 		// write the code
 		stream = CollStream.new;

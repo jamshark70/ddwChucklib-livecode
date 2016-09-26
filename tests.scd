@@ -1263,8 +1263,9 @@ n.streamCode(Post)
 (
 BP(\y).free;
 PR(\abstractLiveCode).chuck(BP(\y), nil, (
-	defaultParm: \a,
-	parmMap: (a: (isPitch: true))
+	event: (eventKey: \default),
+	defaultParm: \degree,
+	parmMap: (degree: (isPitch: true))
 ));
 TempoClock.default => BP(\y);
 )
@@ -1306,11 +1307,30 @@ p.children[0].numToApply
 
 \chucklibLiveCode.eval("/y.a*2 = \"8~| 5~| 4~| 2~ 1~\";");  // ok
 
+// check quant
+p = PR(\clPatternSetNode).copy.prep(CollStream("/y.a = 3\"8~| 5~| 4~| 2~ 1~\";"));
+p.patStringNode.listVars;
+p.quantNode.listVars;
+
+p = PR(\clPatternSetNode).copy.prep(CollStream("/y.a = +0.5\"8~| 5~| 4~| 2~ 1~\";"));
+
+\chucklibLiveCode.eval("/y.a = 3\"8~| 5~| 4~\";");  // ok
+
 // surgery
+Process.tailCallOptimize = false;
+
 \chucklibLiveCode.eval("/y = (a.b);");  // ok
 
 \chucklibLiveCode.eval("/y = \"8~| 5~| 4~| 2~ 1~\";");
-/y = "8~| 5~| 4~| 2~ 1~";
+/y = "8~| 5~| 4~| 2~ 6,~";
+
+BP(\y).phrases[\main].pairs[1].source.pattern.list[0].listVars
+
+/y+;
+
+/y = 3"8~|5~4~| 2~ 6,~";
+
+/y-;
 
 p = PR(\chucklibLiveCode).instance;
 p = p.parsed;
@@ -1318,3 +1338,4 @@ p.children[1].listVars
 
 BP(\y).prepareForPlay;
 e = BP(\y).eventStream.next(BP(\y).event.copy);
+

@@ -511,7 +511,41 @@ PR(\abstractClParseNode).clone {
 } => PR(\clIDNode);
 
 PR(\abstractClParseNode).clone {
+	~parse = { |stream|
+		var str = String.new, ch;
+		while {
+			ch = stream.next;
+			ch.notNil and: { ch != $" }
+		} {
+			str = str.add(ch);
+		};
+		if(ch.notNil) { stream.pos = stream.pos - 1 };
+		~string = str;
+		~additiveRhythm = str[0] == $+;
+		~quant = str[~additiveRhythm.asInteger ..].interpret;
+	};
+} => PR(\clPatStringQuantNode);
+
+PR(\abstractClParseNode).clone {
 	~isPitch = false;
+	~hasQuant = false;
+	// getters, because ~children positions may vary
+	~idNode = { ~children[0] };
+	~quantNode = {
+		if(~hasQuant) { ~children[1] } { nil };
+	};
+	~patStringNode = {
+		if(~hasQuant) { ~children[2] } { ~children[1] };
+	};
+	// caller needs to wrap the outermost patStringNode in a generatorNode: need setter
+	~patStringNode_ = { |node|
+		if(~hasQuant) {
+			~children[2] = node;
+		} {
+			~children[1] = node;
+		};
+		currentEnvironment
+	};
 	~parse = { |stream|
 		var id, obj;
 		if(stream.peek == $/) { stream.next };
@@ -524,6 +558,13 @@ PR(\abstractClParseNode).clone {
 			Error("clPatternSet must have '='").throw;
 		};
 		~skipSpaces.(stream);
+		if(stream.peek == $() {
+			Error("Composite patterns not refactored yet").throw;
+		};
+		if(stream.peek.isDecDigit or: { stream.peek == $+ }) {
+			~children = ~children.add(PR(\clPatStringQuantNode).copy.prep(stream));
+			~hasQuant = true;
+		};
 		if(stream.peek == $\") {
 			if(id.clClass.exists(id.objKey)) {
 				obj = id.clClass.new(id.objKey);
@@ -537,9 +578,7 @@ PR(\abstractClParseNode).clone {
 				.putAll((bpKey: id.objKey, isPitch: ~isPitch, isMain: ~isMain, parm: id.parm))
 				.prep(stream, currentEnvironment)
 			);
-		} {
-			Error("Composite patterns not refactored yet").throw;
-		};
+		}
 	};
 
 	// ~setPattern = { |phrase, parm, inParm, pattern, inString, newQuant| };
