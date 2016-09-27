@@ -151,11 +151,11 @@ PR(\abstractClParseNode).clone {
 PR(\clStringNode).clone {
 	~streamCode = { |stream|
 		stream << "(time: " << ~time << ", dur: " << ~dur << ", item: ";
-		if(~string.size == 1) {
-			stream <<< ~string[0];
+		if(~isPitch ?? { false }) {
+			stream <<< ~decodePitch.(~string);
 		} {
-			if(~isPitch ?? { false }) {
-				stream <<< ~decodePitch.(~string);
+			if(~string.size == 1) {
+				stream <<< ~string[0];
 			} {
 				stream <<< ~string;
 			};
@@ -354,6 +354,7 @@ PR(\abstractClParseNode).clone {
 		stream << "bpKey: " <<< ~bpKey;
 		stream << ", args: [ ";
 		(1 .. ~children.size - 1).do { |i|
+			if(i > 1) { stream << ", " };
 			~children[i].streamCode(stream);
 		};
 		stream << " ], dur: " << ~dur;
