@@ -24,11 +24,27 @@ protect {
 		};
 
 		~process = {
-			~items = ~baseItems;  // copy if you're modifying
+			~items = ~getDownstreamItems.();
+		};
+		~unprocess = {
+			~items = nil;
+		};
+		// .value polymorphism: we may need items from an array or a clgen
+		// Proto maps .value onto ~next
+		~next = { ~process.() };
+		~getDownstreamItems = { |key(\baseItems)|
+			var out;
+			">> % getDownstreamItems".format(~protoID).debug;
+			out = key.envirGet.collect { |item| item.value }.flatten(1);
+			"<< % getDownstreamItems".format(~protoID).debug;
+			out.postcs
 		};
 		~asPattern = { |bp|  // the BP() object -- asPattern should be called @ top level only
-			var pat, rest;
-			~process.(bp);
+			var pat, rest, didProcess = false;
+			if(~items.isNil) {
+				~items = ~process.(bp);
+				didProcess = true;
+			};
 			if(~items[0].time > 0) {
 				rest = [(time: 0, dur: ~items[0].time, item: Rest(~items[0].item))];
 			};
@@ -36,10 +52,11 @@ protect {
 			pat = Pseq(rest ++ ~items, 1).collect { |ev|
 				[ev[\item], ev[\dur]]
 			};
+			if(didProcess) { ~unprocess.() };
 			if(~isMain) {
 				pat
 			} {
-				PstepDurPair(pat.trace(prefix: "item/dur pair: "), 1)
+				PstepDurPair(pat, 1)
 			}
 		};
 		~embedInStream = { |inval|
@@ -179,42 +196,86 @@ protect {
 
 	PR(\clGen).copy => PR(\clGenTest);
 
+	// "\seq("rhythm", "itemseq", "replaceItems", >0 to reset)
 	PR(\clGen).clone {
-		// optional argument 'bp' to access process variables
-		~asPattern = { Pseq(~args[0], inf) };
+		~prep = {
+			~baseItems = ~args[0];
+			~pool = ~args[1];
+			if(~args[2].notNil) {
+				~replaceItems = ~args[2].collect { |item| item.item };
+			} {
+				~replaceItems = [$.];
+			};
+			if(~args[3].isNumber) {
+				~doReset = ~args[3] > 0;
+			} {
+				~doReset = false;
+			};
+			currentEnvironment
+		};
+
+		~process = {
+			if(~doReset or: { ~seqStream.isNil }) {
+				~makeStream.();
+			};
+			~items = ~getDownstreamItems.();
+			~items.do { |item, i|
+				// includesEqual: SequenceNotes compare pitch only! Use pitch for matching
+				if(~replaceItems.includesEqual(item.item)) {
+					// copy is critical here!
+					~items[i] = item.copy.put(\item, ~seqStream.next);
+				};
+			};
+			~items
+		};
+
+		~makeStream = {
+			~seqStream = Pseq(~pool, inf).collect(_.item).asStream;
+		};
 		~helpString = "\\seq(\"items\")";
 	} => PR(\clGenSeq);
 
-	PR(\clGen).clone {
+	PR(\clGenSeq).clone {
 		// ~asPattern = { Prand(~args[0], inf) };
-		~process = {
-
+		~makeStream = {
+			~seqStream = Prand(~pool, inf).collect(_.item).asStream;
 		};
 		~helpString = "\\rand(\"timing\", \"items\")";
 	} => PR(\clGenRand);
 
-	PR(\clGen).clone {
-		~asPattern = { Pxrand(~args[0], inf) };
+	PR(\clGenSeq).clone {
+		~makeStream = {
+			~seqStream = Pxrand(~pool, inf).collect(_.item).asStream;
+		};
 		~helpString = "\\xrand(\"items\")";
 	} => PR(\clGenXrand);
 
 	PR(\clGen).clone {
-		~asPattern = { Pwrand(~args[0], ~args[1..].normalizeSum, inf) };
+		~makeStream = {
+			var firstNum = ~args.detectIndex { |item| item.isNumber },
+			weights;
+			if(firstNum.isNil) {
+				weights = Array.fill(~pool.size, ~pool.size.reciprocal);
+			} {
+				weights = ~args[firstNum..].extend(~pool.size, 1).normalizeSum;
+			};
+			~seqStream = Pwrand(~pool, weights, inf).collect(_.item).asStream;
+		};
 		~helpString = "\\wrand(\"items\", weight0, weight1...)";
 	} => PR(\clGenWrand);
 
 	PR(\clGen).clone {
-		~asPattern = { Pn(Pshuf(~args[0], 1), inf) };
+		~makeStream = { ~seqStream = Pn(Pshuf(~args[0], 1), inf) };
 		~helpString = "\\shuf(\"items\")";
 	} => PR(\clGenShuf);
 
-	PR(\clGen).clone {
-		~asPattern = {
-			var weights = ~args[1..].normalizeSum;
-			Pwrand((1 .. weights.size), weights, inf) * ~args[0]
-		};
-		~helpString = "\\randRhy(baseDur, weight1, weight2...)";
-	} => PR(\clGenRandRhy);
+	// PR(\clGen).clone {
+	// 	~asPattern = {
+	// 		var weights = ~args[1..].normalizeSum;
+	// 		Pwrand((1 .. weights.size), weights, inf) * ~args[0]
+	// 	};
+	// 	~helpString = "\\randRhy(baseDur, weight1, weight2...)";
+	// } => PR(\clGenRandRhy);
 
 	// non-default parameter with rhythm generator: Use Pstep
 	PR(\clGen).clone({
