@@ -259,13 +259,15 @@ PR(\abstractClParseNode).clone {
 
 	~streamCode = { |stream|
 		var needComma = false;
-		if(~children[0][\time].isNil) { ~setTime.(~time, ~dur) };
-		// no array brackets: divider delimiters are for humans, not machines
-		~children.do { |item, i|
-			if(item.isSpacer.not) {
-				if(needComma) { stream << ", " };
-				item.streamCode(stream);
-				needComma = true;
+		if(~children.notEmpty) {
+			if(~children[0][\time].isNil) { ~setTime.(~time, ~dur) };
+			// no array brackets: divider delimiters are for humans, not machines
+			~children.do { |item, i|
+				if(item.isSpacer.not) {
+					if(needComma) { stream << ", " };
+					item.streamCode(stream);
+					needComma = true;
+				};
 			};
 		};
 		currentEnvironment
@@ -284,7 +286,9 @@ PR(\abstractClParseNode).clone {
 			};
 			durs.add(itemDur);
 		};
-		durs.putLast(durs.last + extraDur);
+		if(durs.notEmpty) {
+			durs.putLast(durs.last + extraDur);
+		};
 		~children.do { |item, i|
 			item.setTime(onset + (i * itemDur), durs[i]);
 		};
