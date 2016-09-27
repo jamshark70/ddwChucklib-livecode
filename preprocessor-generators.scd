@@ -34,10 +34,10 @@ protect {
 		~next = { ~process.() };
 		~getDownstreamItems = { |key(\baseItems)|
 			var out;
-			">> % getDownstreamItems".format(~protoID).debug;
+			// ">> % getDownstreamItems".format(~protoID).debug;
 			out = key.envirGet.collect { |item| item.value }.flatten(1);
-			"<< % getDownstreamItems".format(~protoID).debug;
-			out.postcs
+			// "<< % getDownstreamItems".format(~protoID).debug;
+			// out.postcs
 		};
 		~asPattern = { |bp|  // the BP() object -- asPattern should be called @ top level only
 			var pat, rest, didProcess = false;
