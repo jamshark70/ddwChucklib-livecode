@@ -2054,4 +2054,6 @@ Proto {
 }.import((abstractProcess: #[makeStreamForKey])) => PR(\abstractLiveCode);
 );
 
-(thisProcess.nowExecutingPath.dirname +/+ "parsenodes.scd").loadPath;
+["parsenodes.scd", "preprocessor-generators.scd"].do { |name|
+	(thisProcess.nowExecutingPath.dirname +/+ name).loadPath;
+};
