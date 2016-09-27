@@ -510,10 +510,11 @@ Proto {
 				// degree -> legato  // Association identifies pitch above
 				SequenceNote(degree, nil, legato)
 			}
-			{ "~_.".includes(pitchStr[0]) } { pitchStr[0] }
+			// { "~_.".includes(pitchStr[0]) } { pitchStr[0] }  // not sure why I did this
 			{ pitchStr[0] != $  } {
 				// Rest(0) -> legato
-				SequenceNote(Rest(0), nil, legato)
+				// also, now we need to distinguish between rests and replaceable slots
+				SequenceNote(Rest(pitchStr[0].ascii), nil, legato)
 			}
 			{ nil }
 		}
