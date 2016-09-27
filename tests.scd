@@ -1339,3 +1339,50 @@ p.children[1].listVars
 BP(\y).prepareForPlay;
 e = BP(\y).eventStream.next(BP(\y).event.copy);
 
+// first new-style generator
+(
+BP(\y).free;
+PR(\abstractLiveCode).chuck(BP(\y), nil, (
+	event: (eventKey: \default),
+	defaultParm: \degree,
+	parmMap: (degree: (isPitch: true))
+));
+TempoClock.default => BP(\y);
+)
+
+\chucklibLiveCode.eval("/y = \"\\seq(\"11,1,1,|11,1,1,\", \"2345\", \"1,\")\";");
+
+// these become $., matched
+\chucklibLiveCode.eval("/y = \"\\seq(\"1 . . . |1 . . . \", \"2345\", \".\")\";");
+
+\chucklibLiveCode.eval("/y = \"\\seq(\"1xxx|1xxx\", \"2345\", \"x\")\";");
+
+SequenceNote(Rest(0), nil, 0.9) == SequenceNote(Rest(0), nil, 0.9)
+
+/y = "\seq("11,1,1,|11,1,1,", "3456", "1,")";
+
+/y = "\seq("1 ..|..... . |1 . .   | .... ..", "34567", ".")";
+
+/y = "\xrand("1 ..|..... . |1 . .   | .... ..", "34567", ".")";
+
+// doesn't process x's
+/y = "12_|x3_|\xrand("4xx5| x6 ", "1'2'3'4'5'6'7'", "x")|";
+
+
+
+\chucklibLiveCode.eval("/y = \"12_|x3_|\\xrand(\"4..5| .6 \", \"1'2'3'4'5'6'7'\")|\";");
+
+BP(\y).phrases[\main].pairs[1].source.pattern.list[0].listVars
+BP(\y).phrases[\main].pairs[1].source.pattern.list[0].baseItems[0].listVars
+BP(\y).phrases[\main].pairs[1].source.pattern.list[0].baseItems[0].baseItems.collect { |it| it.item.asFloat }
+
+p = PR(\chucklibLiveCode).instance;
+p = p.parsed;
+p.children[1].children[1].children[0].children[0].children[1].children[0].children[1].listVars
+
+BP(\y).prepareForPlay;
+e = BP(\y).eventStream.next(BP(\y).event.copy);
+
+/y+;
+/y-;
+
