@@ -39,15 +39,26 @@ protect {
 			// "<< % getDownstreamItems".format(~protoID).debug;
 			// out.postcs
 		};
+		~updateDeltas = {
+			~deltas = (~items.collect(_[\time]) ++ ~dur).differentiate;
+			if(~items[0][\time] == 0) {
+				~deltas = ~deltas.drop(1);
+			} {
+				~deltas[0] = Rest(~items[0][\time]);
+				~items = ~items.insert(0, (item: \rest, time: 0, initialRest: true));
+			};
+			~items.do { |item, i| item[\dur] = ~deltas[i] };
+		};
 		~asPattern = { |bp|  // the BP() object -- asPattern should be called @ top level only
 			var pat, rest, didProcess = false;
 			if(~items.isNil) {
 				~items = ~process.(bp);
+				~updateDeltas.();
 				didProcess = true;
 			};
-			if(~items[0].time > 0) {
-				rest = [(time: 0, dur: ~items[0].time, item: Rest(~items[0].item))];
-			};
+			// if(~items[0].time > 0) {
+			// 	rest = [(time: 0, dur: ~items[0].time, item: Rest(~items[0].item))];
+			// };
 			// "rest ++" also works if 'rest' is nil
 			pat = Pseq(rest ++ ~items, 1).collect { |ev|
 				[ev[\item], ev[\dur]]
