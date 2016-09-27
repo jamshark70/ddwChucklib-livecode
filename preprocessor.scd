@@ -510,7 +510,7 @@ Proto {
 				// degree -> legato  // Association identifies pitch above
 				SequenceNote(degree, nil, legato)
 			}
-			// { "~_.".includes(pitchStr[0]) } { pitchStr[0] }  // not sure why I did this
+			// { "~_.".includes(pitchStr[0]) } { pitchStr[0] }  // for articulation pools?
 			{ pitchStr[0] != $  } {
 				// Rest(0) -> legato
 				// also, now we need to distinguish between rests and replaceable slots
