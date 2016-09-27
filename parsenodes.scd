@@ -406,11 +406,15 @@ PR(\abstractClParseNode).clone {
 		// stream.collection[~begin .. ~begin + 10].debug("<< clPatStringNode");
 	};
 	~streamCode = { |stream|
+		var needComma = false;
 		if(~children[0][\time].isNil) { ~setTime.(~time, ~dur) };
 		stream << "[ ";
 		~children.do { |item, i|
-			if(i > 0) { stream << ", " };
-			item.streamCode(stream);
+			if(item.children.size > 0) {
+				if(needComma) { stream << ", " };
+				item.streamCode(stream);
+				needComma = true;
+			};
 		};
 		stream << " ]";
 		currentEnvironment
