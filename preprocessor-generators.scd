@@ -197,7 +197,7 @@ protect {
 		~helpString = "\\xrand(\"items\")";
 	} => PR(\clGenXrand);
 
-	PR(\clGen).clone {
+	PR(\clGenSeq).clone {
 		~makeStream = {
 			var firstNum = ~args.detectIndex { |item| item.isNumber },
 			weights;
@@ -211,7 +211,7 @@ protect {
 		~helpString = "\\wrand(\"items\", weight0, weight1...)";
 	} => PR(\clGenWrand);
 
-	PR(\clGen).clone {
+	PR(\clGenSeq).clone {
 		~makeStream = { ~seqStream = Pn(Pshuf(~args[0], 1), inf) };
 		~helpString = "\\shuf(\"items\")";
 	} => PR(\clGenShuf);
