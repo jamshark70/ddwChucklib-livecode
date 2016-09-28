@@ -511,6 +511,7 @@ Proto {
 				SequenceNote(degree, nil, legato)
 			}
 			// { "~_.".includes(pitchStr[0]) } { pitchStr[0] }  // for articulation pools?
+			{ "*@!".includes(pitchStr[0]) } { pitchStr[0] }  // placeholders for clGens etc.
 			{ pitchStr[0] != $  } {
 				// Rest(0) -> legato
 				// also, now we need to distinguish between rests and replaceable slots
@@ -1802,7 +1803,7 @@ Proto {
 				// not asFloat: We already know this is a SeqNote, and asFloat breaks Rests here.
 				event.freq
 			} {
-				if(event == \rest) {
+				if(event == \rest or: { event.class == Char }) {
 					inEvent[\legato] = 0.9;
 					Rest(~parmMap[parm][\rest] ?? { 0 })
 				} {
