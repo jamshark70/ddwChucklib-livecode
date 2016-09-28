@@ -224,56 +224,6 @@ protect {
 	// 	~helpString = "\\randRhy(baseDur, weight1, weight2...)";
 	// } => PR(\clGenRandRhy);
 
-	// non-default parameter with rhythm generator: Use Pstep
-	PR(\clGen).clone({
-		~valueGen = 0;
-		~rhythmGen = 1;
-
-		~embedInStream = { |inval|
-			var dur = ~dur.(), durStream;
-			~prepareChildren.(inval);
-			durStream = if(dur.notNil and: { dur < inf }) {
-				Pconst(dur, ~rhythmGen).asStream
-			} { ~rhythmGen.asStream };
-			PstepDur(~valueGen.asStream, durStream, 1).embedInStream(inval)
-		};
-		~prepareChildren = {
-			#[inItem, inDelta, dur].do { |key|
-				var thing = key.envirGet;
-				if(thing.notNil) {
-					#[valueGen, rhythmGen].do { |childKey|
-						if(childKey.envirGet.tryPerform(\isClGen) ?? { false }) {
-							childKey.envirGet.put(key, thing);
-						};
-					};
-				};
-			};
-		};
-
-		~protoID = \clStepGen;
-		~patternStringKeys = #[valueGen, rhythmGen, dur, /*isPitch,*/ parm];
-		~isPitch = { ~valueGen.tryPerform(\isPitch) ?? { false } };
-	}, parentKeys: #[protoID, patternStringKeys]) => PR(\clStepGen);
-
-	// default parm must expose 'dur' separately: Use Ptuple
-	PR(\clStepGen).clone({
-		~embedInStream = { |inval|
-			var dur = ~dur.(), durStream;
-			~prepareChildren.(inval);
-			durStream = if(dur.notNil and: { dur < inf }) {
-				Pconst(dur, ~rhythmGen).asStream
-			} { ~rhythmGen.asStream };
-			Ptuple([~valueGen.asStream, durStream], 1).embedInStream(inval)
-		};
-
-		~protoID = \clRhythmGen;
-
-		~yieldsKeys = {
-			[~parm, \dur]
-			// if(~isPitch.()) { [~parm, \legato, \dur] } { [~parm, \dur] };
-		};
-	}, parentKeys: #[protoID, patternStringKeys]) => PR(\clRhythmGen);
-
 	PR.allOfType(\clGenerator).do { |pr|
 		pr[\protoID] = pr.collIndex;
 	};
