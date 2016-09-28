@@ -1355,6 +1355,9 @@ TempoClock.default => BP(\y);
 // these become $., matched
 \chucklibLiveCode.eval("/y = \"\\seq(\"1 . . . |1 . . . \", \"2345\", \".\")\";");
 
+// verify number args
+\chucklibLiveCode.eval("/y = \"\\seq(\"1 . . . |1 . . . \", \"2345\", \".\", 1)\";");
+
 \chucklibLiveCode.eval("/y = \"\\seq(\"1xxx|1xxx\", \"2345\", \"x\")\";");
 
 SequenceNote(Rest(0), nil, 0.9) == SequenceNote(Rest(0), nil, 0.9)
@@ -1386,3 +1389,57 @@ e = BP(\y).eventStream.next(BP(\y).event.copy);
 /y+;
 /y-;
 
+
+// try non-default arg
+(
+BP(\x).free;
+PR(\abstractLiveCode).chuck(BP(\x), nil, (
+	event: (eventKey: \default),
+	defaultParm: \degree,
+	parmMap: (
+		degree: (isPitch: true),
+		octave: ($1: 3, $2: 4, $3: 5, $4: 6, $5: 7)
+	)
+));
+TempoClock.default => BP(\x);
+)
+
+/x = "\seq("xxxx|xxxx|xxxx|xxxx", "123456", "x")";
+
+/x(reset)
+/x+;
+
+/x..octave = "\xrand("x|| x|", "12345", "x")";
+/x..octave = "\seq("2x|| x|", "345", "x")";
+
+/x = "\seq(" x x|x xx|x  x|x xx", "123456", "x")";
+
+/x-;
+
+
+// try \ins
+(
+BP(\y).free;
+PR(\abstractLiveCode).chuck(BP(\y), nil, (
+	event: (eventKey: \default),
+	defaultParm: \degree,
+	parmMap: (degree: (isPitch: true))
+));
+TempoClock.default => BP(\y);
+)
+
+/y = "\ins(" 1_ 1_", "2.3.4.5.6.7.8.", 3, 0.25)";
+
+/y = "\ins("1_  1_", "*", 2, 0.5)";
+/y = "\shift(\ins("1_  1_", "*", 2, 0.5), "*", 1, 0.25)";  // pool wasn't created
+
+/y = "\seq(\shift(\ins("1_  1_", "*", 2, 0.5), "*", 1, 0.25), "2.3.4.", "*")";
+
+BP(\y).phrases[\main].pairs[1].source.pattern.list[0].baseItems[0].listVars
+
+traverseShifts.(1, [ ( 'time': 0, 'item': SequenceNote(0, nil, 0.9), 'dur': 3 ), ( 'item': $*, 'time': 0.5 ), ( 'time': 3, 'item': SequenceNote(0, nil, 0.9), 'dur': 1 ), ( 'item': $*, 'time': 3.5 ) ], [ * ], [ -0.25, 0.25 ])
+
+traverseShifts.(0, [ ( 'time': 0, 'item': SequenceNote(0, nil, 0.9), 'dur': 3 ), ( 'item': $*, 'time': 0.5 ), ( 'time': 3, 'item': SequenceNote(0, nil, 0.9), 'dur': 1 ), ( 'item': $*, 'time': 3.5 ) ], [  ], [ -0.25, 0.25 ])
+
+BP(\y).prepareForPlay;
+e = BP(\y).eventStream.next(BP(\y).event.copy);

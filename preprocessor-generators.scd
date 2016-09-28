@@ -35,7 +35,7 @@ protect {
 		~getDownstreamItems = { |key(\baseItems)|
 			var out;
 			// ">> % getDownstreamItems".format(~protoID).debug;
-			out = key.envirGet.collect { |item| item.value }.flatten(1);
+			out = key.envirGet.asArray.collect { |item| item.value }.flatten(1);
 			// "<< % getDownstreamItems".format(~protoID).debug;
 			// out.postcs
 		};
@@ -45,15 +45,17 @@ protect {
 				~deltas = ~deltas.drop(1);
 			} {
 				~deltas[0] = Rest(~items[0][\time]);
-				~items = ~items.insert(0, (item: \rest, time: 0, initialRest: true));
+				~items = ~items.copy.insert(0, (item: \rest, time: 0, initialRest: true));
 			};
-			~items.do { |item, i| item[\dur] = ~deltas[i] };
+			~items = ~items.collect { |item, i| item.copy.put(\dur, ~deltas[i]) };
+			// ~items.do { |item, i| item[\dur] = ~deltas[i] };
 		};
 		~asPattern = { |bp|  // the BP() object -- asPattern should be called @ top level only
 			var pat, rest, didProcess = false;
 			if(~items.isNil) {
 				~items = ~process.(bp);
 				~updateDeltas.();
+				"clGen items: ".post; ~items.postcs;
 				didProcess = true;
 			};
 			// if(~items[0].time > 0) {
@@ -166,6 +168,11 @@ protect {
 				~makeStream.();
 			};
 			~items = ~getDownstreamItems.();
+			~modifySource.();
+			~items
+		};
+		// assumes ~items has already been populated
+		~modifySource = {
 			~items.do { |item, i|
 				// includesEqual: SequenceNotes compare pitch only! Use pitch for matching
 				if(~replaceItems.includesEqual(item.item)) {
@@ -173,7 +180,6 @@ protect {
 					~items[i] = item.copy.put(\item, ~seqStream.next);
 				};
 			};
-			~items
 		};
 
 		~makeStream = {
@@ -215,6 +221,138 @@ protect {
 		~makeStream = { ~seqStream = Pn(Pshuf(~args[0], 1), inf) };
 		~helpString = "\\shuf(\"items\")";
 	} => PR(\clGenShuf);
+
+	PR(\clGenSeq).clone {
+		~doReset = false;
+		~prep = {
+			~baseItems = ~args[0];
+			~pool = ~args[1];
+			~numToAdd = ~args[2] ?? { 1 };
+			~quant = ~args[3] ?? { 0.25 };
+			~poolStream = Prand(~pool.collect(_.item), inf).asStream;
+			currentEnvironment
+		};
+		~modifySource = {
+			var avail = ~getAvail.(~items, ~quant).scramble;
+			min(~numToAdd, avail.size).do { |i|
+				var newTime = avail[i],
+				new;
+				// should be guaranteed but, protect against mistakes
+				if(newTime.notNil) {
+					new = ~poolStream.next;
+					if(new.notNil) {
+						~insertItem.((item: new, time: newTime));
+					};
+				};
+			};
+			~items
+		};
+		// 'new' should be an event with time: -- dur: comes from updateDeltas at ending stage
+		~insertItem = { |new|
+			var insertI = ~items.detectIndex { |item| new[\time] < item[\time] };
+			if(insertI.isNil) {
+				~items = ~items.add(new);
+			} {
+				~items = ~items.insert(insertI, new);
+			};
+			currentEnvironment
+		};
+		~getAvail = { |items, quant, tolerance = 0.001|
+			var i = 0, j = 0, time, avail = List.new,
+			times = items.collect(_[\time]) ++ [~dur];
+			time = i * quant;
+			while {
+				time < ~dur
+			} {
+				if(time absdif: times[j] < tolerance) {
+					if(items[j][\initialRest] == true) { avail.add(time) };
+					// 'time' is matched at times[j], so we must advance by at least 1
+					j = j + 1;
+				} {
+					avail.add(time);
+					// times[j] is somewhere in the future; may not need to advance yet
+				};
+				time = (i+1) * quant;
+				// keep advancing 'j' as long as times[j] is earlier than the next 'time'
+				// notNil: if ~dur is, say, 3.25 and quant is 0.5, then j may have advanced
+				// past the end of the array. Stop immediately in that case
+				while { times[j].notNil and: { time - times[j] >= tolerance } } {
+					j = j + 1;
+				};
+				i = i + 1;
+			};
+			avail
+		};
+	} => PR(\clGenIns);
+
+	PR(\clGenIns).clone {
+		~superprep = ~prep;
+		~prep = {
+			~superprep.();
+			~poolItems = ~pool.collect(_.item);
+			currentEnvironment
+		};
+		~modifySource = {
+			var possShifts = (~quant ?? { 0.25 }) * [-1, 1],
+			numToShift = ~args[2] ?? { 1 };
+			// check number of source items present in the pool (but only if pool was explicitly given)
+			// it's possible to ask for 4 shifts but the source has only two shiftable items
+			// reduce to 2 in that case
+			if(~poolItems.notNil) {
+				numToShift = min(numToShift, ~items.count { |item| ~poolItems.includes(item.item) });
+			};
+			~traverseShifts.(numToShift, ~items, ~poolItems.copy, possShifts);
+			~items
+		};
+
+		// This must be recursive. Consider: \shift("..|||", "..", 2, 0.25).
+		// If it first moves 0.5 to 0.25, there is nowhere for 0 to go.
+		// The correct solution is to backtrack and move 0.5 to 0.75.
+		// Backtracking = recursion.
+		~traverseShifts = { |numToShift, items, pool, shiftArray, shiftedIndices(List.new)|
+			var shiftItem, shiftIndex, shift, newTime, oldItem;
+
+			shiftIndex = nil;
+			while { shiftIndex.isNil } {
+				shiftItem = pool.choose;
+				shiftIndex = ~items.collectIndices { |item, i|
+					item.item == shiftItem and: { shiftedIndices.includes(i).not }
+				};
+				shiftIndex = shiftIndex.choose;  // nil if array is empty
+			};
+			shiftArray = shiftArray.rotate(2.rand);
+			shift = block { |break|
+				shiftArray.do { |sh|
+					newTime = ~items[shiftIndex][\time] + sh;
+					if(newTime.inclusivelyBetween(0, ~dur - 0.001) and: {
+						newTime != ~items[shiftIndex + sh.sign].tryPerform(\at, \time)
+					}) {
+						oldItem = ~items[shiftIndex];
+						~items[shiftIndex] = ~items[shiftIndex].copy.put(\time, newTime);
+						pool.remove(shiftItem);
+						shiftedIndices.add(shiftIndex);
+						if(numToShift > 1) {
+							if(~traverseShifts.(numToShift - 1, ~items, pool, shiftArray, shiftedIndices)) {
+								break.(newTime);
+							}
+						} {
+							break.(newTime);
+						};
+						// if we didn't break for success, undo for next iteration
+						pool = pool.add(shiftItem);
+						shiftedIndices.remove(shiftIndex);
+						~items[shiftIndex] = oldItem;
+					};
+				};
+				nil
+			};
+			shift.notNil  // true if successful
+		};
+	} => PR(\clGenShift);
+
+	// PR(\clGen).clone {
+	//
+	// } => PR(\clGenLeadTo);
 
 	PR.allOfType(\clGenerator).do { |pr|
 		pr[\protoID] = pr.collIndex;
