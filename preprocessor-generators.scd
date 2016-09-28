@@ -216,14 +216,6 @@ protect {
 		~helpString = "\\shuf(\"items\")";
 	} => PR(\clGenShuf);
 
-	// PR(\clGen).clone {
-	// 	~asPattern = {
-	// 		var weights = ~args[1..].normalizeSum;
-	// 		Pwrand((1 .. weights.size), weights, inf) * ~args[0]
-	// 	};
-	// 	~helpString = "\\randRhy(baseDur, weight1, weight2...)";
-	// } => PR(\clGenRandRhy);
-
 	PR.allOfType(\clGenerator).do { |pr|
 		pr[\protoID] = pr.collIndex;
 	};
