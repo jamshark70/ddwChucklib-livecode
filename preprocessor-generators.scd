@@ -55,7 +55,7 @@ protect {
 			if(~items.isNil) {
 				~items = ~process.(bp);
 				~updateDeltas.();
-				"clGen items: ".post; ~items.postcs;
+				// "clGen items: ".post; ~items.postcs;
 				didProcess = true;
 			};
 			// if(~items[0].time > 0) {
@@ -218,7 +218,9 @@ protect {
 	} => PR(\clGenWrand);
 
 	PR(\clGenSeq).clone {
-		~makeStream = { ~seqStream = Pn(Pshuf(~args[0], 1), inf) };
+		~makeStream = {
+			~seqStream = Pn(Pshuf(~pool, 1), inf).collect(_.item).asStream;
+		};
 		~helpString = "\\shuf(\"items\")";
 	} => PR(\clGenShuf);
 
