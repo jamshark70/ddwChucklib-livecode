@@ -356,6 +356,32 @@ protect {
 	//
 	// } => PR(\clGenLeadTo);
 
+	// \fork(items, "\gen()| \gen()|...")
+	PR(\clGen).clone {
+		~prep = {
+			~baseItems = ~args[0];
+			~generators = ~args[1];
+			currentEnvironment
+		};
+		~process = {
+			~items = ~getUpstreamItems.();
+			~newItems = Array(~generators.size);
+			~generators.do { |gen, i|
+				var start, end, partition;
+				if(gen.tryPerform(\isClGen) ?? { false }) {
+					start = gen.time;
+					end = start + gen.dur;
+					partition = ~items.select { |item|
+						item[\time] >= start and: { item[\time] < end }
+					};
+					gen.baseItems = partition;
+					~newItems.add(gen.process);
+				};
+			};
+			~items = ~newItems.flatten(1);
+		};
+	} => PR(\clGenFork);
+
 	PR.allOfType(\clGenerator).do { |pr|
 		pr[\protoID] = pr.collIndex;
 	};

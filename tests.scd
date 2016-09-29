@@ -1499,3 +1499,8 @@ BP(\y).parmMap[\freq][$_] = 220;
 
 // will it look better with args reversed? I'm not sure...
 /y = "\seq("^!", "*", \ins("*", 5, 0.25, \shuf(".-", "*", "_| \ins("*", 2, 0.25, "")")))";
+
+// test fork
+/y = "\fork(\ins("", "*", 5, 0.5), "\seq("", ".", "*")|\seq("", "-", "*")")";
+BP(\y).prepareForPlay;
+e = BP(\y).eventStream.next(BP(\y).event.copy);
