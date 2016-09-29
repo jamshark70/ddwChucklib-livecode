@@ -1494,5 +1494,8 @@ BP(\y).parmMap[\freq][$_] = 220;
 
 /y = "\seq(\ins(\shuf(\ins("_", "*", 2, 0.5), ".-", "*"), "*", 5, 0.25), "^!", "*")";
 
-// that could clump low notes at the start of the bar. prohibit first beat -- didn't work
+// that could clump low notes at the start of the bar. prohibit first beat
 /y = "\seq(\ins(\shuf("_| \ins("", "*", 2, 0.5)||", ".-", "*"), "*", 5, 0.25), "^!", "*")";
+
+// will it look better with args reversed? I'm not sure...
+/y = "\seq("^!", "*", \ins("*", 5, 0.25, \shuf(".-", "*", "_| \ins("*", 2, 0.25, "")")))";
