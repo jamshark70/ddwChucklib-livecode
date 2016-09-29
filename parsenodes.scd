@@ -361,7 +361,7 @@ PR(\abstractClParseNode).clone {
 			if(i > 1) { stream << ", " };
 			~children[i].streamCode(stream);
 		};
-		stream << " ], dur: " << ~dur;
+		stream << " ], dur: " << ~dur << ", time: " << ~time;
 		stream << ", isPitch: " << (~isPitch ?? { false });
 		stream << ", isMain: " << (~isMain ?? { false });
 		stream << ", parm: " <<< ~parm;
