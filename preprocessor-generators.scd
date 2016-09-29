@@ -24,7 +24,7 @@ protect {
 		};
 
 		~process = {
-			~items = ~getDownstreamItems.();
+			~items = ~getUpstreamItems.();
 		};
 		~unprocess = {
 			~items = nil;
@@ -32,11 +32,11 @@ protect {
 		// .value polymorphism: we may need items from an array or a clgen
 		// Proto maps .value onto ~next
 		~next = { ~process.() };
-		~getDownstreamItems = { |key(\baseItems)|
+		~getUpstreamItems = { |key(\baseItems)|
 			var out;
-			// ">> % getDownstreamItems".format(~protoID).debug;
+			// ">> % getUpstreamItems".format(~protoID).debug;
 			out = key.envirGet.asArray.collect { |item| item.value }.flatten(1);
-			// "<< % getDownstreamItems".format(~protoID).debug;
+			// "<< % getUpstreamItems".format(~protoID).debug;
 			// out.postcs
 		};
 		~updateDeltas = {
@@ -167,7 +167,7 @@ protect {
 			if(~doReset or: { ~seqStream.isNil }) {
 				~makeStream.();
 			};
-			~items = ~getDownstreamItems.();
+			~items = ~getUpstreamItems.();
 			~modifySource.();
 			~items
 		};
