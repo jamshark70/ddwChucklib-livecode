@@ -261,7 +261,7 @@ protect {
 		};
 		~getAvail = { |items, quant, tolerance = 0.001|
 			var i = 0, j = 0, time, avail = List.new,
-			times = items.collect(_[\time]) ++ [~dur];
+			times = items.collect({ |item| item[\time] - ~time }) ++ [~dur];
 			time = i * quant;
 			while {
 				time < ~dur
@@ -283,7 +283,7 @@ protect {
 				};
 				i = i + 1;
 			};
-			avail
+			avail + ~time
 		};
 	} => PR(\clGenIns);
 

@@ -1443,3 +1443,56 @@ traverseShifts.(0, [ ( 'time': 0, 'item': SequenceNote(0, nil, 0.9), 'dur': 3 ),
 
 BP(\y).prepareForPlay;
 e = BP(\y).eventStream.next(BP(\y).event.copy);
+
+
+/y = "\seq(\ins(\shuf("_| \ins("", "*", 2, 0.5)||", ".-", "*"), "*", 5, 0.25), "^!", "*")";
+x = BP(\y).phrases[\main].pairs[1].source.pattern.list[0].baseItems[0].baseItems.baseItems.baseItems[1];
+x.listVars;
+x.getAvail(x.baseItems.copy, x.quant);
+
+/y = "\shuf("_| \ins("", "*", 2, 0.5)||", ".-", "*")";
+x = BP(\y).phrases[\main].pairs[1].source.pattern.list[0].baseItems[0].baseItems[1].listVars
+
+/y = "_| \ins("", "*", 2, 0.5)||";
+x = BP(\y).phrases[\main].pairs[1].source.pattern.list[0].baseItems[1].listVars  // ok
+
+/chucklibLiveCode.("/y = \"_| \\ins(\"\", \"*\", 2, 0.5)||\";");
+/chucklibLiveCode.("/y = \"\\shuf(\"_| \\ins(\"\", \"*\", 2, 0.5)||\", \".-\", \"*\")\";");
+
+
+// simpler test proc
+TempoClock.tempo = 104/60;
+(
+BP(\y).free;
+PR(\abstractLiveCode).chuck(BP(\y), nil, (
+	event: (eventKey: \default),
+	defaultParm: \freq,
+	parmMap: (freq: ($-: 440, $.: 330, $^: 550, $!: 440 * (4/3))),
+	defaults: (sustain: 0.12)
+));
+TempoClock.default => BP(\y);
+)
+
+/y = ".-";
+
+/y(reset);
+/y+;
+/y-;
+
+/y = "\ins(".-", "^", 9, 0.125)";
+
+/y = "\ins(".", "-", 1, 0.5)";
+/y = "\ins(".", "-", 2, 0.5)";
+
+/y = "\seq(\ins("*", "*", 2, 0.5), ".-", "*")";  // yep, alternating A and E bars
+
+/y = "\seq(\ins(\seq(\ins("*", "*", 2, 0.5), ".-", "*"), "*", 5, 0.25), "^!", "*")";
+
+BP(\y).parmMap[\freq][$_] = 220;
+
+/y = "\seq(\ins(\seq(\ins("_", "*", 2, 0.5), ".-", "*"), "*", 5, 0.25), "^!", "*")";
+
+/y = "\seq(\ins(\shuf(\ins("_", "*", 2, 0.5), ".-", "*"), "*", 5, 0.25), "^!", "*")";
+
+// that could clump low notes at the start of the bar. prohibit first beat -- didn't work
+/y = "\seq(\ins(\shuf("_| \ins("", "*", 2, 0.5)||", ".-", "*"), "*", 5, 0.25), "^!", "*")";
