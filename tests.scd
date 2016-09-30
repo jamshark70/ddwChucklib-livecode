@@ -1504,3 +1504,18 @@ BP(\y).parmMap[\freq][$_] = 220;
 /y = "\fork(\ins("", "*", 5, 0.5), "\seq("", ".", "*")|\seq("", "-", "*")")";
 BP(\y).prepareForPlay;
 e = BP(\y).eventStream.next(BP(\y).event.copy);
+
+
+// parsing ::
+p = PR(\clPatternSetNode).copy.prep(CollStream("/y = \"\\ins(\"\", \"*\", 4, 0.5)::\\seq(\"\", \"-\", \"*\")\";"));
+p.children[1].listVars  // psnode
+p.children[1].children[0].listVars  // divider
+p.children[1].children[0].children[0].listVars  // chain
+p.children[1].children[0].children[0].children[0].listVars  // \ins gen
+p.children[1].children[0].children[0].children[1].listVars  // \seq gen
+
+p = PR(\clPatternSetNode).copy.prep(CollStream("/y = \"\\ins(\"\", \"*\", 4, 0.5)::\\shift(\"\", \"*\", 2, 0.25)::\\seq(\"\", \"-\", \"*\")\";"));
+p.children[1].children[0].children[0].listVars  // chain
+p.children[1].children[0].children[0].children[0].listVars  // \ins gen
+p.children[1].children[0].children[0].children[1].listVars  // \shift gen
+p.children[1].children[0].children[0].children[2].listVars  // \seq gen

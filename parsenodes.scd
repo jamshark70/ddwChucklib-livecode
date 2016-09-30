@@ -202,7 +202,7 @@ PR(\abstractClParseNode).clone {
 	};
 
 	~parseItem = { |stream, ch|
-		var new, begin;
+		var new, begin, colonCount, rewindPos;
 		// [ch.asCompileString, stream.collection[stream.pos .. stream.pos + 10]].debug(">> parseItem");
 		if(ch.isNil) { ch = stream.next };
 		begin = stream.pos - 1;
@@ -212,6 +212,19 @@ PR(\abstractClParseNode).clone {
 			new = PR(\clGeneratorNode).copy
 			.putAll((bpKey: ~bpKey, isPitch: ~isPitch, isMain: ~isMain, parm: ~parm))
 			.prep(stream, currentEnvironment);
+			if(stream.peek == $:) {
+				colonCount = 0;
+				rewindPos = stream.pos;
+				while { stream.next == $: } { colonCount = colonCount + 1 };
+				if(colonCount == 2) {
+					stream.pos = stream.pos - 1;  // need next to be the backslash
+					new = PR(\clChainNode).copy
+					.putAll((bpKey: ~bpKey, isPitch: ~isPitch, isMain: ~isMain, parm: ~parm))
+					.prep(stream, currentEnvironment, new);  // 3rd arg is first item in the chain
+				} {
+					Error("'::' syntax is valid between two generators only").throw;
+				};
+			};
 			~children = ~children.add(new);
 			new//.debug("<< parseItem");
 		}
@@ -378,6 +391,63 @@ PR(\abstractClParseNode).clone {
 		currentEnvironment
 	};
 } => PR(\clGeneratorNode);
+
+PR(\abstractClParseNode).clone {
+	// special constructor -- you know what kind of node you're creating
+	// assumes stream.next will be the second generator
+	~prep = { |stream, parentNode, leftNode|
+		if(stream.peek != $\\) {
+			Error("'::' syntax is valid between two generators only").throw;
+		};
+		~parentNode = parentNode;
+		~children = [leftNode];
+		// if(stream.peek == $/) { stream.next };
+		~begin = leftNode.begin; // stream.pos;
+		~parse.(stream);
+		if(~end.isNil) { ~end = stream.pos - 1 };
+		if(~string.isNil) {
+			if(~end >= ~begin) {
+				~string = stream.collection[~begin .. ~end]
+			} {
+				~string = String.new;
+			};
+		};
+		currentEnvironment
+	};
+
+	~parse = { |stream|
+		var new, continue = true, rewindPos, colonCount;
+		// stream.collection[stream.pos .. stream.pos + 10].debug(">> clChainNode");
+		while { continue } {
+			if(stream.peek == $\\) {
+				new = PR(\clGeneratorNode).copy.prep(stream);
+				~children = ~children.add(new);
+				if(stream.peek == $:) {
+					rewindPos = stream.pos;
+					colonCount = 0;
+					while { stream.next == $: } { colonCount = colonCount + 1 };
+					switch(colonCount)
+					{ 2 } {
+						stream.pos = stream.pos - 1;
+					}
+					{ 0 } {
+						stream.pos = rewindPos;
+						continue = false;
+					}
+					{ Error("'::' syntax, wrong number of colons").throw };
+					if(stream.peek != $\\) {
+						Error("'::' syntax is valid between two generators only").throw;
+					};
+				} {
+					continue = false;
+				};
+			} {
+				continue = false;
+			}
+		};
+		// stream.collection[stream.pos .. stream.pos + 10].debug("<< clChainNode");
+	};
+} => PR(\clChainNode);
 
 PR(\clGeneratorNode).clone {
 	~superParse = ~parse;
