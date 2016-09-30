@@ -105,7 +105,7 @@ Proto {
 		} {
 			str = str.add(ch);
 		};
-		if(ch.notNil) { stream.rewind(1) };
+		if(ch.notNil) { stream.pos = stream.pos - 1 };
 		PR(\clStringNode).copy
 		.put(\parentNode, currentEnvironment)
 		.put(\string, str)
@@ -118,7 +118,7 @@ Proto {
 			ch = stream.next;
 			ch.notNil and: { ch.isSpace }
 		};
-		if(ch.notNil) { stream.rewind(1) };
+		if(ch.notNil) { stream.pos = stream.pos - 1 };
 	};
 
 	~streamCode = { |stream| stream << ~string; currentEnvironment };
@@ -140,7 +140,7 @@ PR(\abstractClParseNode).clone {
 		} {
 			str = str.add(ch);
 		};
-		if(ch.notNil) { stream.rewind(1) };
+		if(ch.notNil) { stream.pos = stream.pos - 1 };
 		str
 	};
 	~endTest = { |ch| ch == $\" };
@@ -197,7 +197,7 @@ PR(\abstractClParseNode).clone {
 		} {
 			~items = ~items.add(~parseItem.(stream, ch));
 		};
-		if(ch.notNil) { stream.rewind(1) };
+		if(ch.notNil) { stream.pos = stream.pos - 1 };
 		// stream.collection[~begin .. ~begin + 10].debug("<< clDividerNode");
 	};
 
@@ -208,7 +208,7 @@ PR(\abstractClParseNode).clone {
 		begin = stream.pos - 1;
 		case
 		{ ch == $\\ } {
-			stream.rewind(1);
+			stream.pos = stream.pos - 1;
 			new = PR(\clGeneratorNode).copy
 			.putAll((bpKey: ~bpKey, isPitch: ~isPitch, isMain: ~isMain, parm: ~parm))
 			.prep(stream, currentEnvironment);
@@ -221,7 +221,7 @@ PR(\abstractClParseNode).clone {
 				while { (ch = stream.next).notNil and: { "+-',~_.".includes(ch) } } {
 					new = new.add(ch);
 				};
-				if(ch.notNil) { stream.rewind(1) };
+				if(ch.notNil) { stream.pos = stream.pos - 1 };
 				~children = ~children.add(
 					PR(\clEventStringNode).copy
 					.put(\parentNode, currentEnvironment)
@@ -317,10 +317,10 @@ PR(\abstractClParseNode).clone {
 				ch = stream.next;
 				ch.notNil and: { ch != $) }
 			} {
-				stream.rewind(1);
+				stream.pos = stream.pos - 1;
 				~children = ~children.add(~parseArg.(stream));
 			};
-			// if(ch.notNil) { stream.rewind(1) };
+			// if(ch.notNil) { stream.pos = stream.pos - 1 };
 		} {
 			// gen refs
 			Error("Generator '%' has no argument list".format(~name)).throw;
@@ -340,7 +340,7 @@ PR(\abstractClParseNode).clone {
 		};
 		ch = stream.next;
 		if(ch == $,) { ~skipSpaces.(stream) } {
-			if(ch.notNil) { stream.rewind(1) };
+			if(ch.notNil) { stream.pos = stream.pos - 1 };
 		};
 		// new.listArgs; "<< parseArg".debug;
 		new
@@ -508,7 +508,7 @@ PR(\abstractClParseNode).clone {
 		} {
 			~parm = ~parm.asSymbol;
 		};
-		if(broke) { stream.rewind(1) };
+		if(broke) { stream.pos = stream.pos - 1 };
 		currentEnvironment
 	};
 
