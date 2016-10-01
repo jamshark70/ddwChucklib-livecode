@@ -449,6 +449,29 @@ PR(\abstractClParseNode).clone {
 		};
 		// stream.collection[stream.pos .. stream.pos + 10].debug("<< clChainNode");
 	};
+	~streamCode = { |stream|
+		if(~children[0][\time].isNil) { ~setTime.(~time, ~dur) };
+		stream << "PR(\\clGenChain).copy.putAll((";
+		stream << "bpKey: " <<< ~bpKey;
+		stream << ", args: [ ";
+		~children.do { |child, i|
+			if(i > 0) { stream << ", " };
+			child.streamCode(stream);
+		};
+		stream << " ], dur: " << ~dur << ", time: " << ~time;
+		stream << ", isPitch: " << (~isPitch ?? { false });
+		stream << ", isMain: " << (~isMain ?? { false });
+		stream << ", parm: " <<< ~parm;
+		stream << ")).prep";
+		currentEnvironment
+	};
+	~setTime = { |onset(0), dur(4)|
+		var itemDur = dur / max(~children.size, 1), i, extraDur = 0, first;
+		~time = onset;
+		~dur = dur;
+		~children.do { |item| item.setTime(onset, dur) };
+		currentEnvironment
+	};
 } => PR(\clChainNode);
 
 PR(\clGeneratorNode).clone {

@@ -382,6 +382,26 @@ protect {
 		};
 	} => PR(\clGenFork);
 
+	// \gen1(...)::\gen2(...)::\gen3(...)
+	// gen1 processed items -> gen2 processed items -> gen3
+	PR(\clGen).clone {
+		~prep = {
+			currentEnvironment  // just use ~args
+		};
+		~process = {
+			var items;
+			~args.do { |gen|
+				if(items.notNil) {
+					// this is corrupting the initial state,
+					// but this generator will only ever be processed here
+					gen.baseItems = items;
+				};
+				items = gen.process;
+			};
+			~items = items;
+		};
+	} => PR(\clGenChain);
+
 	PR.allOfType(\clGenerator).do { |pr|
 		pr[\protoID] = pr.collIndex;
 	};

@@ -1545,3 +1545,15 @@ p = PR(\clPatternSetNode).copy.prep(CollStream("/y = \"\\ins(\"\", \"*\", 4, 0.5
 p = PR(\clPatternSetNode).copy.prep(CollStream("/z = \"\\ins(\"\", \"*\", 4, 0.5)::-\";"));  // "2 gens only" ok
 p = PR(\clPatternSetNode).copy.prep(CollStream("/z = \"\\ins(\"\", \"*\", 4, 0.5):-\";"));  // "wrong num" ok
 
+// chain code gen
+/chucklibLiveCode.("/z = \"\\ins(\"\", \"*\", 4, 0.5)::\\seq(\"\", \"-\", \"*\")\";");
+
+/z = "\ins("", "*", 4, 0.5)::\seq("", "-", "*")";
+/z = "\ins(".", "*", 4, 0.5)::\seq("", "-", "*")";
+BP(\z).phrases[\main].pairs[1].source.pattern.list[0].listVars   // clGen
+BP(\z).phrases[\main].pairs[1].source.pattern.list[0].baseItems[0].listVars  // chain (2 args)
+BP(\z).phrases[\main].pairs[1].source.pattern.list[0].baseItems[0].args[0].listVars  // clGenIns
+BP(\z).phrases[\main].pairs[1].source.pattern.list[0].baseItems[0].args[1].listVars  // clGenSeq, seems ok
+
+BP(\z).prepareForPlay;
+e = BP(\z).eventStream.next(BP(\z).event.copy);
