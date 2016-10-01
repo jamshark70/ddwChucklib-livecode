@@ -1,3 +1,5 @@
+ChuckableBrowser.newWindow;
+
 BP(\kik).free;
 Proto {
 	~defaultParm = \go;
@@ -1519,3 +1521,27 @@ p.children[1].children[0].children[0].listVars  // chain
 p.children[1].children[0].children[0].children[0].listVars  // \ins gen
 p.children[1].children[0].children[0].children[1].listVars  // \shift gen
 p.children[1].children[0].children[0].children[2].listVars  // \seq gen
+
+// error checking
+(
+BP(\z).free;
+PR(\abstractLiveCode).chuck(BP(\z), nil, (
+	defaultParm: \z,
+	parmMap: (z: ($.: 0, $:: 1, $-: 2))
+));
+TempoClock.default => BP(\z);
+)
+
+// ok
+p = PR(\clPatternSetNode).copy.prep(CollStream("/z = \"\\ins(\"\", \"*\", 4, 0.5)::\\seq(\"\", \"-\", \"*\")\";"));
+
+// "wrong number of colons"
+// error needed: without it, \gen():\gen() is 3 items but \gen()::\gen() is a chain
+p = PR(\clPatternSetNode).copy.prep(CollStream("/z = \"\\ins(\"\", \"*\", 4, 0.5):\\seq(\"\", \"-\", \"*\")\";"));
+p = PR(\clPatternSetNode).copy.prep(CollStream("/z = \"\\ins(\"\", \"*\", 4, 0.5):::\\seq(\"\", \"-\", \"*\")\";"));
+
+p = PR(\clPatternSetNode).copy.prep(CollStream("/y = \"\\ins(\"\", \"*\", 4, 0.5)::\\shift(\"\", \"*\", 2, 0.25):::\\seq(\"\", \"-\", \"*\")\";"));
+
+p = PR(\clPatternSetNode).copy.prep(CollStream("/z = \"\\ins(\"\", \"*\", 4, 0.5)::-\";"));  // "2 gens only" ok
+p = PR(\clPatternSetNode).copy.prep(CollStream("/z = \"\\ins(\"\", \"*\", 4, 0.5):-\";"));  // "wrong num" ok
+

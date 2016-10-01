@@ -2032,6 +2032,9 @@ Proto {
 		~parmMap.asSortedArray.do { |pair|
 			if(pair[0] == ~defaultParm) { "** ".post } { "   ".post };
 			"%: %\n".postf(*pair);
+			if(pair[1][$:].notNil) {
+				"   ^^ WARNING: ':' after a generator is reserved for generator chains. Be careful.".postln;
+			};
 		};
 		currentEnvironment
 	};
