@@ -136,7 +136,7 @@ PR(\abstractClParseNode).clone {
 		var str = String.new, ch;
 		while {
 			ch = stream.next;
-			ch.notNil and: { ~endTest.(ch) }
+			ch.notNil and: { ~endTest.(ch).not }
 		} {
 			str = str.add(ch);
 		};
@@ -313,6 +313,7 @@ PR(\abstractClParseNode).clone {
 	~types = [
 		\clRhythmGenNode -> "^:[a-zA-Z0-9_]+\\(.*\\)",
 		\clGeneratorNode -> "^\\\\[a-zA-Z0-9_]+\\(.*\\)",
+		\clStringNode -> "^\"[._~]+\"",  // more specific "" test must come first
 		\clPatStringNode -> "^\".*\"",
 		// \clStringNode -> "^\".*\"",
 		\clNumberNode -> "^-?[0-9]",
@@ -348,7 +349,10 @@ PR(\abstractClParseNode).clone {
 			assn.value.matchRegexp(stream.collection, stream.pos);
 		};
 		if(type/*.debug("type")*/.notNil) {
-			new = PR(type.key).copy.put(\isPitch, ~isPitch).prep(stream, currentEnvironment);
+			new = PR(type.key).copy
+			.put(\isPitch, ~isPitch)
+			.put(\endTest, { |ch| "~_.\"".includes(ch).not })  // for stringNode
+			.prep(stream, currentEnvironment);
 		} {
 			Error("Syntax error in % arg list".format(~name)).throw;
 		};
