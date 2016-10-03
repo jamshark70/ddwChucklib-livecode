@@ -13,6 +13,8 @@ protect {
 		~parm = \value;
 		~isMain = false;
 		~addRestToEmpty = true;
+		~protoID = \clGen;
+		~isClGen = true;
 
 		// responsible for parsing any time-sequence strings
 		// each generator may have different ones
@@ -91,55 +93,6 @@ protect {
 			if(~isMain) { [~parm, \dur] } { ~parm };
 			// if(~isPitch.()) { [~parm, \legato] } { ~parm }
 		};
-
-		// code generation
-		~protoID = \clGen;
-		~isClGen = true;
-		~patternStringKeys = #[bpKey, args, dur, isPitch, isMain, parm];
-		~asPatternString = { |stream(CollStream.new)|
-			var needComma = false, obj;
-			stream << "PR(" <<< ~protoID << ").copy.putAll((";
-			~patternStringKeys.do { |key|
-				obj = key.envirGet;
-				if(obj.notNil) {
-					if(needComma) { stream << ", " };
-					stream << key << ": ";
-					~objectToStream.(obj, stream);
-					needComma = true;
-				};
-			};
-			stream << ")).prep";
-			stream.collection
-		};
-		~objectToStream = { |obj, stream|
-			block { |break|
-				~patternStringFuncs.do { |pair|
-					if(pair.key.value(obj)) {
-						break.(pair.value.value(obj, stream));
-					};
-				};
-			};
-		};
-		~patternStringFuncs = [
-			{ |obj| obj.tryPerform(\isClGen) ? false } -> { |obj, stream|
-				obj.asPatternString(stream);
-			},
-			{ |obj| obj.isString } -> { |obj, stream|
-				stream <<< obj
-			},
-			{ |obj| obj.isSequenceableCollection } -> { |obj, stream|
-				if(obj.isMemberOf(Array).not) {
-					stream << obj.class.name;
-				};
-				stream << "[";
-				obj.do { |item, i|
-					if(i > 0) { stream << ", " };
-					~objectToStream.(item, stream);
-				};
-				stream << "]";
-			},
-			{ true } -> { |obj, stream| stream <<< obj }
-		];
 	}, parentKeys: #[canEmbed, protoID, isClGen, patternStringKeys, patternStringFuncs])
 	.import((clPatternSet: #[decodePitch])) => PR(\clGen);
 
