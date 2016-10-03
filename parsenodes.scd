@@ -315,7 +315,8 @@ PR(\abstractClParseNode).clone {
 		\clGeneratorNode -> "^\\\\[a-zA-Z0-9_]+\\(.*\\)",
 		\clPatStringNode -> "^\".*\"",
 		// \clStringNode -> "^\".*\"",
-		\clNumberNode -> "^-?[0-9]"
+		\clNumberNode -> "^-?[0-9]",
+		\clStringNode -> "^,"  // empty
 	];
 	~parse = { |stream|
 		var name, ch;
@@ -372,7 +373,11 @@ PR(\abstractClParseNode).clone {
 		stream << ", args: [ ";
 		(1 .. ~children.size - 1).do { |i|
 			if(i > 1) { stream << ", " };
-			~children[i].streamCode(stream);
+			if(~children[i].string == "") {
+				stream << "nil"
+			} {
+				~children[i].streamCode(stream);
+			};
 		};
 		stream << " ], dur: " << ~dur << ", time: " << ~time;
 		stream << ", isPitch: " << (~isPitch ?? { false });
