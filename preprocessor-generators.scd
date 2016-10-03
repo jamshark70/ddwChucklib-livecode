@@ -129,6 +129,9 @@ protect {
 			~items.do { |item, i|
 				// includesEqual: SequenceNotes compare pitch only! Use pitch for matching
 				if(~replaceItems.includesEqual(item.item)) {
+					// some replacers might need access to the state
+					~currentItem = item;
+					~currentIndex = i;
 					// copy is critical here!
 					~items[i] = item.copy.put(\item, ~seqStream.next);
 				};
@@ -176,6 +179,34 @@ protect {
 		};
 		~helpString = "\\shuf(\"items\")";
 	} => PR(\clGenShuf);
+
+	PR(\clGenSeq).clone {
+		~defaults = [[], [(item: $*)], #[-2, -1, 1, 2].collect({ |int| (item: int) }), 0, 7, "_"];
+		~artic = ($~: 1.01, $_: 0.9, $.: 0.4);
+		~doReset = false;
+		~prep = {
+			#[baseItems, replaceItems, intervalPool, fallbackMin, fallbackMax, articPool].do { |key, i|
+				key.envirPut(~args[i] ?? { ~defaults[i] });
+			};
+			if(~articPool.isString.not) {
+				Error("\\pitch() invalid articPool").throw;
+			};
+			~replaceItems = ~replaceItems.collect { |item| item.item };
+			~intervalPool = ~intervalPool.collect { |item| item.item };
+			~articPool = ~articPool.reject(_ == $");
+			currentEnvironment
+		};
+		~makeStream = {
+			~seqStream = Pfunc {
+				var prev = ~items[~currentIndex - 1].item, pitch;
+				if(prev.isNil) {
+					prev = rrand(~fallbackMin, ~fallbackMax);
+				};
+				pitch = prev.asFloat + ~intervalPool.choose;
+				SequenceNote(pitch, nil, ~artic[~articPool.choose] ?? { 0.9 })
+			}.asStream;
+		};
+	} => PR(\clGenPitch);
 
 	PR(\clGenSeq).clone {
 		~doReset = false;
