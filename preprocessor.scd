@@ -1782,7 +1782,7 @@ Proto {
 			~userStopCleanup.();
 		};
 		if(~clock.isNil) { ~clock = TempoClock.default };
-		Environment.current
+		currentEnvironment
 	};
 	~freeCleanup = {
 		~userfree.();
