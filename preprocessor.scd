@@ -1781,6 +1781,7 @@ Proto {
 			~clearHighlights.();
 			~userStopCleanup.();
 		};
+		if(~clock.isNil) { ~clock = TempoClock.default };
 		Environment.current
 	};
 	~freeCleanup = {
