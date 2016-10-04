@@ -160,6 +160,12 @@ protect {
 	} => PR(\clGenXrand);
 
 	PR(\clGenSeq).clone {
+		~superprep = ~prep;
+		~prep = {
+			~superprep.();
+			~doReset = false;  // reset is meaningless for wrand anyway
+			currentEnvironment
+		};
 		~makeStream = {
 			var firstNum = ~args.detectIndex { |item| item.isNumber },
 			weights;
