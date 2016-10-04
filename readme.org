@@ -1,54 +1,46 @@
 * chucklib-livecode
 
-An experimental framework for live-coding using ddwChucklib objects in
-the SuperCollider programming language.
-
-It's far from complete and it may prove that the design is unworkable,
-but I just wanted to get started.
-
-This design will be more suited to algorave music (algorithmic dance
-music in clubs, often with some degree of live coding), but I hope it
-will become flexible enough for other kinds of experimental music.
+An framework for live-coding using ddwChucklib objects in the
+SuperCollider programming language.
 
 ** Design overview
 
 In /chucklib/, =BP= objects play patterns to make sounds. Using this
-framework, =BPs= should conform to an interface whose details are
-still in flux. In general:
+framework, =BPs= inherit from a specific process prototype,
+=PR(\abstractLiveCode)=, which provides hooks that accept new patterns
+from chucklib-livecode. Instances of this process can play any
+SuperCollider SynthDefs or Voicers, with a flexible default system.
 
-- A data structure mapping parameter values onto single-character IDs,
-  used by a BP method =valueForParm=. (You could also override this
-  method.)
-
-- A default parameter key. This will set the rhythm for this BP.
-
-- Timing information: =beatsPerBar=, =division=.
-
-With this information provided, you can improvise new patterns using a
-parser hooked into the interpreter's =preProcessor=. For instance:
+Chucklib-livecode installs a =preProcessor= into the SuperCollider
+interpreter, which translates compact livecoding commands into full SC
+syntax. The most important of these commands divides a bar's worth of
+musical time into events, generally indicated by single characters,
+which may also be grouped into subdivisions. This style of notation is
+inspired by http://www.ixi-audio.net/ixilang/ and is fairly
+straightforward to correlate to the sounding rhythm. /Generator/
+functions may produce new content in every bar.
 
 #+begin_example
 /kik = "xxxx";   // 4otf
 
 /kik.fill1 = "x|x|x|x  x";  // trailing 16th-note
 
-/kik.triple = /"xxx";  // 3 divided over the bar
+/kik.triple = "xxx";  // 3 divided over the bar
 
 /hh = ".-.-.-.-";  // normal offbeats
 
 /hh = ".-|. -^| ^- |.-";  // extra emphasis on 2-a and 3-e
 
-// not supported yet, but soon
 /kik/hh/snr+  // play
 /kik/hh/snr+4  // play on next quant = 4
 /kik/hh/snr-  // stop
 #+end_example
 
-Eventually I'll add support for writing pitches... still thinking about how to do that.
+Full documentation is in PDF form: https://github.com/jamshark70/chucklib-livecode/blob/master/cl-manual.pdf
 
 * License
 
-For now, I will license this under Creative Commons CC-BY-NC-SA
+chucklib-livecode is licensed this under Creative Commons CC-BY-NC-SA
 4.0. You may create a derivative project, provided you don't use the
 code commercially and, if you release your code, you should credit me
 and license it under CC-BY-NC-SA or a more permissive license.
