@@ -14,6 +14,8 @@
 #+EXCLUDE_TAGS: noexport
 #+CREATOR: Emacs 24.3.1 (Org mode 8.3beta)
 
+* Head matter						      :ignoreheading:
+
 #+LATEX_CLASS: article
 #+LATEX_CLASS_OPTIONS:
 #+LATEX_HEADER:
@@ -77,53 +79,70 @@ Thanks are due to:
   capture my imagination about live coding, leading me in this
   direction.
 
-- Thor Magnusson, whose /ixilang/ system provided some of the
-  inspiration for /cll/ syntax.
+- Thor Magnusson, whose /ixilang/ system[fn:19d80e0a] provided some of
+  the inspiration for /cll/ syntax.
 
 * Installation
-First, you must install the "ddwChucklib" quark and its
-dependencies. Consult Quarks documentation for details.
+/cll/ requires SuperCollider 3.7 or later. (It is released using the
+Quarks v2 system, which is not supported prior to SC 3.7.)
 
-/cll/'s functionality is contained in three files:
+** Installation with /git/
+If you have installed the /git/ version-control system on your
+machine, SuperCollider can automatically download and install Quark
+extensions. Simply evaluate
+=Quarks.install("ddwChucklib-livecode")=. If there are no error
+messages, recompile the class library and you should be ready to
+proceed.
 
-- =preprocessor.scd= :: Installs the preprocessor to convert /cll/
-     statements into SuperCollider language syntax.
+** Installation without /git/
+If you haven't installed /git/ or don't want to, you can download the
+required Quark directories manually. In each of these web pages, look
+for the green "Clone or Download" menu. From here, you can download a
+ZIP.
 
-- =preprocessor-generators.scd= :: Installs /generator/ objects
-     (Section [[Generators]]).
+- ddwChucklib: https://github.com/jamshark70/ddwChucklib
+- ddwPrototype: https://github.com/jamshark70/ddwPrototype
+- ddwCommon: https://github.com/jamshark70/ddwCommon
+- ddwGUIEnhancements: https://github.com/jamshark70/ddwGUIEnhancements
+- ddwMixerChannel: https://github.com/jamshark70/ddwMixerChannel
+- ddwPatterns: https://github.com/jamshark70/ddwPatterns
+- ddwTemperament: https://github.com/jamshark70/ddwTemperament
+- ddwVoicer: https://github.com/jamshark70/ddwVoicer
+- crucial-library: https://github.com/crucialfelix/crucial-library@tags/4.1.5
 
-- =helper-functions.scd= :: A handful of useful =Func= definitions.
+Additionally, ddwVoicer (https://github.com/jamshark70/ddwVoicer) is
+not strictly required, but is useful for instrumental sounds.
 
-To use /cll/ in a session, simply load the =scd= files in the
-interpreter. If you place the three files into your user application
-support directory (run =Platform.userAppSupportDir= to find out where
-that is), then you can load them easily by:
+1. In the SC IDE, go to File $\to$ /Open user support directory/.
 
-#+name: install1
-#+caption: Instructions to load cll into a SC language session.
-#+BEGIN_SRC {SuperCollider} -i
-[  "preprocessor.scd",
-   "preprocessor-generators.scd",
-   "helper-functions.scd"
-].do { |name|
-   (Platform.userAppSupportDir +/+ name).load;
-};
-#+END_SRC
+2. In this location, if there is no folder called =downloaded-quarks=,
+   create this empty folder now.
 
-#+BEGIN_boxnote
-Automatic installation of quarks with dependencies is not supported in
-SC 3.6.x in Windows. You will have to install the individual quarks by
-hand, by copying them into the Extensions directory.
+3. Unpack all the ZIP files into the directory. After this, you should have:
+   - =downloaded-quarks/ddwChucklib=
+   - =downloaded-quarks/ddwPrototype=
+   - ... and so on.
 
-- ddwChucklib
-- ddwPrototype
-- ddwCommon
-- ddwGUIEnhancements
-- ddwMixerChannel
-- ddwPatterns
-- ddwTemperament
-- cruciallib
-#+END_boxnote
+4. In SC, run the statement
+   =Quarks.install("ddwChucklib-livecode")=. If it doesn't find the
+   quarks, try recompiling the class library and then run the
+   statement again.
+
+5. If all is successful, recompile the class library and proceed.
+
+** Running /cll/ in a session
+
+/cll/ adds three convenience functions to load the environment:
+
+- =\loadCl.eval=: Load the /cll/ preprocessor and a few helper functions.
+- =\loadClExtras=: Load extra user-interface components (mobile
+  control with TouchOSC, and interactive code editor).
+- =\loadAllCl=: Load both of these at once.
+
+These are /not/ executed by default, because you may not want the
+preprocessor in every SC session. Once you load the environment, the
+preprocessor is active until the next time you recompile the class
+library.
 
 * Process prototype
 ** Data structure
@@ -1526,6 +1545,9 @@ metrical instant.
 
 [fn:a395111b] In =Proto=, inheritance is handled by "cloning" the
 Proto: =PR(\clGen).clone { ... overrides... }=.
+
+[fn:19d80e0a] http://www.ixi-audio.net/ixilang/, accessed October
+4, 2016.
 
 * To-do								   :noexport:
 ** DONE Doc: Mention not to set prep or freeCleanup
