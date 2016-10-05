@@ -1464,115 +1464,38 @@ non-default parameters.
 - =\chain("source", generator, generator...)= :: For internal use only.
 
 ** Writing new generators
-Generators inherit from =PR(\clGen)=,[fn:a395111b] and may override the following:
+Generators inherit from =PR(\clGen)=.[fn:a395111b] They should implement:
 
-- =~asPattern= :: A function returning a pattern to
-     evaluate. Generator arguments are available in the =~args=
-     array. The pattern may implement any logic that is required.
-  - In =~args=, item strings are converted to arrays. (They cannot
-    remain Strings, because they may contain values other than
-    characters.) For example:
-    - \texttt{"abc"} becomes =[ $a, $b, $c ]=.
-    - \texttt{"abc\textbackslash rand("def")"} becomes =[ $a, $b, $c, a Proto ]= (where the
-      =Proto= represents the =\rand()= generator).
-  - Item strings for pitch parameters become arrays of =SequenceNote=
-    objects: =SequenceNote(pitch, nil, legato)=. A pitch consists of a
-    pitch number (usually scale degree) and articulation (staccato,
-    portato or slurred). =SequenceNote= can maintain both values and
-    allow basic math operations on the pitch number.
-  - If the generator is returning items /and/ rhythm, it should ensure
-    that the sum of the outgoing rhythm values is exactly =~dur=. The
-    easiest way is to generate an infinite-length pattern and wrap the
-    time pattern: =Pconst(~dur, timePattern)=. (Item-only generators do
-    not need to worry about this; attaching a rhythm generator by a
-    colon automatically applies =Pconst=.)
-- =~protoID= :: The name of the =PR= for this generator. This is
-     required to render the generator's compile string. If this is not
-     populated, the wrong generator object will be produced and it
-     will not work as you expect. The name must be a symbol,
-     =\clGenName=; substitute the name of your object for =Name=, and
-     be sure it is capitalized. (Generator usage in /Set pattern/
-     strings will take the lowercase form.)
-- =~yieldsKeys= :: Override this for generators that produce rhythm as
-     well as the items to play. Simple value generators do /not/ need
-     to override this. Combination item-plus-rhythm generators should
-     specify: =~yieldsKeys = { [~parm, \dur] }=.
-- =~patternStringKeys= :: A list of =Proto= variable names to render
-     in the compile string. By default, these are =#[bpKey, args, dur,
-     isPitch, parm]=. In general, you should not need to override
-     this.
+- =~prep= :: Validate the entries in the =~args= array, and return the
+             =Proto= object by finishing with =currentEnvironment=. In
+             general, start with =~baseItems = ~args[0]=.
 
-The following =Proto= variables are populated by the /Set pattern/ compiler:
+- =~process= :: Generally begins with =~items =
+                ~getUpstreamItems.();=. Following this, manipulate the
+                =~items= array and return it at the end. Be careful to
+                =copy= or =collect= the array (to avoid corrupting
+                =~baseItems=) and---important!---if you modify any of
+                the items, be sure to copy it first.
 
-- =~bpKey= :: The name of the =BP= object to which the generator is
-     assigned. The generator can access =BP= variables through
-     =BP(~bpKey)=.
-- =~isPitch= :: =true= if the parameter is for pitch, =false=
-     otherwise.
-- =~parm= :: The parameter name.
+Generators should take care to respect their time span, given by
+=~time= (the generator's onset within the bar) and =~dur= (the number
+of beats occupied by this generator). Do not modify any items outside
+this time span. See the definition of =PR(\clGenRot)= for an example.
 
-Listing [[newGen]] defines a simple "pyramid" generator, which yields
-the first item, then the first two items, then the first three and so
-on. In a simple case like this, it is sufficient only to provide
-=~asPattern= and =~protoID=.
+=~baseItems= and =~items= are arrays of Events, containing:
 
-#+name: newGen
-#+caption: Defining a new "pyramid" generator object.
-#+BEGIN_SRC {SuperCollider} -i
-(
-PR(\clGen).clone {
-	~asPattern = {
-		Pn(Pser(~args[0], Pseries(1, 1, inf).asStream), inf)
-	};
-	~protoID = \clGenPyr;  // note: *capital* Pyr
-} => PR(\clGenPyr);
-)
+- =item= :: The entry to be played. For non-pitched parameters, these
+            will generally be characters. Otherwise, pitch strings are
+            parsed into =SequenceNote= objects.
 
-/beep..pan = "\pyr("-()<>")";  // lowercase in Set pattern
-#+END_SRC
+- =time= :: The event's onset time within the bar. This is relative to
+            the bar line, not the generator's onset time.
 
-A final example, Listing [[pitchGen]], demonstrates a simple use of
-pitch in a generator by playing an ascending scale starting with a
-given note. The starting note is given as a quoted-string argument,
-which parses pitches as =SequenceNotes=. The first argument is
-=~args[0]=, and we are interested only in the first pitch in this
-argument, hence =~args[0][0]=. =SequenceNotes= respond to basic math
-operations, meaning they may be used in =Pseries=. Each subsequent
-value coming from this =Pseries= will add 1 to the previous
-=SequenceNote=, raising the pitch by one scale degree. =:randRhy()=
-specifies 16th-notes.
+- =dur= :: The number of beats until the next event. This may not be
+           reliable during processing. The top-level generator will
+           correct the =dur= values before streaming out the events.
 
-Because each generator runs until the next event in the enclosing
-pattern string, true rests---the =x= characters---indicate the
-generators' durations. The first rest occurs on the second 16th of
-beat 2; this allows the first generator to play through the first 16th
-of that beat, for five 16ths in total.
-
-#+name: pitchGen
-#+caption: A pitch generator definition, with rests for duration.
-#+BEGIN_SRC {SuperCollider} -i
-(
-BP(\pgen).free;
-PR(\abstractLiveCode).chuck(BP(\pgen), nil, (
-	event: (eventKey: \default),
-	defaultParm: \degree,
-	parmMap: (degree: (isPitch: true))
-));
-
-PR(\clGen).clone {
-	// ~args[0] comes from e.g. "1", which becomes
-	// [SequenceNote(0, nil, 0.9)]. So ~args[0][0]
-	// is the starting note.
-	~asPattern = { Pseries(~args[0][0], 1, inf) };
-	~protoID = \clGenUpscale;
-} => PR(\clGenUpscale);
-)
-
-/pgen = "\upscale("1":randRhy(0.25, 1))| x  |\upscale("6,":randRhy(0.25, 1))|   x";
-
-/pgen+;
-/pgen-;
-#+END_SRC
+This documentation may be expanded at a later date.
 
 * Extending cll
 /cll/ is designed to be extensible: adding new statements is
