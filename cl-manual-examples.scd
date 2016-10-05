@@ -1,3 +1,5 @@
+\loadCl.eval;
+
 (
 PR(\abstractLiveCode).chuck(BP(\beep), nil, (
 	userprep: {
@@ -33,6 +35,7 @@ PR(\abstractLiveCode).chuck(BP(\beep), nil, (
 		\time, (Pkey(\dur) * 0.6 / Pfunc { ~clock.tempo }).clip(0.04, 0.2)
 	)
 ));
+TempoClock.default => BP(\beep);
 )
 
 TempoClock.tempo = 2;
@@ -140,3 +143,56 @@ make: { |name|
 
 
 // importing
+
+
+(
+BP(\y).free;
+PR(\abstractLiveCode).chuck(BP(\y), nil, (
+	event: (eventKey: \default),
+	defaultParm: \degree,
+	parmMap: (degree: (isPitch: true))
+));
+)
+
+TempoClock.tempo = 140/60;
+
+/y = "\seq("** *| * *| ** |**", "12456", "*")";
+
+/y+
+
+/y = "12 4| 5 6| 12 |45";
+
+/y = "\seq("** *| * *| ** |**", "12456", "*")";
+
+/y = "\ins(\seq("** *| * *| ** |**", "12456", "*"), "*", 7, 0.25)";
+
+/y = "\seq(\ins(\seq("** *| * *| ** |**", "12456", "*"), "*", 7, 0.25), "6,214", "*")";
+
+/y = "\seq("** *| * *| ** |**", "12456", "*")::\ins("", "*", 7, 0.25)::\seq("", "6,214", "*")";
+
+/y = "\seq("** *| * *| ** |**", "12456", "*")::\ins(, "*", 7, 0.25)::\seq(, "6,214", "*")";
+
+/y-;
+
+
+
+
+
+
+
+// 1. \rand starts on the downbeat and occupies the whole bar.
+/y = "\rand(\ins("1,", "*", 3, 0.5), "13467", "*")";
+
+/y+;
+
+// 2. \rand starts on beat 2
+/y = "1,|\rand(\ins("6,", "*", 3, 0.5), "13467", "*")||";
+
+// 3. \rand starts on the 2nd 16th-note of beat 2
+/y = "1,|6,\rand(\ins("", "*", 3, 0.5), "13467", "*")  ||";
+
+// 4. \rand starts on the 2nd 16th-note of beat 2
+// and stops on the 'and' of 4
+/y = "1,|6,\rand(\ins("", "*", 3, 0.5), "13467", "*")  || x";
+
+/y-;

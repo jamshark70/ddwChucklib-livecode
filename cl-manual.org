@@ -1163,13 +1163,15 @@ its parent. Chaining generators in this way allows complex behaviors
 from simple units. Generators should be written such that it's
 possible to use any generator at any point in a chain.
 
-At present, generators divide into two main categories:
+At present, generators divide into these main categories:
 
 - /Rhythm generators/ insert new items into the event list, or delete
   them. New items may be event characters directly, or wildcards to be
   replaced by the second category.
 
 - /Content generators/ replace wildcards with user-specified values.
+
+- /Filter generators/ alter the flow of control.
 
 These are not the only possible generator types, and there is no
 prescribed sequence for using them. However, it's been most successful
@@ -1327,105 +1329,139 @@ arguments are free for each generator to define.
 
 ** Generators and rhythm
 
-# Every chucklib-livecode process has a default parameter, which
-# determines rhythm. That is to say, one rhythm must always be
-# primary. Other parameters may
+Previous /cll/ versions used a "rhythm generator" to supply timing,
+when a generator was used for the default parameter. (As discussed in
+Section [[Timing of multiple parameters]], the default parameter controls
+the rhythm of the entire process.)
+
+Beginning with v0.3, /all/ generators are timed according to the
+rhythm in the source string and any subsequent manipulation. There is
+no syntactic difference when using a generator in default or
+non-default parameters.
+
+# #+name: genRhythm1
+# #+caption: Examples of generators, with rhythm handling.
+# #+BEGIN_SRC {SuperCollider} -i
+# // non-default parameter, generates values per main rhythm
+# /beep..pan = "\xrand("<(-)>")";
 # 
-# At minimum, a generator must supply
+# // non-default parameter, sample-and-hold once per quarter
+# /beep..pan = "\xrand("<(-)>":randRhy(1, 1))";
 # 
-# Every process must have a primary rhythm. In chucklib-livecode, the
-# primary rhythm comes from the default parameter
-
-Every process must have a primary rhythm. In chucklib-livecode, the
-primary rhythm comes from the /default parameter/ (see Section
-[[id:e438e90b-fcb0-43b7-85bf-faffde1918b4]]). The process will generate
-events at the metrical positions of notes given for the default
-parameter, and not at other times.
-
-A generator given to the default parameter must, therefore, produce
-rhythm. It can do this in one of two ways:
-
-- The generator can yield two-element arrays =[item, delta]=. The
-  second will become the process's rhythm as long as the generator is
-  active.
-
-- Or, a rhythm generator can be added to a simple-value generator, by
-  using a colon in place of the comma that normally separates
-  arguments. The backslash is omitted after this colon. This generator
-  should return numbers, to be used as event deltas. (The value and
-  rhythm generators will be wrapped in a =Ptuple=, returning the
-  required =[item, delta]= arrays.)
-
-A rhythm generator is optional for non-default parameters. If one is
-omitted, the value generator will be called according to the default
-parameter's rhythm. Otherwise, non-default parameters use rhythm to
-"sample-and-hold" their values. Adding a rhythm generator to a value
-generator for a non-default parameter wraps both generators within a
-=Pstep=; the generator returns only the items, polling the
-sample-and-hold signal at times determined by the default parameter's
-rhythm.
-
-Listing [[genRhythm1]] uses the example process from Listing [[instance1]].
-Note that the last example produces an error message: /ERROR:
-Generator's output shape must match parm: [ amp, dur ]/. This tells
-you that rhythm is required for this parameter, because it's
-controlling both the default parameter name =amp= /and/ timing by
-=dur=.
-
-#+name: genRhythm1
-#+caption: Examples of generators, with rhythm handling.
-#+BEGIN_SRC {SuperCollider} -i
-// non-default parameter, generates values per main rhythm
-/beep..pan = "\xrand("<(-)>")";
-
-// non-default parameter, sample-and-hold once per quarter
-/beep..pan = "\xrand("<(-)>":randRhy(1, 1))";
-
-// easier to hear with sequence
-/beep..pan = "\seq("<>":randRhy(1, 1))";
-
-// default parameter with rhythm generator
-// beginning the pattern string with '^' means
-// every bar will have a strong downbeat
-/beep = "^\rand("-.":randRhy(0.25, 2, 1, 1))  |||";
-
-// switch to triplets, weight the return items
-/beep = "^\wrand("-.", 1, 3:randRhy(1/3, 2, 1)) |||";
-
-// default parameter, no rhythm: Error
-/beep = "^\rand("-.")  |||";
-#+END_SRC
+# // easier to hear with sequence
+# /beep..pan = "\seq("<>":randRhy(1, 1))";
+# 
+# // default parameter with rhythm generator
+# // beginning the pattern string with '^' means
+# // every bar will have a strong downbeat
+# /beep = "^\rand("-.":randRhy(0.25, 2, 1, 1))  |||";
+# 
+# // switch to triplets, weight the return items
+# /beep = "^\wrand("-.", 1, 3:randRhy(1/3, 2, 1)) |||";
+# 
+# // default parameter, no rhythm: Error
+# /beep = "^\rand("-.")  |||";
+# #+END_SRC
 
 ** Built-in generators
+*** Rhythm generators
 
-The following generators are defined in /cl-livecode/:
+- =\ins("source", "new items", numToAdd, quant)= :: Locates unoccupied
+     metric positions within the bar, every /quant/ beats apart
+     beginning with the generator's onset time, chooses /numToAdd/ of
+     them randomly, and inserts new items at those positions.
 
-- =\seq("items")= :: Reads the items in sequence, like =Pseq= (with
-     =inf= repeats).
+- =\shift("source", "shiftable items", numToShift, quant)= :: Locates
+     /numToShift/ occurrences of the /shiftable items/ within the
+     source (they must already exist), and moves them forward or back
+     by /quant/ beats. A good way to get syncopation is to insert
+     items on a strong beat, and then shift them by a smaller
+     subdivision.
 
-- =\rand("items")= :: Reads the items in random order, like =Prand=.
+- =\rot("source", quant)= :: Add /quant/ to every item's onset time,
+     and wrap all the times into the generator's boundaries:
+     basically, a strict canon.
+     #+BEGIN_SRC SuperCollider
+     // Reich, "Piano Phase"-ish
+     
+     (
+     BP(\y).free;
+     PR(\abstractLiveCode).chuck(BP(\y), nil, (
+     	event: (eventKey: \default, pan: -0.6),
+     	defaultParm: \degree,
+     	parmMap: (degree: (isPitch: true))
+     ));
+     
+     BP(\z).free;
+     PR(\abstractLiveCode).chuck(BP(\z), nil, (
+     	event: (eventKey: \default, pan: 0.6),
+     	defaultParm: \degree,
+     	parmMap: (degree: (isPitch: true))
+     ));
+     )
 
-- =\xrand("items")= :: Reads the items in random order without
-     repeating the same item twice in a row, like =Pxrand=.
+     TempoClock.tempo = 112/60;
+     
+     /y = "\seq("*^*^*^*^*^*^", "268", "*")::\seq(, "37", "^")";
+     
+     /z = "\seq("*^*^*^*^*^*^", "268", "*")::\seq(, "37", "^")";
+     
+     /y/z+;
+     
+     /z = "\seq("*^*^*^*^*^*^", "268", "*")::\seq(, "37", "^")::\rot(, -0.25)";
+     
+     /z = "\seq("*^*^*^*^*^*^", "268", "*")::\seq(, "37", "^")::\rot(, -0.5)";
+     
+     /z = "\seq("*^*^*^*^*^*^", "268", "*")::\seq(, "37", "^")::\rot(, -0.75)";
+     
+     /y/z-;
+     #+END_SRC
 
-- =\shuf("items")= :: Shuffles the items into random order, and
-     returns each one before choosing a new order, like
-     =Pn(Pshuf(items, 1), inf)=.
+*** Content generators
 
-- =\wrand("items", weight0, weight1, weight2...)= :: Weighted random
-     selection, like =Pwrand=. The generator automatically does
-     =normalizeSum= on the weights, so you don't have to worry about
-     making them add up to 1.0. Do not enclose the weights in array
-     brackets.
+- =\seq("source", "items", "wildcards", reset)= :: Replaces
+     /wildcards/ in the source with /items/, one by one, preserving
+     order. /Reset/ is optional; if it's a number greater than 0, the
+     item sequence will reset on every bar.
 
-- =\randRhy(base, weight1, weight2, weight3...)= :: Random rhythm
-     generation. =weight1= is the probability of returning =base * 1=;
-     =weight2= is the probability of =base * 2= and so on. Typically
-     used after a colon (and /without/ the leading backslash).
+- =\rand("source", "items", "wildcards")= :: Like =\seq()=, but
+     chooses from /items/ randomly. (/Reset/ is not relevant, as there
+     is no order to preserve.)
 
-Two additional generators are defined: =\clStepGen= and
-=\clRhythmGen=. These are for internal use. You should not override
-their behavior.
+- =\wrand("source", "items", "wildcards", weight0, weight1, weight2...)= :: Weighted
+     random selection, like =Pwrand=. /Weight0/ is associated with the
+     first element of /items/; /weight1/ with the second, and so
+     on. The generator automatically does =normalizeSum= on the
+     weights, so you don't have to worry about making them add up to
+     1.0. Do not enclose the weights in array brackets. (As in
+     =\rand()=, /reset/ is irrelevant.)
+
+- =\xrand("source", "items", "wildcards", reset)= :: Reads the items
+     in random order without repeating the same item twice in a row,
+     like =Pxrand=.
+
+- =\shuf("source", "items", "wildcards", reset)= :: Shuffles the items
+     into random order, and returns each one before choosing a new
+     order, like =Pn(Pshuf(items, 1), inf)=.
+
+*** Filter generators
+
+- =\fork("source", "timed generators")= :: Applies different
+     generators to different segments of the bar. For instance, the
+     /source/ could insert /n/ wildcards throughout the bar, while
+     /timed generators/ could replace wildcards in the first half of
+     the bar with one value, and a different value in the second
+     half.Here, /timed generators/ includes two items, and =\fork()=
+     occupies the entire bar. So both =\seq()= instances get half a
+     bar. Source items in any portions of the bar not covered by one
+     of the /timed generators/ will pass through unchanged.
+     #+BEGIN_SRC SuperCollider
+     /y = "\ins("", "*", 10, 0.25)::\fork(, "\seq(, "13", "*")\seq(, "14", "*")")";
+
+     /y = "\ins("", "1,", 10, 0.25)::\fork(, " \seq(, "13", "1,")x\seq(, "14", "1,")")";
+     #+END_SRC
+
+- =\chain("source", generator, generator...)= :: For internal use only.
 
 ** Writing new generators
 Generators inherit from =PR(\clGen)=,[fn:a395111b] and may override the following:
