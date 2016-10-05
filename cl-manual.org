@@ -362,8 +362,7 @@ nodes and integrates more easily with =MixerChannel=. Because each
 such event plays only one node, array arguments are passed as is. The
 normal default event expands one-dimensional arrays into multiple
 nodes. The way to avoid this is to wrap the array in another array
-level---after which, array handling in the /cll/ parameter map
-requires a third level of wrapping.
+level.
 
 #+ATTR_LATEX: :align |p{0.2\textwidth}|p{0.3\textwidth}|p{0.3\textwidth}|
 |------------------------+-----------------------------+--------------------------------------------|
@@ -595,6 +594,47 @@ should also return the value identifiers.
 
 /kick
 #+END_SRC
+
+*** Generators and timing					   :noexport:
+/Generators/ (see Section [[Generators]]) produce new material for every
+bar, algorithmically. They fit multiple events into a span of time, so
+it's important to know when they begin and end.
+
+The following syntax inserts a generator: =\name(arg0, arg1...)= (or,
+if a generator has no arguments, =\name()=---parentheses are not
+optional). For the purpose of timing, the entire generator string,
+from the opening backslash to the closing parenthesis, is treated as a
+single event---a single moment in time. The generator is active until
+the next event.
+
+Some examples:
+
+# #+name: gentime1
+# #+caption: Generators and timing.
+# #+BEGIN_SRC SuperCollider -i
+# // One generator, whole bar.
+# /beep = "\shuf("*  *| ** |**| *  ", ".-^", "*")";
+# 
+# // Fixed entry on the downbeat, followed by 3 beats of generator.
+# // All 3 dividers are required (4-beat division).
+# // Also, the source string inside \shuf() is now 3 beats instead of 4.
+# /beep = "^|\shuf("****| ** |*  *", ".-", "*")||";
+# 
+# // 8th-note upbeat, written outside.
+# // \shuf() occupies 2.5 beats.
+# /beep = "^|\shuf("**|**| *|* | *", ".", "*")|| -";
+# 
+# // Same, but perhaps easier to manage:
+# /beep = "^|\shuf("****| ** | *- ", ".", "*")||";
+# #+END_SRC
+
+Pattern strings within a generator take the duration of the generator
+itself. Contrast the last two examples in Listing [[gentime1]]: If the
+8th-note upbeat is written outside the generator, the generator itself
+will occupy 5 8th-notes. Dividing it into three parts will be
+confusing, then. Alternately, the upbeat can be written inside the
+generator's source string (where it will be touched, unless the
+generator is using it as a wildcard).
 
 *** Timing of multiple parameters
 Each parameter can have its own timing, but a =Pbind= can play with
@@ -1111,6 +1151,92 @@ sequences, which always play exactly the same events. /Generators/
 create phrases whose contents can change on each iteration, adding
 another dimension of musical interest.
 
+** Generator design
+Generators manipulate lists of events, provided by "set pattern"
+strings, one bar at a time. (As such, they are not a precise analog to
+SuperCollider patterns.)
+
+Typically, the generator's first argument is the event source: a "set
+pattern" string or another generator. The generator requests the event
+list from the source, processes it and passes the modified list up to
+its parent. Chaining generators in this way allows complex behaviors
+from simple units. Generators should be written such that it's
+possible to use any generator at any point in a chain.
+
+At present, generators divide into two main categories:
+
+- /Rhythm generators/ insert new items into the event list, or delete
+  them. New items may be event characters directly, or wildcards to be
+  replaced by the second category.
+
+- /Content generators/ replace wildcards with user-specified values.
+
+These are not the only possible generator types, and there is no
+prescribed sequence for using them. However, it's been most successful
+so far to use a rhythm generator to embellish a base rhythm, and then
+apply a content generator to "fill in" the new rhythmic elements.
+
+#+name: gencycle
+#+caption: Isorhythmic cycles with generators.
+#+BEGIN_SRC SuperCollider -i
+(
+BP(\y).free;
+PR(\abstractLiveCode).chuck(BP(\y), nil, (
+	event: (eventKey: \default),
+	defaultParm: \degree,
+	parmMap: (degree: (isPitch: true))
+));
+)
+
+TempoClock.tempo = 140/60;
+
+/y = "12 4| 5 6| 12 |45";
+
+/y+;
+
+/y = "\seq("** *| * *| ** |**", "12456", "*")";
+
+/y = "\ins(\seq("** *| * *| ** |**", "12456", "*"), "*", 7, 0.25)";
+
+/y = "\seq(\ins(\seq("** *| * *| ** |**", "12456", "*"), "*", 7, 0.25), "6,214", "*")";
+
+/y = "\seq("** *| * *| ** |**", "12456", "*")::\ins(, "*", 7, 0.25)::\seq(, "6,214", "*")";
+
+/y-;
+#+END_SRC
+
+Listing [[gencycle]] demonstrates one possibility. The initial idea is a
+cycle of five pitches laid over nine notes within a bar. Without
+generators, it's necessary to drop one pitch at the end of every bar
+(or, write the five possible distinct bars by hand---time moves
+quickly on stage, so this is painful). But, using the =\seq()=
+generator, we can specify the rhythm using a @@latex:\texttt{*}@@
+wildcard; =\seq()= replaces each wildcard with successive
+pitches. =\seq= also remembers its state from one bar to the next, so,
+in this example, the first bar will begin with =1= and the second,
+with =6=.
+
+Generators are "composed" by wrapping another generator around the
+outside: =\ins(..., "*", 7, 0.25)= inserts seven wildcards at randomly
+chosen 1/4-beat positions. (There are 16 per bar, and 9 are already
+occupied, so this will fill all the empty rhythmic positions.)
+@@latex:\texttt{*}@@ is not a valid pitch specifier, so these are
+performed as rests. Wrapping in one more layer, another =\seq()=,
+overlays a new cycle, four notes this time. The result is a shifting
+arpeggiation that should repeat every 20 bars---but written as a
+single bar's pattern string.
+
+The nested notation has the drawback that the parameters of
+outer-layer generators may be far away from the generator name. A
+double-colon "chaining" or "composition" operator,
+@@latex:\texttt{::}@@, makes it possible to write each generator as an
+isolated unit. The final variant sounds the same as the nested
+version, but is easier to read. The @@latex:\texttt{::}@@ operator
+takes the result of the first =\seq()= and replaces the first
+parameter of the subsequent =\ins()= with it, and on down the
+chain. The initial comma inside =\ins()= is required as a placeholder,
+but nothing need be supplied; empty commas become =nil=.
+
 ** Generator usage
 *** Generators and pattern strings
 Generators are invoked using the syntax =\name(arguments)= within a
@@ -1127,26 +1253,46 @@ illustrates. (Argument lists call for further discussion and are not
 relevant to generators' rhythmic position; so, the examples omit
 arguments.)
 
-In example 3 of Listing [[genRhythm]], beat 2 contains four items: space,
-=\rand(...)=, space and space. Thus beat 2 is subdivided into
-16th-notes, and the generator begins on the second of those.
+In example 3 of Listing [[genRhythm]], beat 2 contains four items:
+@@latex:\texttt{6,}@@, =\rand(...)=, space and space. Thus beat 2 is
+subdivided into 16th-notes, and the generator begins on the second of
+those.
 
 #+name: genRhythm
 #+caption: Interaction between generator syntax and "set pattern" rhythmic notation.
 #+BEGIN_SRC {SuperCollider} -i
 // 1. \rand starts on the downbeat and occupies the whole bar.
-/bp = "\rand(...)";
+/y = "\rand(\ins("1,", "*", 3, 0.5), "13467", "*")";
+
+/y+;
 
 // 2. \rand starts on beat 2
-/bp = "|\rand(...)||";
+/y = "1,|\rand(\ins("6,", "*", 3, 0.5), "13467", "*")||";
 
 // 3. \rand starts on the 2nd 16th-note of beat 2
-/bp = "| \rand(...)  ||";
+/y = "1,|6,\rand(\ins("", "*", 3, 0.5), "13467", "*")  ||";
 
 // 4. \rand starts on the 2nd 16th-note of beat 2
 // and stops on the 'and' of 4
-/bp = "| \rand(...)  || x";
+/y = "1,|6,\rand(\ins("", "*", 3, 0.5), "13467", "*")  || x";
+
+/y-;
 #+END_SRC
+
+#+BEGIN_boxnote
+=\ins("source", "new", num, quant)= inserts /num/ new items at
+possible time points /quant/ beats apart. These time points are
+measured from the beginning of the generator. In Listing [[genRhythm]],
+examples 3 and 4 offset the generator by one 16th-note---so =\ins()=
+will syncopate by a 16th. Further, source strings will be compressed
+to fit into the generator's duration. If @@latex:\texttt{"|||"}@@ at
+the outermost layer produces four divisions of one beat each, the same
+inside example 3's =\ins()= generator would divide 2.75 beats by 4,
+whereupon each division would consist of 11 64th-notes. These examples
+avoid the problem by supplying empty source strings. Otherwise, be
+careful (or, structure your music to take advantage of the resulting
+Nancarrow-esque polyrhythms).
+#+END_boxnote
 
 *** Generator arguments
 Every generator expression currently requires an argument list in
@@ -1169,15 +1315,15 @@ Arguments are separated by commas. Each argument should be one of the following:
 - A subordinate generator expression (which must begin with a
   backslash and end with a closing parenthesis).
 
-- An /unquoted/ string, consisting of a value that will be
-  interpreted. Especially useful for literal numbers (0.25) or
-  numbers resulting from calculations (1/4).
+- A number.
 
-See Listing [[genRhythm1]] for examples.
+# See Listing [[genRhythm1]] for examples.
 
-Each generator object defines its own expected inputs. The built-in
-generators are documented below; other generators need not conform to
-these specifications.
+By convention, the first argument to any generator should be its
+source: a pattern string or generator. Generators may be freely
+composed if they follow this rule. Breaking the rule will result in
+combinations of generators that cannot be made to work. Other
+arguments are free for each generator to define.
 
 ** Generators and rhythm
 
