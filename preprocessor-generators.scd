@@ -342,6 +342,24 @@ protect {
 		};
 	} => PR(\clGenShift);
 
+	PR(\clGen).clone {
+		~prep = {
+			~baseItems = ~args[0];
+			~quant = ~args[1];
+			if(~quant.isNumber.not) {
+				Error("\rot() quant must be a number").throw;
+			};
+			currentEnvironment
+		};
+		~process = {
+			var firstI, endTime = ~time + ~dur;
+			~items = ~getUpstreamItems.();
+			~items = ~items.collect { |item|
+				item.copy.put(\time, (item[\time] + ~quant).wrap(~time, endTime));
+			}.sort { |a, b| a[\time] < b[\time] };
+		};
+	} => PR(\clGenRot);
+
 	// PR(\clGen).clone {
 	//
 	// } => PR(\clGenLeadTo);
