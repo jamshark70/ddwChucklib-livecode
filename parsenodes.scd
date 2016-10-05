@@ -299,8 +299,8 @@ PR(\abstractClParseNode).clone {
 			};
 			durs.add(itemDur);
 		};
-		if(durs.notEmpty) {
-			durs.putLast(durs.last + extraDur);
+		if(lastI.notNil) {
+			durs[lastI] = durs[lastI] + extraDur;
 		};
 		~children.do { |item, i|
 			item.setTime(onset + (i * itemDur), durs[i]);
@@ -530,7 +530,7 @@ PR(\abstractClParseNode).clone {
 		// all children should be divider nodes
 		// what about items spanning a division? reverse order
 		i = ~children.size - 1;
-		~children.reverseDo { |item, j|
+		~children.reverseDo { |item|
 			var itemOnset = onset + (i * itemDur);
 			item.setTime(itemOnset, itemDur, extraDur);
 			if(item.children.size == 0) {
