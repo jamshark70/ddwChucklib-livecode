@@ -135,14 +135,14 @@ not strictly required, but is useful for instrumental sounds.
 /cll/ adds three convenience functions to load the environment:
 
 - =\loadCl.eval=: Load the /cll/ preprocessor and a few helper functions.
-- =\loadClExtras=: Load extra user-interface components (mobile
+- =\loadClExtras.eval=: Load extra user-interface components (mobile
   control with TouchOSC, and interactive code editor).
-- =\loadAllCl=: Load both of these at once.
+- =\loadAllCl.eval=: Load both of these at once.
 
-These are /not/ executed by default, because you may not want the
-preprocessor in every SC session. Once you load the environment, the
-preprocessor is active until the next time you recompile the class
-library.
+These are /not/ executed by default at SC startup, because you may not
+want the preprocessor in every SC session. Once you load the
+environment, the preprocessor is active until the next time you
+recompile the class library.
 
 * Process prototype
 ** Data structure
@@ -587,13 +587,13 @@ should also return the value identifiers.
 
 **** TODO Set pattern examples					   :noexport:
 
-#+name: setpatternExamples
-#+caption: Set pattern examples.
-#+BEGIN_SRC {SuperCollider} -i
-/kick = "----";  // Set kick's 'main' phrase to four quarter notes
-
-/kick
-#+END_SRC
+# #+name: setpatternExamples
+# #+caption: Set pattern examples.
+# #+BEGIN_SRC {SuperCollider} -i
+# /kick = "----";  // Set kick's 'main' phrase to four quarter notes
+# 
+# /kick
+# #+END_SRC
 
 *** Generators and timing					   :noexport:
 /Generators/ (see Section [[Generators]]) produce new material for every
