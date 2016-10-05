@@ -354,18 +354,26 @@ protect {
 			currentEnvironment
 		};
 		~process = {
+			var lastGenTime = 0;
 			~items = ~getUpstreamItems.();
-			~newItems = Array(~generators.size);
+			~newItems = Array.new;
 			~generators.do { |gen, i|
 				var start, end, partition;
 				if(gen.tryPerform(\isClGen) ?? { false }) {
 					start = gen.time;
 					end = start + gen.dur;
+					// any stray items?
+					if(start - lastGenTime > 0.0001) {
+						~newItems = ~newItems.add(~items.select { |item|
+							item[\time] >= lastGenTime and: { item[\time] < start }
+						});
+					};
 					partition = ~items.select { |item|
 						item[\time] >= start and: { item[\time] < end }
 					};
 					gen.baseItems = partition;
-					~newItems.add(gen.process);
+					~newItems = ~newItems.add(gen.process);
+					lastGenTime = gen.time + gen.dur;
 				};
 			};
 			~items = ~newItems.flatten(1);
