@@ -681,7 +681,7 @@ PR(\abstractClParseNode).clone {
 		if(stream.peek == $\") {
 			if(id.clClass.exists(id.objKey)) {
 				obj = id.clClass.new(id.objKey);
-				tryNoTrace {
+				try {
 					~isPitch = obj.parmIsPitch(id.parm) ?? { false };
 					~isMain = id.parm == obj.defaultParm ?? { false };
 				};

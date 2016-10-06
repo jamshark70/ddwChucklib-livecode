@@ -8,14 +8,33 @@ this.preProcessor = { |code|
 	}
 };
 
+// avoid wslib dependency
+{ |str, exclude = " "|
+	var firstI = str.detectIndex { |ch| exclude.includes(ch).not },
+	lastI;
+	if(firstI.isNil) {
+		String.new
+	} {
+		lastI = str.size - 1;
+		while { lastI >= firstI and: { exclude.includes(str[lastI]) } } {
+			lastI = lastI - 1;
+		};
+		if(lastI >= firstI) {
+			str[firstI .. lastI]
+		} {
+			String.new
+		}
+	}
+} => Func(\strTrim);
+
 // main preprocessor
 { |code|
 	if(code.first == $( and: {
-		code = code.trim(" \t\n");
+		code = Func(\strTrim).eval(code, " \t\n");
 		code.last == $)
 	}) {
 		// 'code' has already lost trailing spaces
-		code = code[1 .. code.size - 2].trim(" \n\t");
+		code = Func(\strTrim).eval(code[1 .. code.size - 2], " \n\t");
 	};
 	if("/+".includes(code.first)) {
 		code = \clParseIntoStatements.eval(code);
@@ -257,7 +276,7 @@ Proto {
 	~parseIDs = { |code|
 		var i, ids, test, temp;
 		// everything before ~eqIndex should be the ID string
-		ids = code[.. ~eqIndex - 1].split($.).collect(_.trim);  // wslib dependency
+		ids = code[.. ~eqIndex - 1].split($.).collect { |str| Func(\strTrim).eval(str) };
 		ids = Pseq(ids).asStream;
 
 		// class (I expect this won't be used often)
@@ -327,7 +346,7 @@ Proto {
 
 		// bug here: should not include semicolon
 		// proper fix: after replacing the parser, find the \clPatStringNode and get its string
-		~inString = rightHand = code[~eqIndex + 1 ..].trim;
+		~inString = rightHand = Func(\strTrim).eval(code[~eqIndex + 1 ..]);
 		if(rightHand.last == $;) {
 			~inString = rightHand = rightHand.drop(-1);
 		};
@@ -645,7 +664,7 @@ Proto {
 	};
 	~processWildcard = { |str|
 		var i;
-		str = str.trim;
+		str = Func(\strTrim).eval(str);
 		if(str[0] == $') {
 			i = str.find("'", offset: 1);
 			if(i.isNil) {
@@ -786,7 +805,7 @@ Proto {
 				if(ch.notNil) { str = str ++ ch };
 			}
 			{ "*%".includes(ch) } {
-				rpt = tryNoTrace {
+				rpt = try {
 					~scanInt.(stream);
 				} { |exc|
 					if(exc.what == \nonInt) { nil } { exc.throw }
@@ -815,7 +834,7 @@ Proto {
 			Error("Composite pattern: Unclosed () group").throw;
 		} {
 			while { ch = stream.next; "*%".includes(ch) } {
-				rpt = tryNoTrace {
+				rpt = try {
 					~scanInt.(stream).asInteger;
 				} { |exc|
 					if(exc.what == \nonInt) { nil } { exc.throw };
@@ -989,7 +1008,7 @@ Proto {
 					if(~floatRegexp.matchRegexp(quant)) {
 						quant = quant.interpret;
 					} {
-						quant = quant.trim;
+						quant = Func(\strTrim).eval(quant);
 						if(quant.size == 0) {  // ok, no quant given
 							quant = nil;
 						} {
@@ -1425,7 +1444,7 @@ Proto {
 		var i, ids, test;
 		~parenIndex = code.indexOf(~endIDChar);
 		// everything before ~parenIndex should be the ID string
-		ids = code[.. ~parenIndex - 1].split($.).collect(_.trim);  // wslib dependency
+		ids = code[.. ~parenIndex - 1].split($.).collect { |str| Func(\strTrim).eval(str) };
 		ids = Pseq(ids).asStream;
 
 		// class (I expect this won't be used often)
@@ -1522,10 +1541,10 @@ Proto {
 		match = match[1 .. match.size - 2].split($/);
 		~ids = Array(match.size);
 		match.do { |str|
-			str = str.trim;
+			str = Func(\strTrim).eval(str);
 			if(str.size > 0) {
 				if(str.includes($:)) {
-					str = str.split($:).keep(2).collect { |item| item.trim.asSymbol };
+					str = str.split($:).keep(2).collect { |item| Func(\strTrim).eval(item).asSymbol };
 					if(Fact.exists(str[0])) {
 						~ids.add(Association(*str));  // factKey -> bpKey
 					} {
@@ -1677,7 +1696,7 @@ Proto {
 		var cmdIndex = code.detectIndex { |ch| (ch.isAlpha or: { ch.isDecDigit or: { ch == $_ } }).not },
 		cmd, regId, func, outcode;
 		if(cmdIndex.notNil) {
-			regId = code[..cmdIndex - 1].trim;
+			regId = Func(\strTrim).eval(code[..cmdIndex - 1]);
 			if(regId.isEmpty) { regId = ~default };
 			regId = regId.asSymbol;
 			cmd = code[cmdIndex];
