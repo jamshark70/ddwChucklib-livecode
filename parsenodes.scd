@@ -348,6 +348,11 @@ PR(\abstractClParseNode).clone {
 		type = ~types.detect { |assn|
 			assn.value.matchRegexp(stream.collection, stream.pos);
 		};
+		// bit of an ugly hack... fix properly later
+		// "_" is an articulation pool only if ~isPitch is true; otherwise, normal patstring
+		if(type.key == \clStringNode and: { ~isPitch.not }) {
+			type = ~types.detect { |t| t.key == \clPatStringNode };
+		};
 		if(type/*.debug("type")*/.notNil) {
 			new = PR(type.key).copy
 			.put(\isPitch, ~isPitch)
