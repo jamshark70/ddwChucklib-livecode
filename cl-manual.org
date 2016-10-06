@@ -1452,7 +1452,7 @@ non-default parameters.
      /source/ could insert /n/ wildcards throughout the bar, while
      /timed generators/ could replace wildcards in the first half of
      the bar with one value, and a different value in the second
-     half.Here, /timed generators/ includes two items, and =\fork()=
+     half. Here, /timed generators/ includes two items, and =\fork()=
      occupies the entire bar. So both =\seq()= instances get half a
      bar. Source items in any portions of the bar not covered by one
      of the /timed generators/ will pass through unchanged.
