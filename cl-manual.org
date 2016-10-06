@@ -1400,6 +1400,7 @@ non-default parameters.
      ));
      )
 
+     TempoClock.setMeterAtBeat(3, TempoClock.nextBar);
      TempoClock.tempo = 112/60;
      
      /y = "\seq("*^*^*^*^*^*^", "268", "*")::\seq(, "37", "^")";
