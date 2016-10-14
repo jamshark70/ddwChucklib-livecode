@@ -350,22 +350,32 @@ PR(\abstractClParseNode).clone {
 		};
 		// bit of an ugly hack... fix properly later
 		// "_" is an articulation pool only if ~isPitch is true; otherwise, normal patstring
-		if(type.key == \clStringNode and: { ~isPitch.not }) {
-			type = ~types.detect { |t| t.key == \clPatStringNode };
+		if(type.key == \clStringNode) {
+			if(stream.peek == $,) {  // empty arg
+				new = PR(\clStringNode).copy
+				.put(\endTest, { |ch| ch == $, })
+				.prep(stream, currentEnvironment);
+			} {
+				if(~isPitch.not) {
+					type = ~types.detect { |t| t.key == \clPatStringNode };
+				}
+			};
 		};
-		if(type/*.debug("type")*/.notNil) {
-			new = PR(type.key).copy
-			.put(\isPitch, ~isPitch)
-			.put(\endTest, { |ch| "~_.\"".includes(ch).not })  // for stringNode
-			.prep(stream, currentEnvironment);
-		} {
-			Error("Syntax error in % arg list".format(~name)).throw;
+		if(new.isNil) {
+			if(type/*.debug("type")*/.notNil) {
+				new = PR(type.key).copy
+				.put(\isPitch, ~isPitch)
+				.put(\endTest, { |ch| "~_.\"".includes(ch).not })  // for stringNode
+				.prep(stream, currentEnvironment);
+			} {
+				Error("Syntax error in % arg list".format(~name)).throw;
+			};
 		};
 		ch = stream.next;
 		if(ch == $,) { ~skipSpaces.(stream) } {
 			if(ch.notNil) { stream.pos = stream.pos - 1 };
 		};
-		// new.listArgs; "<< parseArg".debug;
+		// new.listVars; "<< parseArg".debug;
 		new
 	};
 //PR('clGenTest').copy.putAll((bpKey: 'x', args: [[$., $., $., $.]], dur: 4.0, isPitch: false, isMain: true, parm: 'a')).prep
