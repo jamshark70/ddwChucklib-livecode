@@ -145,6 +145,12 @@ PR(\abstractClParseNode).clone {
 	};
 	~endTest = { |ch| ch == $\" };
 	~symbol = { ~string.asSymbol };
+	~openDelimiter = "";
+	~closeDelimiter = "";
+	~streamCode = { |stream|
+		stream << ~openDelimiter << ~string << ~closeDelimiter;
+		currentEnvironment
+	};
 	~isSpacer = { ~string.every(_.isSpace) };
 } => PR(\clStringNode);
 
@@ -311,14 +317,25 @@ PR(\abstractClParseNode).clone {
 PR(\abstractClParseNode).clone {
 	~isPitch = false;
 	~types = [
-		\clRhythmGenNode -> "^:[a-zA-Z0-9_]+\\(.*\\)",
-		\clGeneratorNode -> "^\\\\[a-zA-Z0-9_]+\\(.*\\)",
-		\clStringNode -> "^\"[._~]+\"",  // more specific "" test must come first
-		\clPatStringNode -> "^\".*\"",
-		// \clStringNode -> "^\".*\"",
-		\clNumberNode -> "^-?[0-9]",
-		\clStringNode -> "^,"  // empty
+		(type: \clRhythmGenNode, regexp: "^:[a-zA-Z0-9_]+\\(.*\\)"),
+		(type: \clGeneratorNode, regexp: "^\\\\[a-zA-Z0-9_]+\\(.*\\)"),
+		// more specific "" test must come first
+		(type: \clStringNode, regexp: "^\"[._~]+\"",
+			match: { ~isPitch ?? { false } },
+			endTest: { |ch| "~_.\"".includes(ch).not }
+		),
+		(type: \clPatStringNode, regexp: "^\".*\""),
+		(type: \clNumberNode, regexp: "^-?[0-9]"),
+		(type: \clStringNode, regexp: "^`[A-Za-z0-9_]+",
+			endTest: { |ch| not(ch.isAlphaNum or: { "_`".includes(ch) }) },
+			openDelimiter: $', closeDelimiter: $',
+			pre: { |stream| stream.next }  // drop ` intro
+		),
+		(type: \clStringNode, regexp: "^,",  // empty arg
+			endTest: { |ch| ch == $, }
+		)
 	];
+	~extras = #[endTest, openDelimiter, closeDelimiter];
 	~parse = { |stream|
 		var name, ch;
 		// stream.collection[stream.pos .. stream.pos + 10].debug(">> clGeneratorNode");
@@ -345,31 +362,23 @@ PR(\abstractClParseNode).clone {
 	~parseArg = { |stream|
 		var type, ch, new;
 		// stream.collection[stream.pos .. stream.pos + 10].debug(">> parseArg");
-		type = ~types.detect { |assn|
-			assn.value.matchRegexp(stream.collection, stream.pos);
+		type = ~types.detect { |entry|
+			(entry[\match].value ?? { true }) and: {
+				entry[\regexp].matchRegexp(stream.collection, stream.pos);
+			}
 		};
-		// bit of an ugly hack... fix properly later
-		// "_" is an articulation pool only if ~isPitch is true; otherwise, normal patstring
-		if(type.key == \clStringNode) {
-			if(stream.peek == $,) {  // empty arg
-				new = PR(\clStringNode).copy
-				.put(\endTest, { |ch| ch == $, })
-				.prep(stream, currentEnvironment);
-			} {
-				if(~isPitch.not) {
-					type = ~types.detect { |t| t.key == \clPatStringNode };
-				}
+		if(type/*.debug("type")*/.notNil) {
+			type[\pre].value(stream);
+			new = PR(type.type).copy
+			.put(\isPitch, ~isPitch);
+			~extras.do { |key|
+				if(type[key].notNil) {
+					new.put(key, type[key]);
+				};
 			};
-		};
-		if(new.isNil) {
-			if(type/*.debug("type")*/.notNil) {
-				new = PR(type.key).copy
-				.put(\isPitch, ~isPitch)
-				.put(\endTest, { |ch| "~_.\"".includes(ch).not })  // for stringNode
-				.prep(stream, currentEnvironment);
-			} {
-				Error("Syntax error in % arg list".format(~name)).throw;
-			};
+			new.prep(stream, currentEnvironment);
+		} {
+			Error("Syntax error in % arg list".format(~name)).throw;
 		};
 		ch = stream.next;
 		if(ch == $,) { ~skipSpaces.(stream) } {
