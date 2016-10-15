@@ -360,6 +360,33 @@ protect {
 		};
 	} => PR(\clGenRot);
 
+	PR(\clGen).clone {
+		~prep = {
+			~baseItems = ~args[0];
+			~pool = ~args[1] ?? { "_" };
+			// Possible future feature
+			// ~durSplit = ~args[1];
+			// if(~durSplit.isNumber.not) {
+			// 	Error("\artic() durSplit must be a number").throw;
+			// };
+			// ~shortPool = ~args[2];
+			// ~longPool = ~args[3] ?? { ~args[2] };
+			currentEnvironment
+		};
+		~process = {
+			~items = ~getUpstreamItems.();
+			~items.collect { |item|
+				var artic;
+				if(item.item.isKindOf(SequenceNote)) {
+					artic = ~pool.choose;
+					item.copy.put(\item, item.item.copy.length_(~artic[artic] ?? { ~artic[$_] }));
+				} {
+					item
+				};
+			};
+		};
+	}.import((clGenPitch: #[artic])) => PR(\clGenArtic);
+
 	// PR(\clGen).clone {
 	//
 	// } => PR(\clGenLeadTo);
