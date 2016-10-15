@@ -133,7 +133,7 @@ protect {
 					~currentItem = item;
 					~currentIndex = i;
 					// copy is critical here!
-					~items[i] = item.copy.put(\item, ~seqStream.next);
+					~items[i] = item.copy.put(\item, ~seqStream.next(item));
 				};
 			};
 		};
@@ -158,6 +158,47 @@ protect {
 		};
 		~helpString = "\\xrand(\"items\")";
 	} => PR(\clGenXrand);
+
+	PR(\clGenSeq).clone {
+		// The whole point of a "reference" generator is:
+		// Every instance should share the same stream.
+		// Pdefn(key).asStream follows SC convention and makes
+		// independent streams. So I need my own
+		// stream repository: ~global is like a classvar here.
+		~global = IdentityDictionary.new;
+		~makeStream = {
+			var stream;
+			if(PR(\clGenPdefn).global[~pool].isNil) {
+				PR(\clGenPdefn).global[~pool] = Pdefn(~pool).asStream;
+			};
+			stream = PR(\clGenPdefn).global[~pool];
+			// Insurance against failure: auto-reset if the stream ends.
+			// 10 nils in a row, stop (don't infloop)
+			~seqStream = Routine { |inval|
+				var next, tries, warned = false;
+				loop {
+					tries = 10;
+					while {
+						next = stream.next(inval);
+						next.isNil and: { tries > 0 }
+					} {
+						tries = tries - 1;
+						stream.reset;
+					};
+					if(next.isNil) {
+						if(warned.not) {
+							"\\pdefn(, `%) stream ended, rests will be substituted".format(~pool).warn;
+							warned = true;
+						};
+					} {
+						warned = false;
+					};
+					inval = next.yield;
+				};
+			};
+		};
+		~helpString = "\\pdefn(, `key)";
+	} => PR(\clGenPdefn);
 
 	PR(\clGenSeq).clone {
 		~superprep = ~prep;
