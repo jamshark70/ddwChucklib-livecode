@@ -1839,7 +1839,7 @@ Proto {
 					dict[event]
 				};
 			};
-			if(event == \rest) {
+			if(result == \rest) {
 				Rest(result ?? { 0 })
 			} {
 				result  // nil if not specified
