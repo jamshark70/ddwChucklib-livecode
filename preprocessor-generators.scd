@@ -106,7 +106,7 @@ protect {
 			if(~args[2].notNil) {
 				~replaceItems = ~args[2].collect { |item| item.item };
 			} {
-				~replaceItems = [$.];
+				~replaceItems = [$*];
 			};
 			if(~args[3].isNumber) {
 				~doReset = ~args[3] > 0;
