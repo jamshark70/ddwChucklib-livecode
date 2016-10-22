@@ -42,12 +42,17 @@ protect {
 			// out.postcs
 		};
 		~updateDeltas = {
-			~deltas = (~items.collect(_[\time]) ++ ~dur).differentiate;
-			if(~items[0][\time] == 0) {
-				~deltas = ~deltas.drop(1);
+			if(~items.isEmpty) {
+				~deltas = [Rest(~dur)];
+				~items = [(item: \rest, time: 0, initialRest: true)];
 			} {
-				~deltas[0] = Rest(~items[0][\time]);
-				~items = ~items.copy.insert(0, (item: \rest, time: 0, initialRest: true));
+				~deltas = (~items.collect(_[\time]) ++ ~dur).differentiate;
+				if(~items[0][\time] == 0) {
+					~deltas = ~deltas.drop(1);
+				} {
+					~deltas[0] = Rest(~items[0][\time]);
+					~items = ~items.copy.insert(0, (item: \rest, time: 0, initialRest: true));
+				};
 			};
 			~items = ~items.collect { |item, i| item.copy.put(\dur, ~deltas[i]) };
 			// ~items.do { |item, i| item[\dur] = ~deltas[i] };
