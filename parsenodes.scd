@@ -433,6 +433,7 @@ PR(\abstractClParseNode).clone {
 			Error("'::' syntax is valid between two generators only").throw;
 		};
 		~parentNode = parentNode;
+		leftNode.parentNode = currentEnvironment;
 		~children = [leftNode];
 		// if(stream.peek == $/) { stream.next };
 		~begin = leftNode.begin; // stream.pos;
@@ -455,7 +456,7 @@ PR(\abstractClParseNode).clone {
 			if(stream.peek == $\\) {
 				new = PR(\clGeneratorNode).copy
 				.putAll((bpKey: ~bpKey, isPitch: ~isPitch, isMain: ~isMain, parm: ~parm))
-				.prep(stream);
+				.prep(stream, currentEnvironment);
 				~children = ~children.add(new);
 				if(stream.peek == $:) {
 					rewindPos = stream.pos;
