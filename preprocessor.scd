@@ -1871,7 +1871,7 @@ Proto {
 	};
 	~setPattern = { |phrase, parm, inParm, pattern, inString, newQuant|
 		var pat = ~phrases[phrase],
-		storeParm;
+		storeParm, time;
 		if(parm.size > 0) {
 			storeParm = parm.collect { |p|
 				~parmMap[p].tryPerform(\at, \alias) ?? { p };
@@ -1885,7 +1885,13 @@ Proto {
 		};
 		if(parm.notNil) {
 			~prSetPhraseString.(phrase, inParm, inString);
-			~clock.schedAbs(BP(~collIndex).eventSchedTime(-1) - 0.001, e {
+			time = BP(~collIndex).eventSchedTime(-1);
+			if(time.isNil) {
+				"BP(%).setPattern delayed by one bar due to leadTime"
+				.format(~collIndex.asCompileString).warn;
+				time = BP(~collIndex).eventSchedTime(BasicTimeSpec(-1, wrap: true));
+			};
+			~clock.schedAbs(time - 0.001, e {
 				case
 				// does this ever happen?
 				{ parm == \dur } {
