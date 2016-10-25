@@ -237,7 +237,7 @@ PR(\abstractClParseNode).clone {
 		{ ~isPitch } {
 			if(ch.isDecDigit) {
 				new = String.with(ch);
-				while { (ch = stream.next).notNil and: { "+-',~_.".includes(ch) } } {
+				while { (ch = stream.next).notNil and: { "+-',~_.>".includes(ch) } } {
 					new = new.add(ch);
 				};
 				if(ch.notNil) { stream.pos = stream.pos - 1 };

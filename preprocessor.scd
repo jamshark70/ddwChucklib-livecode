@@ -509,7 +509,7 @@ Proto {
 	};
 
 	~decodePitch = { |pitchStr|
-		var degree, legato = 0.9;
+		var degree, legato = 0.9, accent = false;
 		case
 		{ ~isPitch and: { pitchStr.isString } } {
 			pitchStr = pitchStr.asString;
@@ -525,9 +525,10 @@ Proto {
 					{ $~ } { legato = 1.01 }
 					{ $_ } { legato = 0.9 }
 					{ $. } { legato = 0.4 }
+					{ $> } { accent = true }
 				};
 				// degree -> legato  // Association identifies pitch above
-				SequenceNote(degree, nil, legato)
+				SequenceNote(degree, nil, legato, if(accent) { \accent })
 			}
 			// { "~_.".includes(pitchStr[0]) } { pitchStr[0] }  // for articulation pools?
 			{ "*@!".includes(pitchStr[0]) } { pitchStr[0] }  // placeholders for clGens etc.
@@ -1819,6 +1820,10 @@ Proto {
 					inEvent[\sustain] = { min(0.15, ~dur * event.length) };
 				} {
 					inEvent[\legato] = event.length
+				};
+				// press args into service for accents, may change the spec later
+				if(event.args == \accent) {
+					inEvent[\accent] = true;
 				};
 				// not asFloat: We already know this is a SeqNote, and asFloat breaks Rests here.
 				event.freq
