@@ -69,7 +69,10 @@ protect {
 			// 	rest = [(time: 0, dur: ~items[0].time, item: Rest(~items[0].item))];
 			// };
 			// "rest ++" also works if 'rest' is nil
-			pat = Pseq(rest ++ ~items, 1).collect { |ev|
+			pat = Pseq(rest ++ ~items, 1).collect { |ev, inEvent|
+				if(ev[\initialRest] == true) {
+					inEvent.put(\initialRest, true);
+				};
 				[ev[\item], ev[\dur]]
 			};
 			if(didProcess) { ~unprocess.() };
