@@ -60,3 +60,24 @@ Library.put(\clLivecode, \setupbars, \addToDoc, Main.versionAtLeast(3, 7) and: {
 		};
 	};
 } => Func(\vcToDefaultBP);
+
+
+// apply a voicer to the default event prototype
+{ |ev|
+	var mixer;
+	if(ev[\voicer].notNil) {
+		ev.put(\instrument, ev[\voicer].nodes[0].defname);
+		mixer = ev[\voicer].bus.asMixer;
+		if(mixer.notNil) {
+			ev.put(\group, mixer.synthgroup)
+			.put(\out, mixer.inbus.index);
+		};
+		ev[\voicer].nodes[0].initArgs.pairsDo { |key, value|
+			ev.put(key, value);
+		};
+		ev[\voicer].globalControls.keysValuesDo { |key, value|
+			ev.put(key, value.asMap);
+		};
+	};
+	ev
+} => Func(\voicer);
