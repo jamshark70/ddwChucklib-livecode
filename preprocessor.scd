@@ -1750,7 +1750,6 @@ Proto {
 // first: there's some ugliness about pitched note lengths
 // hard to work with ProtoEvent(\voicerNote).
 // Here's a function to get the actual sustain time:
-
 { |ev|
 	case
 	// even more ugliness: legato branch *must* come first. Really bad design.
@@ -1758,6 +1757,131 @@ Proto {
 	{ ev[\sustain].notNil } { ev.use { ev[\sustain].value } }
 	{ ev[\dur] }
 } => Func(\evLength);
+
+// Pitch processes may need early-release capability. This 'play' func supports it.
+// The logic in this function is really insane. It's a miracle that it works at all.
+(
+Event.default.parent.copy.put(\play, {  // support other event types this way?
+	var old, sustain, earlyRelease,
+	releaseEvent = { |event|
+		if(event[\notReleased] ?? { true }) {
+			event.use {
+				~eventTypes[\off].value(server);
+				~notReleased = false;
+				if(BP.exists(~collIndex) and: { BP(~collIndex).v[\articEvents].notNil }) {
+					BP(~collIndex).v[\articEvents].remove(currentEnvironment);
+				};
+			};
+		};
+	},
+	bpActivelyPlaying = { |bp|
+		bp.eventStreamPlayer.notNil and: { bp.eventStreamPlayer.isPlaying }
+	},
+	server;
+	// ludicrous, 'play' func isn't passed the server
+	if(~group.notNil) {
+		server = ~group.asTarget.server;
+	} {
+		server = ~server ?? { Server.default };
+	};
+	if(BP.exists(~collIndex)) {
+		old = BP(~collIndex).v[\articEvents].asArray.select { |ev|
+			ev[\notReleased] ?? { true }
+		};
+		if(currentEnvironment.isRest) {
+			if(~initialRest == true) {
+				BP(~collIndex).sawInitialRest = true;
+			} {
+				// if not an initial rest and something is hanging slightly over the barline,
+				// kill it now before a subesequent accent can try to kill it too late
+				// and print a spurious warning.
+				if(old[0].notNil) {
+					releaseEvent.(old[0]);
+					old.removeAt(0);
+				};
+			}
+		} {
+			sustain = ~sustain = ~sustain.value;
+			~eventTime = thisThread.clock.beats;
+			~releaseTime = ~eventTime + sustain;
+			~nextEventTime = ~eventTime + currentEnvironment.delta;
+
+			if(~accent == true and: { old.notEmpty }) {
+				old = old[0];
+				earlyRelease = min(
+					if(BP(~collIndex)[\sawInitialRest] == true) {
+						// tie across barline: initialRest is just a placeholder,
+						// so move the releaseTime forward to match relative to the new event time
+						thisThread.clock.beats + old[\releaseTime] - old[\nextEventTime]
+					} {
+						// didn't cross a barline: use the original release time
+						// and ignore explicit rest events
+						old[\releaseTime]
+					},
+					thisThread.clock.beats - 0.1
+				);
+				if(earlyRelease + (old[\timingOffset] ?? { 0 }) < thisThread.clock.beats) {
+					"\\noteArtic event: leadTime should be at least 0.1 beats".warn;
+					old.debug("old event");
+					currentEnvironment.debug("new event");
+				};
+				thisThread.clock.schedAbs(earlyRelease, {
+					releaseEvent.(old);
+				});
+			};
+			if(old.isEmpty or: { ~accent == true }) {
+				~eventTypes[\on].value(server);  // start the node
+			} {
+				if(old.size > 1) {
+					Error("\\articEvents has % events, weird".format(old.size)).throw;
+				};
+				~args = #[];
+				~id = old[0][\id];
+				~eventTypes[\set].value(server);  // update the nodes
+				BP(~collIndex).v[\articEvents].remove(old[0]);
+			};
+			~notReleased = true;
+			BP(~collIndex).v[\articEvents] = BP(~collIndex).v[\articEvents].add(currentEnvironment);
+			BP(~collIndex).sawInitialRest = false;
+
+			// release logic:
+			// if BP is not playing, release at normal time
+			// if it *is* playing at normal rel. time, and sus > dur, ignore timed release
+			thisThread.clock.sched(sustain, e {
+				if(BP.exists(~collIndex)) {
+					if(bpActivelyPlaying.(BP(~collIndex))) {
+						if(sustain < currentEnvironment.delta) {
+							releaseEvent.(currentEnvironment);
+						};  // else event will be saved for later release
+					} {
+						// BP has stopped, don't keep sustaining
+						releaseEvent.(currentEnvironment);
+					};
+				} {
+					// BP was destroyed, don't keep sustaining
+					releaseEvent.(currentEnvironment);
+				};
+			});
+		};
+	} {
+		"\\noteArtic event type must be used in a BP; playing with normal \\note type instead".warn;
+		~eventTypes[\note].value(server);
+	};
+}) => ProtoEvent(\noteArtic);
+);
+
+// better pitch handling: use the default event prototype,
+// but patch up the pitch logic to use ModalSpec instead
+Event.default.copy.putAll((
+	mode: \default,
+	freq: {
+		var mode = ~mode.asMode;
+		mode.cps(~degree.value + (mode.scale.size * ~octave.value))
+	}
+)) => ProtoEvent(\modalPitch);
+
+ProtoEvent(\modalPitch).v.parent.copy.put(\play, ProtoEvent(\noteArtic).v[\play])
+=> ProtoEvent(\modalPitchArtic);
 
 (
 Proto {
@@ -1981,7 +2105,13 @@ Proto {
 				nil
 			});
 		} {
-			~clock.schedAbs(BP(~collIndex).eventSchedTime - 0.001, e {
+			time = BP(~collIndex).eventSchedTime;
+			if(time.isNil) {
+				Error("BP(%).setPattern phrase selection pattern missed scheduling"
+					.format(~collIndex.asCompileString)).throw;
+				// time = BP(~collIndex).eventSchedTime(BasicTimeSpec(, wrap: true));
+			};
+			~clock.schedAbs(time - 0.001, e {
 				// composite pattern
 				~phraseSeq_.(pattern);
 				if(newQuant.notNil) { ~quant = newQuant.asTimeSpec };
