@@ -470,6 +470,9 @@ protect {
 					lastGenTime = gen.time + gen.dur;
 				};
 			};
+			~newItems = ~newItems.add(~items.select { |item|
+				item[\time] >= lastGenTime
+			});
 			~items = ~newItems.flatten(1);
 		};
 	} => PR(\clGenFork);
