@@ -2114,7 +2114,7 @@ Proto {
 			~clock.schedAbs(time - 0.001, e {
 				// composite pattern
 				~phraseSeq_.(pattern);
-				if(newQuant.notNil) { ~quant = newQuant.asTimeSpec };
+				if(newQuant.notNil) { BP(~collIndex).quant = newQuant.asTimeSpec };
 				if(~isPlaying) { ~reschedule.() };
 				nil
 			});

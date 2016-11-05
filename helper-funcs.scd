@@ -42,8 +42,8 @@ Library.put(\clLivecode, \setupbars, \addToDoc, Main.versionAtLeast(3, 7) and: {
 } => Func(\setm);
 
 { |key, n(4), prefix("m")|
-	\setupbars.eval(key, n, prefix);
 	\setm.eval(key, n, prefix);
+	\setupbars.eval(key, n, prefix);
 } => Func(\bars);
 
 { |vcKey, bpKey|
