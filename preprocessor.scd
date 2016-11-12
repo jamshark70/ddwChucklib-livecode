@@ -2186,6 +2186,7 @@ Proto {
 		~makeStreamForKey.(\phraseSeq);
 		~makeStreamForKey.(\defaults);
 		~makeStreamForKey.(\postDefaults);
+		~userreset.();
 	};
 
 	~postParmMap = {
