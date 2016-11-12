@@ -138,6 +138,84 @@ this.preProcessor = { |code|
 	statements.add(str)
 } => Func(\clParseIntoStatements);
 
+// assumes "open" already read
+{ |code, open, patString(false)|
+	var brak = "()[]{}", i = brak.indexOf(open), close, wrongClose, ch;
+	if(i.notNil) {
+		close = brak[i+1];
+		wrongClose = brak[1, 3..].reject(_ == close);
+		while {
+			ch = code.next;
+			ch.notNil and: { ch != close }
+		} {
+			case
+			{ ch == $" } {
+				if(patString) { \clParsePatString.eval(code) } { \clParseQuote.eval(code, ch) }
+			}
+			{ ch == $' } {
+				\clParsePatString.eval(code, ch)
+			}
+			{ ch == $\\ } {
+				if(patString) { \clParseGenerator.eval(code, true) }
+			}
+			{ "([{".includes(ch) } {
+				\clParseBracketed.eval(code, ch, patString)
+			}
+			{ wrongClose.includes(ch) } {
+				Error("Unmatched " ++ open).throw;
+			}
+			// else keep going
+		};
+		if(ch != close) {
+			Error("Unclosed " ++ open).throw
+		};
+	} {
+		Error("Func(\\clParseBracketed) entered with " ++ open).throw;
+	};
+	ch
+} => Func(\clParseBracketed);
+
+{ |code, quote($")|
+	var escaped = false, ch;
+	while {
+		ch = code.next;
+		ch.notNil and: { escaped or: { ch != quote } }
+	} {
+		if(ch == $\\) { escaped = true } { escaped = false };
+	};
+	if(ch.isNil) { Error("Unclosed quote " ++ ch).throw };
+	ch
+} => Func(\clParseQuote);
+
+{ |code|
+	var ch;
+	while {
+		ch = code.next;
+		ch.notNil and: { ch != $" }
+	} {
+		case
+		{ ch == $\\ } {
+			\clParseGenerator.eval(code, true);
+		}
+		{ ch == $" } {
+			\clParsePatString.eval(code);
+		};
+	};
+	if(ch.isNil) { Error("Unclosed pattern string quote").throw };
+	ch
+} => Func(\clParsePatString);
+
+{ |code, patString(false)|
+	var ch;
+	// ["[a-zA-Z0-9_]+\\(", code.collection[code.pos ..]].debug("check gen");
+	if("[a-zA-Z0-9_]+\\(".matchRegexp(code.collection, code.pos)) {
+		while { (ch = code.next) != $( };
+		\clParseBracketed.eval(code, ch, patString);
+	} {
+		Error("Backslash in cl pattern string must introduce a generator").throw;
+	};
+} => Func(\clParseGenerator);
+
 // 'code' is a CollStream
 // assumes we've already read the slash-star
 { |code|
