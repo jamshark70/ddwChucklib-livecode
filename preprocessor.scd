@@ -153,7 +153,7 @@ this.preProcessor = { |code|
 				if(patString) { \clParsePatString.eval(code) } { \clParseQuote.eval(code, ch) }
 			}
 			{ ch == $' } {
-				\clParsePatString.eval(code, ch)
+				\clParseQuote.eval(code, ch)
 			}
 			{ ch == $\\ } {
 				if(patString) { \clParseGenerator.eval(code, true) }
