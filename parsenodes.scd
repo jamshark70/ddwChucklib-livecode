@@ -399,7 +399,7 @@ PR(\abstractClParseNode).clone {
 		stream << ").copy.putAll((";
 		stream << "bpKey: " <<< ~bpKey;
 		stream << ", args: [ ";
-		(1 .. ~children.size - 1).do { |i|
+		forBy(1, ~children.size - 1, 1) { |i|
 			if(i > 1) { stream << ", " };
 			if(~children[i].string == "") {
 				stream << "nil"
@@ -418,7 +418,7 @@ PR(\abstractClParseNode).clone {
 		var itemDur = dur / max(~children.size, 1);
 		~time = onset;
 		~dur = dur;
-		(1 .. ~children.size - 1).do { |i|
+		forBy(1, ~children.size - 1, 1).do { |i|
 			~children[i].setTime(onset, dur);  // meaningful for gens and patstrings
 		};
 		currentEnvironment
