@@ -56,44 +56,67 @@ this.preProcessor = { |code|
 	}
 } => Func(\chucklibLiveCode);
 
-// remove slashes and semicolons
 // separate strings
 (
 { |code|
 	var escape = false, betweenStmts = true, // quote = false, squote = false,
-	paren = 0, brackets = 0, braces = 0,
-	ch, ch2, statements = Array(), str = String.new, continue;
+	ch, ch2, statements = Array(), start, continue;
 	code = CollStream(code);
 	while { (ch = code.next).notNil } {
 		case
-		{ ch == $; and: { [paren, brackets, braces].every(_ == 0) } } {
-			statements = statements.add(str);
-			str = String.new;
+		{ ch == $; } {
+			statements = statements.add(code.collection[start .. code.pos - 2]);
+			start = code.pos;
 			betweenStmts = true;
 		}
 		{ ch == $/ } {
 			ch2 = code.next;
-			switch(ch2)
-			{ $/ } {
+			case
+			{ ch2 == $/ } {
 				while { (ch = code.next).notNil and: { ch != $\n } };
 				code.pos = code.pos - 1;
 			}
 			// a separate function allows recursion for nesting
-			{ $* } { \clParseDelimComment.eval(code) }
-			{ if(ch2.notNil) { str = str.add(ch).add(ch2); betweenStmts = false; } };
+			{ ch2 == $* } { \clParseDelimComment.eval(code) }
+			{ ch2.notNil } {
+				if(betweenStmts) {
+					// if we are starting a statement
+					// and the following code matches the set-pattern template,
+					// parse accordingly
+					start = code.pos - 2;  // for all cl statement types
+					if("[A-Za-z0-9_]+(\.[A-Za-z0-9_])*[ 	]*=[ 	]*\\\""
+						.matchRegexp(code.collection, code.pos)
+					) {
+						while {
+							ch = code.next;
+							ch.notNil and: { ch != $= }
+						};
+						while {
+							ch = code.next;
+							ch.notNil and: { ch != $" }  // this is part of the regexp! must succeed
+						};
+						if(ch.isNil) {
+							Error("Should be impossible: statement matched set-pattern regexp but failed scanning")
+							.throw;
+						};
+						\clParsePatString.eval(code);
+					} {
+						betweenStmts = false;  // not a set-pattern statement
+					};
+				}
+			};
+
 		}
-		{ betweenStmts and: { ch.isSpace.not } } {
-			betweenStmts = false;
-			str = String.with(ch);  // remove dead matter between statements
-		}
-		{ betweenStmts /*and: { ch.isSpace }*/ } {
-			nil
+		{ betweenStmts } {
+			if(ch.isSpace.not) {
+				betweenStmts = false;
+				code.pos = code.pos - 1;  // reread this char on the next iteration
+				start = code.pos;
+			};  // else eat whitespace between ; and next non-space
 		}
 		{ ch == $\" } {
 			continue = true;
-			str = str ++ ch;
 			while { continue and: { (ch = code.next).notNil } } {
-				str = str ++ ch;
 				switch(ch)
 				{ $\\ } {
 					escape = escape.not;
@@ -105,37 +128,14 @@ this.preProcessor = { |code|
 						continue = false;
 					}
 				}
-			}
-		}
-		{ ch == $\" } {
-			continue = true;
-			str = str ++ ch;
-			while { continue and: { (ch = code.next).notNil } } {
-				switch(ch)
-				{ $\\ } {
-					escape = escape.not;
-				}
-				{ $\" } {
-					str = str ++ ch;
-					if(escape) {
-						escape = false;
-					} {
-						continue = false;
-					}
-				}
-				{ str = str ++ ch }
 			}
 		}
 		// because a ; inside grouping delimiters should not end a statement
-		{ ch == $( } { str = str ++ ch; paren = paren + 1 }
-		{ ch == $) } { str = str ++ ch; paren = paren - 1 }
-		{ ch == $[ } { str = str ++ ch; brackets = brackets + 1 }
-		{ ch == $] } { str = str ++ ch; brackets = brackets - 1 }
-		{ ch == ${ } { str = str ++ ch; braces = braces + 1 }
-		{ ch == $} } { str = str ++ ch; braces = braces - 1 }
-		{ str = str ++ ch };  // default case
+		{ "([{".includes(ch) } {
+			\clParseBracketed.eval(code, ch, false)
+		}
 	};
-	statements.add(str)
+	statements = statements.add(code.collection[start .. code.pos]);
 } => Func(\clParseIntoStatements);
 
 // assumes "open" already read
