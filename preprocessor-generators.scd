@@ -174,12 +174,13 @@ protect {
 		// independent streams. So I need my own
 		// stream repository: ~global is like a classvar here.
 		~global = IdentityDictionary.new;
+		~repository = { PR(\clGenGdefn).global };
 		~makeStream = {
-			var stream;
-			if(PR(\clGenPdefn).global[~pool].isNil) {
-				PR(\clGenPdefn).global[~pool] = Pdefn(~pool).asStream;
+			var stream, repository = ~repository.();
+			if(repository[~pool].isNil) {
+				repository[~pool] = Pdefn(~pool).asStream;
 			};
-			stream = PR(\clGenPdefn).global[~pool];
+			stream = repository[~pool];
 			// Insurance against failure: auto-reset if the stream ends.
 			// 10 nils in a row, stop (don't infloop)
 			~seqStream = Routine { |inval|
@@ -205,7 +206,25 @@ protect {
 				};
 			};
 		};
-		~helpString = "\\pdefn(, `key)";
+		~helpString = "\\gdefn(, `key)";
+	} => PR(\clGenGdefn);
+
+	// similar, but each BP has its own stream repository
+	PR(\clGenGdefn).clone {
+		~repository = {
+			if(BP.exists(~bpKey)) {
+				if(BP(~bpKey)[\clGenPdefn].isNil) {
+					BP(~bpKey)[\clGenPdefn] = IdentityDictionary.new;
+				};
+				BP(~bpKey)[\clGenPdefn]
+			} {
+				if(~bpKey.isNil) {
+					Error("clGenPdefn: ~bpKey must be populated").throw;
+				} {
+					Error("clGenPdefn: BP(%) must exist".format(~bpKey.asCompileString)).throw;
+				};
+			};
+		};
 	} => PR(\clGenPdefn);
 
 	PR(\clGenSeq).clone {
@@ -253,9 +272,11 @@ protect {
 		};
 		~makeStream = {
 			~seqStream = Pfunc {
-				var prev = ~items[~currentIndex - 1].item, pitch;
+				var prev = ~items[~currentIndex - 1], pitch;
 				if(prev.isNil) {
 					prev = rrand(~fallbackMin, ~fallbackMax);
+				} {
+					prev = prev.item;
 				};
 				pitch = prev.asFloat + ~intervalPool.choose;
 				SequenceNote(pitch, nil, ~artic[~articPool.choose] ?? { 0.9 })
