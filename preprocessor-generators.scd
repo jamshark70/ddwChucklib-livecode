@@ -25,6 +25,23 @@ protect {
 			currentEnvironment
 		};
 
+		~doProcess = {
+			if(~repository.isNil) {
+				if(BP.exists(~bpKey)) {
+					if(BP(~bpKey)[\genRepository].notNil) {
+						~repository = BP(~bpKey)[\genRepository];
+					} {
+						~repository = IdentityDictionary.new;
+						BP(~bpKey)[\genRepository] = ~repository;
+					};
+				};
+			};
+			~process.();
+			if(~items.size > 0) {
+				~repository[~parm] = ~items.last;
+			};
+			~items
+		};
 		~process = {
 			~items = ~getUpstreamItems.();
 		};
@@ -42,16 +59,36 @@ protect {
 			// out.postcs
 		};
 		~updateDeltas = {
-			if(~items.isEmpty) {
-				~deltas = [Rest(~dur)];
-				~items = [(item: \rest, time: 0, initialRest: true)];
-			} {
-				~deltas = (~items.collect(_[\time]) ++ ~dur).differentiate;
-				if(~items[0][\time] == 0) {
-					~deltas = ~deltas.drop(1);
+			var prevItem;
+			if(BP.exists(~bpKey) and: { ~parm != BP(~bpKey).defaultParm }) {
+				if(~items.isEmpty) {
+					~deltas = [~dur];
+					prevItem = ~repository[~parm];
+					if(prevItem.notNil) { prevItem = prevItem.item };
+					~items = [(item: prevItem, time: 0)];
 				} {
-					~deltas[0] = Rest(~items[0][\time]);
-					~items = ~items.copy.insert(0, (item: \rest, time: 0, initialRest: true));
+					~deltas = (~items.collect(_[\time]) ++ ~dur).differentiate;
+					if(~items[0][\time] == 0) {
+						~deltas = ~deltas.drop(1);
+					} {
+						~deltas[0] = ~items[0][\time];
+						prevItem = ~repository[~parm];
+						if(prevItem.notNil) { prevItem = prevItem.item };
+						~items = ~items.copy.insert(0, (item: prevItem, time: 0));
+					};
+				};
+			} {
+				if(~items.isEmpty) {
+					~deltas = [Rest(~dur)];
+					~items = [(item: \rest, time: 0, initialRest: true)];
+				} {
+					~deltas = (~items.collect(_[\time]) ++ ~dur).differentiate;
+					if(~items[0][\time] == 0) {
+						~deltas = ~deltas.drop(1);
+					} {
+						~deltas[0] = Rest(~items[0][\time]);
+						~items = ~items.copy.insert(0, (item: \rest, time: 0, initialRest: true));
+					};
 				};
 			};
 			~items = ~items.collect { |item, i| item.copy.put(\dur, ~deltas[i]) };
@@ -60,7 +97,7 @@ protect {
 		~asPattern = { |bp|  // the BP() object -- asPattern should be called @ top level only
 			var pat, rest, didProcess = false;
 			if(~items.isNil) {
-				~items = ~process.(bp);
+				~items = ~doProcess.(bp);
 				~updateDeltas.();
 				// "clGen items: ".post; ~items.postcs;
 				didProcess = true;
@@ -69,11 +106,29 @@ protect {
 			// 	rest = [(time: 0, dur: ~items[0].time, item: Rest(~items[0].item))];
 			// };
 			// "rest ++" also works if 'rest' is nil
-			pat = Pseq(rest ++ ~items, 1).collect { |ev, inEvent|
-				if(ev[\initialRest] == true) {
-					inEvent.put(\initialRest, true);
+			pat = Pseq(rest ++ ~items, 1);
+			if(BP.exists(~bpKey) and: { ~parm != BP(~bpKey).defaultParm }) {
+				pat = pat.collect { |ev, inEvent|
+					if(ev[\initialRest] == true) {
+						inEvent.put(\initialRest, true);
+					};
+					if(ev[\item].isNil) {
+						// incumbent on you to put the parm into ~defaults
+						[inEvent[~parm], ev[\dur]]
+					} {
+						[ev[\item], ev[\dur]]
+					}
 				};
-				[ev[\item], ev[\dur]]
+			} {
+				pat = pat.collect { |ev, inEvent|
+					if(ev[\initialRest] == true) {
+						inEvent.put(\initialRest, true);
+					};
+					[ev[\item], ev[\dur]]
+				};
+			};
+			if(~parm.notNil) {
+				~repository[~parm] = ~items.last;
 			};
 			if(didProcess) { ~unprocess.() };
 			if(~isMain) {
