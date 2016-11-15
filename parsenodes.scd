@@ -390,8 +390,8 @@ PR(\abstractClParseNode).clone {
 //PR('clGenTest').copy.putAll((bpKey: 'x', args: [[$., $., $., $.]], dur: 4.0, isPitch: false, isMain: true, parm: 'a')).prep
 
 	~streamCode = { |stream|
-		var name = ~children[0].string;
-		if(~children[1][\time].isNil) { ~setTime.(~time, ~dur) };
+		var name = ~children[0].string, i;
+		if(~children[1].isNil or: { ~children[1][\time].isNil }) { ~setTime.(~time, ~dur) };
 		stream << "PR(\\clGen";
 		if(name.size > 0) {
 			stream << name[0].toUpper << name[1..];
@@ -399,13 +399,15 @@ PR(\abstractClParseNode).clone {
 		stream << ").copy.putAll((";
 		stream << "bpKey: " <<< ~bpKey;
 		stream << ", args: [ ";
-		forBy(1, ~children.size - 1, 1) { |i|
+		i = 1;
+		while { i < ~children.size } {
 			if(i > 1) { stream << ", " };
 			if(~children[i].string == "") {
 				stream << "nil"
 			} {
 				~children[i].streamCode(stream);
 			};
+			i = i + 1;
 		};
 		stream << " ], dur: " << ~dur << ", time: " << ~time;
 		stream << ", isPitch: " << (~isPitch ?? { false });
@@ -415,11 +417,17 @@ PR(\abstractClParseNode).clone {
 		currentEnvironment
 	};
 	~setTime = { |onset(0), dur(4)|
-		var itemDur = dur / max(~children.size, 1);
+		var itemDur = dur / max(~children.size, 1), i;
 		~time = onset;
 		~dur = dur;
-		forBy(1, ~children.size - 1, 1).do { |i|
+		// forBy should work, but doesn't
+		// forBy(1, ~children.size - 1, 1).do { |i|
+		// 	~children[i].setTime(onset, dur);  // meaningful for gens and patstrings
+		// };
+		i = 1;
+		while { i < ~children.size } {
 			~children[i].setTime(onset, dur);  // meaningful for gens and patstrings
+			i = i + 1;
 		};
 		currentEnvironment
 	};
