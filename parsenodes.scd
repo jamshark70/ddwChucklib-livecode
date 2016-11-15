@@ -391,7 +391,7 @@ PR(\abstractClParseNode).clone {
 
 	~streamCode = { |stream|
 		var name = ~children[0].string;
-		if(~children[1][\time].isNil) { ~setTime.(~time, ~dur) };
+		if(~children[1].isNil or: { ~children[1][\time].isNil }) { ~setTime.(~time, ~dur) };
 		stream << "PR(\\clGen";
 		if(name.size > 0) {
 			stream << name[0].toUpper << name[1..];
@@ -418,7 +418,7 @@ PR(\abstractClParseNode).clone {
 		var itemDur = dur / max(~children.size, 1);
 		~time = onset;
 		~dur = dur;
-		forBy(1, ~children.size - 1, 1).do { |i|
+		forBy(1, ~children.size - 1, 1) { |i|
 			~children[i].setTime(onset, dur);  // meaningful for gens and patstrings
 		};
 		currentEnvironment
