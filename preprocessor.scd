@@ -140,7 +140,7 @@ this.preProcessor = { |code|
 
 // assumes "open" already read
 { |code, open, patString(false)|
-	var brak = "()[]{}", i = brak.indexOf(open), close, wrongClose, ch;
+	var brak = "()[]{}", i = brak.indexOf(open), close, wrongClose, ch, ch2;
 	if(i.notNil) {
 		close = brak[i+1];
 		wrongClose = brak[1, 3..].reject(_ == close);
@@ -154,6 +154,16 @@ this.preProcessor = { |code|
 			}
 			{ ch == $' } {
 				\clParseQuote.eval(code, ch)
+			}
+			{ ch == $/ } {
+				ch2 = code.next;
+				case
+				{ ch2 == $/ } {
+					while { (ch = code.next).notNil and: { ch != $\n } };
+					code.pos = code.pos - 1;
+				}
+				{ ch2 == $* } { \clParseDelimComment.eval(code) }
+				{ code.pos = code.pos - 1 };
 			}
 			{ ch == $\\ } {
 				if(patString) { \clParseGenerator.eval(code, true) }
@@ -176,14 +186,14 @@ this.preProcessor = { |code|
 } => Func(\clParseBracketed);
 
 { |code, quote($")|
-	var escaped = false, ch;
+	var escaped = false, ch, pos = code.pos;
 	while {
 		ch = code.next;
 		ch.notNil and: { escaped or: { ch != quote } }
 	} {
 		if(ch == $\\) { escaped = true } { escaped = false };
 	};
-	if(ch.isNil) { Error("Unclosed quote " ++ ch).throw };
+	if(ch.isNil) { Error("Unclosed quote " ++ quote ++ " : " ++ code.collection[max(0, pos - 20) .. pos + 20]).throw };
 	ch
 } => Func(\clParseQuote);
 
