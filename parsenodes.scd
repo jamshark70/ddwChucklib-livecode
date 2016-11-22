@@ -370,7 +370,7 @@ PR(\abstractClParseNode).clone {
 		if(type/*.debug("type")*/.notNil) {
 			type[\pre].value(stream);
 			new = PR(type.type).copy
-			.put(\isPitch, ~isPitch);
+			.putAll((bpKey: ~bpKey, isPitch: ~isPitch, isMain: ~isMain, parm: ~parm));
 			~extras.do { |key|
 				if(type[key].notNil) {
 					new.put(key, type[key]);
