@@ -321,7 +321,7 @@ protect {
 				Error("\\pitch() invalid articPool").throw;
 			};
 			~replaceItems = ~replaceItems.collect { |item| item.item };
-			~intervalPool = ~intervalPool.collect { |item| item.item };
+			~intervalPool = ~intervalPool.collect { |item| item.item.asFloat };
 			~articPool = ~articPool.reject(_ == $");
 			currentEnvironment
 		};
@@ -407,6 +407,7 @@ protect {
 		~prep = {
 			~superprep.();
 			~poolItems = ~pool.collect(_.item);
+			~poolStream = Pn(Pshuf(~poolItems, 1), inf).asStream;
 			currentEnvironment
 		};
 		~modifySource = {
@@ -427,15 +428,17 @@ protect {
 		// The correct solution is to backtrack and move 0.5 to 0.75.
 		// Backtracking = recursion.
 		~traverseShifts = { |numToShift, items, pool, shiftArray, shiftedIndices(List.new)|
-			var shiftItem, shiftIndex, shift, newTime, oldItem;
+			var shiftItem, shiftIndex, shift, newTime, oldItem, tries;
 
 			shiftIndex = nil;
-			while { shiftIndex.isNil } {
-				shiftItem = pool.choose;
+			tries = ~poolItems.size * 2;
+			while { shiftIndex.isNil and: { tries > 0 } } {
+				shiftItem = ~poolStream.next;
 				shiftIndex = ~items.collectIndices { |item, i|
 					item.item == shiftItem and: { shiftedIndices.includes(i).not }
 				};
 				shiftIndex = shiftIndex.choose;  // nil if array is empty
+				tries = tries - 1;
 			};
 			shiftArray = shiftArray.rotate(2.rand);
 			shift = block { |break|
