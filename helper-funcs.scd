@@ -73,7 +73,8 @@ Library.put(\clLivecode, \setupbars, \addToDoc, Main.versionAtLeast(3, 7) and: {
 			.put(\out, mixer.inbus.index);
 		};
 		ev[\voicer].nodes[0].initArgs.pairsDo { |key, value|
-			ev.put(key, value);
+			// difficult. If the event has a default, the event's default takes precedence.
+			if(ev[key].isNil) { ev.put(key, value) };
 		};
 		ev[\voicer].globalControls.keysValuesDo { |key, value|
 			ev.put(key, value.asMap);
