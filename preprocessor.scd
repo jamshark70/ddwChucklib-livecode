@@ -84,8 +84,8 @@ this.preProcessor = { |code|
 					// and the following code matches the set-pattern template,
 					// parse accordingly
 					start = code.pos - 2;  // for all cl statement types
-					if("[A-Za-z0-9_]+(\.[A-Za-z0-9_])*[ 	]*=[ 	]*\\\""
-						.matchRegexp(code.collection, code.pos)
+					if("^[A-Za-z0-9_]+(\.[A-Za-z0-9_]+)*[ 	]*=[ 	]*\\\""
+						.matchRegexp(code.collection, code.pos - 1)
 					) {
 						while {
 							ch = code.next;
@@ -105,7 +105,6 @@ this.preProcessor = { |code|
 					};
 				}
 			};
-
 		}
 		{ betweenStmts } {
 			if(ch.isSpace.not) {
@@ -220,10 +219,11 @@ this.preProcessor = { |code|
 	// ["[a-zA-Z0-9_]+\\(", code.collection[code.pos ..]].debug("check gen");
 	if("[a-zA-Z0-9_]+\\(".matchRegexp(code.collection, code.pos)) {
 		while { (ch = code.next) != $( };
-		\clParseBracketed.eval(code, ch, patString);
+		ch = \clParseBracketed.eval(code, ch, patString);
 	} {
 		Error("Backslash in cl pattern string must introduce a generator").throw;
 	};
+	ch
 } => Func(\clParseGenerator);
 
 // 'code' is a CollStream
@@ -242,7 +242,7 @@ this.preProcessor = { |code|
 			if(ch2 == $/) { continue = false };
 		}
 	};
-	code
+	ch
 } => Func(\clParseDelimComment);
 );
 
@@ -1849,12 +1849,24 @@ Proto {
 // Pitch processes may need early-release capability. This 'play' func supports it.
 // The logic in this function is really insane. It's a miracle that it works at all.
 (
-Event.default.parent.copy.put(\play, {  // support other event types this way?
+Event.default.parent.copy
+.put(\articOn, { |server|
+	~eventTypes[\on].value(server);
+})
+.put(\articOff, { |server|
+	~eventTypes[\off].value(server);
+})
+.put(\articSet, { |old, server|
+	~args = #[];
+	~id = old[0][\id];
+	~eventTypes[\set].value(server);
+})
+.put(\play, {  // support other event types this way?
 	var old, sustain, earlyRelease,
 	releaseEvent = { |event|
 		if(event[\notReleased] ?? { true }) {
 			event.use {
-				~eventTypes[\off].value(server);
+				~articOff.value(server);
 				~notReleased = false;
 				if(BP.exists(~collIndex) and: { BP(~collIndex).v[\articEvents].notNil }) {
 					BP(~collIndex).v[\articEvents].remove(currentEnvironment);
@@ -1918,14 +1930,12 @@ Event.default.parent.copy.put(\play, {  // support other event types this way?
 				});
 			};
 			if(old.isEmpty or: { ~accent == true }) {
-				~eventTypes[\on].value(server);  // start the node
+				~articOn.value(server);  // start the node
 			} {
 				if(old.size > 1) {
 					Error("\\articEvents has % events, weird".format(old.size)).throw;
 				};
-				~args = #[];
-				~id = old[0][\id];
-				~eventTypes[\set].value(server);  // update the nodes
+				~articSet.value(old, server);  // update the nodes
 				BP(~collIndex).v[\articEvents].remove(old[0]);
 			};
 			~notReleased = true;
@@ -1953,7 +1963,7 @@ Event.default.parent.copy.put(\play, {  // support other event types this way?
 		};
 	} {
 		"\\noteArtic event type must be used in a BP; playing with normal \\note type instead".warn;
-		~eventTypes[\note].value(server);
+		~eventTypes[~type ?? { \note }].value(server);
 	};
 }) => ProtoEvent(\noteArtic);
 );
@@ -1968,8 +1978,13 @@ Event.default.copy.putAll((
 	}
 )) => ProtoEvent(\modalPitch);
 
-ProtoEvent(\modalPitch).v.parent.copy.put(\play, ProtoEvent(\noteArtic).v[\play])
-=> ProtoEvent(\modalPitchArtic);
+{
+	var p = ProtoEvent(\modalPitch).v.parent.copy;
+	#[play, articOn, articOff, articSet].do { |key|
+		p[key] = ProtoEvent(\noteArtic).v[key];
+	};
+	p => ProtoEvent(\modalPitchArtic);
+}.value;
 
 (
 Proto {
@@ -2239,7 +2254,7 @@ Proto {
 						"BP(%): Empty phrase %, stopping".format(~collIndex.asCompileString, phr).warn;
 						nil.alwaysYield
 					};
-					phr = ~phraseSeqStream.next(inevent);
+					~lastPhrase = phr = ~phraseSeqStream.next(inevent);
 					pat = ~phrases[phr];
 					// the pattern-wrapping here is not directly supported in Psym
 					if(~phraseDurs[phr].notNil) {
