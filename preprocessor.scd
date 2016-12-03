@@ -2269,10 +2269,16 @@ Proto {
 
 	~reschedule = { |quant|
 		var oldStreamPlayer = ~eventStreamPlayer,
-		newStreamPlayer = BP(~collIndex).asEventStreamPlayer;
+		newStreamPlayer = BP(~collIndex).asEventStreamPlayer,
+		time;
 		if(quant.isNil) { quant = ~quant ?? { BasicTimeSpec(-1) } };
-		~clock.schedAbs(quant.asTimeSpec.bpSchedTime(BP(~collIndex)) - 0.001, { oldStreamPlayer.stop });
-		~clock.play(newStreamPlayer.refresh, quant);
+		time = quant.asTimeSpec.bpSchedTime(BP(~collIndex));
+		if(time.notNil) {
+			~clock.schedAbs(time - 0.001, { oldStreamPlayer.stop });
+			~clock.schedAbs(time, newStreamPlayer.refresh);
+		} {
+			"BP(%) reschedule for % failed".format(~collIndex.asCompileString, quant.asCompileString);
+		};
 		currentEnvironment
 	};
 
