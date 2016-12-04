@@ -2268,12 +2268,12 @@ Proto {
 	};
 
 	~reschedule = { |quant|
-		var oldStreamPlayer = ~eventStreamPlayer,
-		newStreamPlayer = BP(~collIndex).asEventStreamPlayer,
-		time;
+		var oldStreamPlayer, newStreamPlayer, time;
 		if(quant.isNil) { quant = ~quant ?? { BasicTimeSpec(-1) } };
 		time = quant.asTimeSpec.bpSchedTime(BP(~collIndex));
 		if(time.notNil) {
+			oldStreamPlayer = ~eventStreamPlayer;
+			newStreamPlayer = BP(~collIndex).asEventStreamPlayer;
 			~clock.schedAbs(time - 0.001, { oldStreamPlayer.stop });
 			~clock.schedAbs(time, newStreamPlayer.refresh);
 		} {
