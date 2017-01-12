@@ -84,7 +84,7 @@ this.preProcessor = { |code|
 					// and the following code matches the set-pattern template,
 					// parse accordingly
 					start = code.pos - 2;  // for all cl statement types
-					if("^[A-Za-z0-9_]+(\.[A-Za-z0-9_]+)*[ 	]*=[ 	]*\\\""
+					if("^[A-Za-z0-9_]+(\\.[A-Za-z0-9_]+)*[ 	]*=[ 	]*\\\""
 						.matchRegexp(code.collection, code.pos - 1)
 					) {
 						while {
