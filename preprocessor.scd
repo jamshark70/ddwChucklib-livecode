@@ -2083,6 +2083,24 @@ Proto {
 	~parmIsPitch = { |parm|
 		~parmMap[parm].notNil and: { ~parmMap[parm][\isPitch] == true }
 	};
+	~valueIsRest = { |event, parm, inEvent|
+		var dict, result;
+		if(~parmIsPitch.(parm)) {
+			event.freq.isRest
+		} {
+			dict = ~parmMap[parm];
+			if(dict.notNil) {
+				result = if(dict[\convertFunc].notNil) {
+					dict[\convertFunc].(event, inEvent);
+				} {
+					dict[event]
+				};
+				result.isRest or: { result.isNil }
+			} {
+				event.isRest
+			}
+		}
+	};
 
 	~defaults = ();  // or Pbind
 	~postDefaults = ();
