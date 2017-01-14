@@ -436,6 +436,63 @@ protect {
 	} => PR(\clGenPitch2);
 
 	PR(\clGenSeq).clone {
+		~prep = {
+			~baseItems = ~args[0];
+			~pool = ~args[1];
+			if(~args[2].notNil) {
+				~replaceItems = ~args[2].collect { |item| item.item };
+			} {
+				~replaceItems = [$*];
+			};
+			// rhythmic values <= ~staccDur will be made staccato, otherwise _
+			// ~staccDur = 0 disables this feature
+			// ignored for non-pitch parameters (because, no concept of articulation)
+			if(~args[3].isNumber) {
+				~staccDur = ~args[3];
+			} {
+				~staccDur = 0;
+			};
+			~doReset = false;  // required by superclass
+			currentEnvironment
+		};
+		~makeStream = {
+			// currentIndex is set here -- that's important
+			~seqStream = Pfunc { |item|
+				var new;
+				// find previous item
+				var prevIndex = ~currentIndex - 1;
+				while { prevIndex >= 0 and: {
+					~replaceItems.includesEqual(~items[prevIndex].item)
+					or: {
+						if(BP.exists(~bpKey)) {
+							BP(~bpKey).valueIsRest(~items[prevIndex].item, ~parm)
+						} {
+							false
+						}
+					}
+				} } {
+					prevIndex = prevIndex - 1;
+				};
+				if(prevIndex < 0) {
+					// if none, choose from pool
+					new = ~pool.choose.item.copy
+				} {
+					// else repeat previous
+					new = ~items[prevIndex].item.copy
+				};
+				if(~isPitch ?? { false }) {
+					if(~getIndexDur.(~currentIndex) <= ~staccDur) {
+						new.length = ~artic[$.];
+					} {
+						new.length = ~artic[$_];
+					};
+				};
+				new
+			}.asStream;
+		};
+	}.import((clGenPitch: #[artic])) => PR(\clGenPrev);
+
+	PR(\clGenSeq).clone {
 		~doReset = false;
 		~prep = {
 			~baseItems = ~args[0];
@@ -498,6 +555,58 @@ protect {
 		};
 		~snippet.("ins", "\\ins(##src, pool, numToAdd, quant##)");
 	} => PR(\clGenIns);
+
+	// \stutt(source, pool, numToAdd, quant, prob, insItem "-")
+	// choose numToAdd of "pool" items and of these, add more items after it
+	PR(\clGenIns).clone {
+		~prep = {
+			~baseItems = ~args[0];
+			~pool = ~args[1];
+			~numToAdd = ~args[2] ?? { 1 };
+			~quant = ~args[3] ?? { 0.25 };
+			~prob = ~args[4] ?? { 0.75 };
+			~insPool = ~args[5]; // ?? { (item: $-, time: 0, dur: 1) };
+			// ~poolStream = Prand(~pool.collect(_.item), inf).asStream;
+			~insStream = if(~insPool.notNil) {
+				Prand(~insPool, inf).collect(_.item).asStream;
+			} {
+				{ |srcIndex| // will only be called internally
+					var new = ~items[srcIndex].item;
+					if(~isPitch ?? { false }) {
+						new.length = ~artic[$.];  // all stuttered notes should be staccato
+					};
+					new
+				}
+			};
+			~poolItems = ~pool.collect(_.item);
+			currentEnvironment
+		};
+		~canStutter = { |item, index|
+			item[\initialRest] != true and: { ~poolItems.includesEqual(item.item) }
+		};
+		~modifySource = {
+			var nextTime, time;
+			// get source indices
+			~items.collectIndices { |item, index| ~canStutter.(item, index) }
+			.keep(~numToAdd).scramble.do { |index|
+				time = ~items[index].time;
+				nextTime = if(index < (~items.size - 1)) {
+					~items[index + 1].time
+				} {
+					~time + ~dur  // this generator's ending time
+				};
+				while {
+					time = time + ~quant;
+					time < nextTime
+				} {
+					if(~prob.coin) {
+						~items = ~items.add((item: ~insStream.value(index), time: time));
+					};
+				};
+			};
+			~items.sort { |a, b| a.time < b.time }
+		};
+	}.import((clGenPitch: #[artic])) => PR(\clGenStutt);
 
 	PR(\clGenIns).clone {
 		~superprep = ~prep;
