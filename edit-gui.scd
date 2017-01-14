@@ -1039,7 +1039,7 @@ Proto {
 			keys = Set.new;
 			BP.all.do { |bp|
 				// cl-livecode processes must implement this to work in the GUI
-				if(bp.v.respondsTo(\phraseStringAt)) {
+				if(bp.v.respondsTo(\phrases)) {
 					bp.phrases.keysDo { |phr|
 						keys.add(~phraseAndIndex.(phr)[0]);  // strip index
 					};
@@ -1049,12 +1049,14 @@ Proto {
 		keys.do { |phr|
 			phr = phr.asString;
 			BP.all.do { |bp|
-				if(bp.v.respondsTo(\phraseStringAt)) {
+				if(bp.v.respondsTo(\phrases)) {
 					bp.phrases.keysDo { |key|
 						if(key.asString.beginsWith(phr)) {
+							tryNoTrace {
 							bp.phraseStrings.at(key).tryPerform(\keysValuesDo, { |parm, string|
 								~updatePatString.(bp.collIndex, key, parm, string)
 							});
+							}
 						};
 					};
 				};
