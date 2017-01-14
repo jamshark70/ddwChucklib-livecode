@@ -560,15 +560,13 @@ protect {
 	// choose numToAdd of "pool" items and of these, add more items after it
 	PR(\clGenIns).clone {
 		~prep = {
-			~baseItems = ~args[0];
-			~pool = ~args[1];
-			~numToAdd = ~args[2] ?? { 1 };
-			~quant = ~args[3] ?? { 0.25 };
-			~prob = ~args[4] ?? { 0.75 };
-			~insPool = ~args[5]; // ?? { (item: $-, time: 0, dur: 1) };
-			// ~poolStream = Prand(~pool.collect(_.item), inf).asStream;
+			~defaultNames.do { |key, i|
+				var value = ~args[i] ?? { ~defaults[i].value };
+				if(value.isKindOf(Exception)) { value.throw };
+				key.envirPut(value);
+			};
 			~insStream = if(~insPool.notNil) {
-				Prand(~insPool, inf).collect(_.item).asStream;
+				Prand(~insPool.collect(_.item), inf).asStream;
 			} {
 				{ |srcIndex| // will only be called internally
 					var new = ~items[srcIndex].item;
@@ -581,6 +579,8 @@ protect {
 			~poolItems = ~pool.collect(_.item);
 			currentEnvironment
 		};
+		~defaultNames = #[baseItems, pool, numToAdd, quant, prob, insPool];
+		~defaults = [nil, Error("Must specify pool"), 1, 0.25, 0.75, nil];
 		~canStutter = { |item, index|
 			item[\initialRest] != true and: { ~poolItems.includesEqual(item.item) }
 		};
