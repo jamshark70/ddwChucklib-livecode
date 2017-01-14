@@ -46,6 +46,7 @@ protect {
 			~items = ~getUpstreamItems.();
 		};
 		~unprocess = {
+			if(~items.notNil) { ~cachedItems = ~items };
 			~items = nil;
 		};
 		// .value polymorphism: we may need items from an array or a clgen
@@ -155,6 +156,18 @@ protect {
 		~yieldsKeys = {
 			if(~isMain) { [~parm, \dur] } { ~parm };
 			// if(~isPitch.()) { [~parm, \legato] } { ~parm }
+		};
+
+		// problem: in an item, only 'time' is sure to be set
+		// dur must be calculated -- this should be a general support method
+		~getIndexDur = { |index|
+			if(index < (~items.size - 1)) {
+				// there's another item after this one
+				~items[index+1].time - ~items[index].time
+			} {
+				// last item; this generator's ending time index - item time
+				~time + ~dur - ~items[index].time
+			};
 		};
 	}, parentKeys: #[canEmbed, protoID, isClGen, patternStringKeys, patternStringFuncs])
 	.import((clPatternSet: #[decodePitch])) => PR(\clGen);
