@@ -606,6 +606,7 @@ protect {
 			};
 			~items.sort { |a, b| a.time < b.time }
 		};
+		~snippet.("stutt", "\\stutt(##src, pool, numToAdd, quant, prob, insItem \"-\"##)");
 	}.import((clGenPitch: #[artic])) => PR(\clGenStutt);
 
 	PR(\clGenIns).clone {
