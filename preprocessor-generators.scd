@@ -583,7 +583,7 @@ protect {
 			});
 			~items = ~newItems.flatten(1);
 		};
-		~snippet.("fork", "\\rand(##src, genString##)");
+		~snippet.("fork", "\\fork(##src, genString##)");
 	} => PR(\clGenFork);
 
 	// \gen1(...)::\gen2(...)::\gen3(...)
