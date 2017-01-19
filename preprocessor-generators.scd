@@ -334,11 +334,11 @@ protect {
 	} => PR(\clGenShuf);
 
 	PR(\clGenSeq).clone {
-		~defaults = [[], [(item: $*)], #[-2, -1, 1, 2].collect({ |int| (item: int) }), 0, 7, "_"];
+		~defaults = [[], [(item: $*)], #[-2, -1, 1, 2].collect({ |int| (item: int) }), 0, 7, "_", 1];
 		~artic = ($~: 1.01, $_: 0.9, $.: 0.4);
-		~doReset = false;
+		~doReset = true;
 		~prep = {
-			#[baseItems, replaceItems, intervalPool, fallbackMin, fallbackMax, articPool].do { |key, i|
+			#[baseItems, replaceItems, intervalPool, fallbackMin, fallbackMax, articPool, connect].do { |key, i|
 				key.envirPut(~args[i] ?? { ~defaults[i] });
 			};
 			if(~articPool.isString.not) {
@@ -350,18 +350,32 @@ protect {
 			currentEnvironment
 		};
 		~makeStream = {
-			~seqStream = Pfunc {
-				var prev = ~items[~currentIndex - 1], pitch;
+			~seqStream = Routine {
+				// first init only is from previous item
+				var pitch, prev, i;
+				if(~connect > 0) {
+					// prev item might be a rest, if it's a placeholder from \ins
+					// so, scan backward through rests; normally this won't loop
+					i = ~currentIndex;
+					while {
+						i = i - 1;
+						i >= 0 and: { ~items[i].item.isRest }
+					};
+					prev = ~items[i];
+				};
 				if(prev.isNil) {
 					prev = rrand(~fallbackMin, ~fallbackMax);
 				} {
 					prev = prev.item;
 				};
-				pitch = prev.asFloat + ~intervalPool.choose;
-				SequenceNote(pitch, nil, ~artic[~articPool.choose] ?? { 0.9 })
-			}.asStream;
+				loop {
+					pitch = prev.asFloat + ~intervalPool.choose;
+					prev = pitch;  // loop is always going forward
+					SequenceNote(pitch, nil, ~artic[~articPool.choose] ?? { 0.9 }).yield
+				}
+			}
 		};
-		~snippet.("pitch", "\\pitch(##src, replaceItems, intervalPool, fallbackMin, fallbackMax, articPool##)");
+		~snippet.("pitch", "\\pitch(##src, replaceItems, intervalPool, fallbackMin, fallbackMax, articPool, connect##)");
 	} => PR(\clGenPitch);
 
 	PR(\clGenSeq).clone {
