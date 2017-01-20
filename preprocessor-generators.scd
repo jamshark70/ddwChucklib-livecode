@@ -608,6 +608,9 @@ protect {
 		};
 		~process = {
 			var items;
+			// ~baseItems is nil if chain is the outermost generator
+			// but if chain is inside a fork, the fork will provide baseItems
+			if(~baseItems.notNil) { items = ~getUpstreamItems.() };
 			~args.do { |gen|
 				if(items.notNil) {
 					// this is corrupting the initial state,
