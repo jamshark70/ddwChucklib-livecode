@@ -335,10 +335,11 @@ protect {
 
 	PR(\clGenSeq).clone {
 		~defaults = [[], [(item: $*)], #[-2, -1, 1, 2].collect({ |int| (item: int) }), 0, 7, "_"];
+		~argNames = #[baseItems, replaceItems, intervalPool, fallbackMin, fallbackMax, articPool];
 		~artic = ($~: 1.01, $_: 0.9, $.: 0.4);
 		~doReset = false;
 		~prep = {
-			#[baseItems, replaceItems, intervalPool, fallbackMin, fallbackMax, articPool].do { |key, i|
+			~argNames.do { |key, i|
 				key.envirPut(~args[i] ?? { ~defaults[i] });
 			};
 			if(~articPool.isString.not) {
@@ -351,7 +352,17 @@ protect {
 		};
 		~makeStream = {
 			~seqStream = Pfunc {
-				var prev = ~items[~currentIndex - 1], pitch;
+				var i = ~currentIndex, pitch, prev;
+				while {
+					i = i - 1;
+					i >= 0 and: {
+						~items[i].isKindOf(SequenceNote).not or: {
+							// in here, ~items[i] must be a SequenceNote
+							~items[i].freq.isRest
+						}
+					}
+				};
+				prev = ~items[i];
 				if(prev.isNil) {
 					prev = rrand(~fallbackMin, ~fallbackMax);
 				} {
@@ -363,6 +374,39 @@ protect {
 		};
 		~snippet.("pitch", "\\pitch(##src, replaceItems, intervalPool, fallbackMin, fallbackMax, articPool##)");
 	} => PR(\clGenPitch);
+
+	PR(\clGenPitch).clone {
+		~defaults = [[], [(item: $*)], #[-2, -1, 1, 2].collect({ |int| (item: int) }), 0, 7, "_", 1];
+		~argNames = #[baseItems, replaceItems, intervalPool, fallbackMin, fallbackMax, articPool, connect];
+		~doReset = true;
+		~makeStream = {
+			~seqStream = Routine {
+				// first init only is from previous item
+				var pitch, prev, i;
+				if(~connect > 0) {
+					// prev item might be a rest, if it's a placeholder from \ins
+					// so, scan backward through rests; normally this won't loop
+					i = ~currentIndex;
+					while {
+						i = i - 1;
+						i >= 0 and: { ~items[i].item.isRest }
+					};
+					prev = ~items[i];
+				};
+				if(prev.isNil) {
+					prev = rrand(~fallbackMin, ~fallbackMax);
+				} {
+					prev = prev.item;
+				};
+				loop {
+					pitch = prev.asFloat + ~intervalPool.choose;
+					prev = pitch;  // loop is always going forward
+					SequenceNote(pitch, nil, ~artic[~articPool.choose] ?? { 0.9 }).yield
+				}
+			}
+		};
+		~snippet.("pitch2", "\\pitch2(##src, replaceItems, intervalPool, fallbackMin, fallbackMax, articPool, connect##)");
+	} => PR(\clGenPitch2);
 
 	PR(\clGenSeq).clone {
 		~doReset = false;
