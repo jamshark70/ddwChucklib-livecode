@@ -436,6 +436,7 @@ protect {
 	} => PR(\clGenPitch2);
 
 	PR(\clGenSeq).clone {
+		~snippet.("prev", "\\prev(##src, pool, replaceItems, staccDur##)");
 		~prep = {
 			~baseItems = ~args[0];
 			~pool = ~args[1];
@@ -582,13 +583,15 @@ protect {
 		~defaultNames = #[baseItems, pool, numToAdd, quant, prob, insPool];
 		~defaults = [nil, Error("Must specify pool"), 1, 0.25, 0.75, nil];
 		~canStutter = { |item, index|
-			item[\initialRest] != true and: { ~poolItems.includesEqual(item.item) }
+			item[\initialRest] != true and: {
+				~poolItems.isEmpty or: { ~poolItems.includesEqual(item.item) }
+			}
 		};
 		~modifySource = {
 			var nextTime, time;
 			// get source indices
 			~items.collectIndices { |item, index| ~canStutter.(item, index) }
-			.keep(~numToAdd).scramble.do { |index|
+			.scramble.keep(~numToAdd).scramble.do { |index|
 				time = ~items[index].time;
 				nextTime = if(index < (~items.size - 1)) {
 					~items[index + 1].time
@@ -606,6 +609,7 @@ protect {
 			};
 			~items.sort { |a, b| a.time < b.time }
 		};
+		~makeStream = 0;  // ~seqStream is not used here
 		~snippet.("stutt", "\\stutt(##src, pool, numToAdd, quant, prob, insItem \"-\"##)");
 	}.import((clGenPitch: #[artic])) => PR(\clGenStutt);
 
