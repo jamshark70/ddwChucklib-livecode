@@ -276,9 +276,10 @@ PR(\abstractClParseNode).clone {
 		};
 	};
 
+	~hasItems = { ~children.any { |item| item.isSpacer.not } };
 	~streamCode = { |stream|
 		var needComma = false;
-		if(~children.notEmpty) {
+		if(~hasItems.()) {
 			if(~children[0][\time].isNil) { ~setTime.(~time, ~dur) };
 			// no array brackets: divider delimiters are for humans, not machines
 			~children.do { |item, i|
@@ -539,7 +540,7 @@ PR(\abstractClParseNode).clone {
 		if(~children[0][\time].isNil) { ~setTime.(~time, ~dur) };
 		stream << "[ ";
 		~children.do { |item, i|
-			if(item.children.size > 0) {
+			if(item.hasItems) {  // all items should be divider nodes
 				if(needComma) { stream << ", " };
 				item.streamCode(stream);
 				needComma = true;
