@@ -613,6 +613,27 @@ protect {
 		~snippet.("stutt", "\\stutt(##src, pool, numToAdd, quant, prob, insItem \"-\"##)");
 	}.import((clGenPitch: #[artic])) => PR(\clGenStutt);
 
+	PR(\clGenStutt).clone {
+		~defaultNames = #[baseItems, maxDur, insPool];
+		~defaults = [nil, 0.5, [(item: $x, time: 0)]];
+		~process = {
+			var lastEvent, localItems;
+			~items = ~getUpstreamItems.();
+			localItems = ~items.copy;
+			(localItems.collect(_.time) ++ [~time + ~dur]).do { |time, i|
+				if(lastEvent.notNil and: {
+					lastEvent[\initialRest] != true and: { time - lastEvent.time > ~maxDur }
+				}) {
+					~insertItem.((item: ~insStream.next, time: lastEvent.time + ~maxDur));
+				};
+				lastEvent = localItems[i];
+			};
+			~items
+		};
+		~protoID = \clGenChoke;
+		~snippet.("choke", "\\choke(##src, maxDur, pool##)");
+	}.import((clGenIns: #[insertItem])) => PR(\clGenChoke);
+
 	PR(\clGenIns).clone {
 		~superprep = ~prep;
 		~prep = {
