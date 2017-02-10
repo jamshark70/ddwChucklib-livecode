@@ -406,6 +406,11 @@ Proto {
 			~isMain = true;
 		} {
 			~parm = test.asSymbol;
+			if(~clClass.new(~objKey)[\parmMap][~parm].isNil) {
+				Error("BP(%) does not declare parameter %".format(
+					~objKey.asCompileString, ~parm.asCompileString
+				)).throw;
+			};
 			~isMain = (~parm == ~clClass.new(~objKey)[\defaultParm]);
 		};
 		// if the target object doesn't exist, we would already have thrown an error
