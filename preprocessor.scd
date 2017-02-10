@@ -2245,6 +2245,7 @@ Proto {
 				nil
 			});
 		};
+		BP(~collIndex)  // so that the BP appears in post window, not the clock
 	};
 	~setPhraseDur = { |phrase, dur|
 		~phraseDurs[phrase] = dur;
