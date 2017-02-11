@@ -588,6 +588,54 @@ protect {
 		~snippet.("artic", "\\artic(##src, articPool##)");
 	}.import((clGenPitch: #[artic])) => PR(\clGenArtic);
 
+	PR(\clGen).clone {
+		~prep = {
+			~srcParm = ~args[0];
+			~pool = ~args[1];
+			~srcBP = ~args[2] ?? { ~bpKey };
+			if(BP.exists(~srcBP)) {
+				// will throw DoesNotUnderstand if there's no defaultParm
+				if(~srcParm.isNil) { ~srcParm = BP(~srcBP).defaultParm };
+			} {
+				Error("\\unis: BP(%) doesn't exist".format(~srcBP.asCompileString)).throw;
+			};
+			currentEnvironment
+		};
+		~process = {
+			var srcBP, i, endTime = ~time + ~dur;
+			~items = ~getUpstreamItems.();
+			if(BP.exists(~srcBP)) {
+				srcBP = BP(~srcBP);
+				// lookup must be here: the parm index might be different in different phrases
+				i = ~getParmIndex.(srcBP, srcBP.lastPhrase, ~srcParm);
+				if(i.notNil) {
+					srcBP.phrases[srcBP.lastPhrase].pairs[i].source.pattern.list[0].cachedItems
+					.select { |item|
+						item[\time] >= ~time and: { item[\time] < endTime }
+					}
+					.do { |item|
+						// if no item already at the source's time slot
+						if(~items.detect { |x| x.time == item.time }.isNil) {
+							~insertItem.((item: ~pool.choose.item, time: item.time));
+						};
+					};
+				};
+			};
+			~items
+		};
+		~getParmIndex = { |srcBP, phrase, parm|
+			var i;
+			if(~srcParm == srcBP.defaultParm) {
+				1
+			} {
+				i = srcBP.phrases[phrase].pairs.indexOf(parm);
+				if(i.notNil) { i + 1 } { nil }
+			};
+		};
+		~protoID = \clGenUnis;
+		~snippet.("unis", "\\unis(##srcParm, pool, srcBP##)");
+	}.import((clGenIns: #[insertItem])) => PR(\clGenUnis);
+
 	// PR(\clGen).clone {
 	//
 	// } => PR(\clGenLeadTo);
