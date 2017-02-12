@@ -1627,64 +1627,78 @@ Proto {
 		~writeCode.();
 	};
 	~parseIDs = { |code|
-		var match = code.findRegexp("\\([A-Za-z0-9_:]+(/[A-Za-z0-9_:]+)*\\)");
-		if(match.size == 0) {
-			Error("clMake: Invalid IDs in parentheses").throw;
+		var stream = CollStream(code), ch, continue = true;
+		~ids = Array.new;
+		while { (ch = stream.next).notNil and: { ch != $( } };
+		if(ch != $() {
+			Error("clMake expected parentheses").throw;
 		};
-		match = match[0][1];
-		match = match[1 .. match.size - 2].split($/);
-		~ids = Array(match.size);
-		match.do { |str|
-			str = Func(\strTrim).eval(str);
-			if(str.size > 0) {
-				if(str.includes($:)) {
-					str = str.split($:).keep(2).collect { |item| Func(\strTrim).eval(item).asSymbol };
-					if(Fact.exists(str[0])) {
-						~ids.add(Association(*str));  // factKey -> bpKey
-					} {
-						Error("clMake: Fact(%) does not exist".format(str[0].asCompileString)).throw;
-					};
-				} {
-					str = str.asSymbol;
-					if(Fact.exists(str)) {
-						~ids.add(Association(str, Fact(str).v[\defaultName] ?? { str }));
-					} {
-						Error("clMake: Fact(%) does not exist".format(str.asCompileString)).throw;
-					};
-				};
-			};
+		while { continue } {
+			~ids = ~ids.add(~parseOne.(stream));
+			ch = stream.next;
+			case
+			{ ch == $/ } { continue = true }
+			{ ch.isNil or: { ch == $) } } { continue = false }
+			{ Error("clMake: invalid separator '%'".format(ch)).throw };
+		};
+		if(ch.isNil) {
+			Error("clMake: outer parentheses not closed").throw;
 		};
 		~ids
+	};
+	~parseOne = { |stream|
+		var fact, target, parms, ch, start, factory;
+		#fact, ch = ~parseWord.(stream);
+		if(Fact.exists(fact.asSymbol).not) {
+			Error("clMake: Fact('%') does not exist".format(fact)).throw;
+		};
+		if(ch == $:) {
+			#target, ch = ~parseWord.(stream);
+		};
+		if(ch == $() {
+			start = stream.pos;
+			\clParseBracketed.eval(stream, $(, false);
+			parms = stream.collection[start - 1 .. stream.pos - 1];
+		};
+		stream.pos = stream.pos - 1;
+		[
+			fact.asSymbol,
+			asSymbol(target ?? {
+				fact = fact.asSymbol;
+				if(Fact.exists(fact)) {
+					Fact(fact).v[\defaultName] ?? { fact }
+				} {
+					fact
+				}
+			}),
+			parms
+		]
+	};
+	~parseWord = { |stream|
+		var ch, str = String.new;
+		while { (ch = stream.next).notNil and: {
+			ch.isAlphaNum or: { ch == $_ }
+		} } {
+			str = str.add(ch);
+		};
+		[str, ch]
 	};
 	~writeCode = {
 		var out = CollStream.new;
 		~ids.do { |id, i|
-			if(out.pos > 0) {
-				out << ";\n";
-			};
-			if(Fact.exists(id.key)) {
-				out << "Fact(%) => %(%)".format(
-					id.key.asCompileString,
-					~classForFactoryType.(id.key),
-					id.value.asCompileString
+			if(Fact.exists(id[0])) {
+				if(out.pos > 0) {
+					out << ";\n";
+				};
+				out << "Fact(%).chuck(%(%)".format(
+					id[0].asCompileString,
+					~classForFactoryType.(id[0]),
+					id[1].asCompileString
 				);
-				// if(Fact(id).v[\defaultBP].notNil) {
-				// 	if(BP.exists(Fact(id).v[\defaultBP])) {
-				// 		out << ";\n%(%) => BP(%)".format(
-				// 			~classForFactoryType.(id),
-				// 			(Fact(id).v[\defaultName] ?? { id }).asCompileString,
-				// 			Fact(id).v[\defaultBP].asCompileString
-				// 		)
-				// 	} {
-				// 		"%(%) should go into BP(%), but it doesn't exists. Remember to => manually"
-				// 		.format(
-				// 			~classForFactoryType.(id),
-				// 			(Fact(id).v[\defaultName] ?? { id }).asCompileString,
-				// 			Fact(id).v[\defaultBP].asCompileString
-				// 		)
-				// 		.warn;
-				// 	};
-				// };
+				if(id[2].notNil) {
+					out << ", nil, " << id[2];
+				};
+				out << ")";
 			};
 		};
 		out.collection
