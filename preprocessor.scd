@@ -1989,6 +1989,12 @@ Event.default.copy.putAll((
 		p[key] = ProtoEvent(\noteArtic).v[key];
 	};
 	p => ProtoEvent(\modalPitchArtic);
+
+	p.copy.put(\freq, {
+		(~mode ?? { \default }).asMode.cps(~note.asFloat)
+	})
+	.put(\sustain, { ~length ?? { 1 } })
+	=> ProtoEvent(\modalNoteArtic);
 }.value;
 
 (
