@@ -2061,30 +2061,37 @@ Proto {
 	};
 
 	~valueForParm = { |event, parm, inEvent|
-		var dict, result;
+		var dict, result, convert;
 		if(~debug ?? { false }) { [event, parm, inEvent].debug(">> valueForParm") };
 		result = case
 		{ parm == \dur } { event }
 		{ ~parmIsPitch.(parm) } {
+			dict = ~parmMap[parm];
+			convert = dict.tryPerform(\at, \convertFunc) ?? { { |value| value } };
 			if(event.isKindOf(SequenceNote)) {
-				if(event.length <= 0.4) {
-					// this must be a function because ~dur is not populated yet!
-					inEvent[\sustain] = { min(0.15, ~dur * event.length) };
-				} {
-					inEvent[\legato] = event.length
-				};
-				// press args into service for accents, may change the spec later
-				if(event.args == \accent) {
-					inEvent[\accent] = true;
+				// only defaultParm should influence articulation
+				if(parm == ~defaultParm) {
+					if(event.length <= 0.4) {
+						// this must be a function because ~dur is not populated yet!
+						inEvent[\sustain] = { min(0.15, ~dur * event.length) };
+					} {
+						inEvent[\legato] = event.length
+					};
+					// press args into service for accents, may change the spec later
+					if(event.args == \accent) {
+						inEvent[\accent] = true;
+					};
 				};
 				// not asFloat: We already know this is a SeqNote, and asFloat breaks Rests here.
-				event.freq
+				convert.(event, inEvent)
 			} {
 				if(event == \rest or: { event.class == Char }) {
-					inEvent[\legato] = 0.9;
-					Rest(~parmMap[parm][\rest] ?? { 0 })
+					if(parm == ~defaultParm) {
+						inEvent[\legato] = 0.9;
+					};
+					convert.(Rest(~parmMap[parm][\rest] ?? { 0 }), inEvent)
 				} {
-					event
+					convert.(event, inEvent)
 				}
 			};
 		} {
