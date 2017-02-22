@@ -38,7 +38,13 @@ protect {
 			};
 			~process.();
 			if(~items.size > 0) {
-				~repository[~parm] = ~items.last;
+				if(~repository[~parm].isNil) {
+					// this happens only the first time the phrase is invoked in a new BP:
+					// if nothing on the downbeat, S&H the first real item
+					~repository[~parm] = ~items.first;
+				} {
+					~repository[~parm] = ~items.last;
+				};
 			};
 			~items
 		};
