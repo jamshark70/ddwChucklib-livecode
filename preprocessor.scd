@@ -2067,7 +2067,7 @@ Proto {
 		{ parm == \dur } { event }
 		{ ~parmIsPitch.(parm) } {
 			dict = ~parmMap[parm];
-			convert = dict.tryPerform(\at, \convertFunc) ?? { { |value| value } };
+			convert = dict.tryPerform(\at, \convertFunc);
 			if(event.isKindOf(SequenceNote)) {
 				// only defaultParm should influence articulation
 				if(parm == ~defaultParm) {
@@ -2083,16 +2083,15 @@ Proto {
 					};
 				};
 				// not asFloat: We already know this is a SeqNote, and asFloat breaks Rests here.
-				convert.(event, inEvent)
+				convert.(event, inEvent) ?? { event.freq }
 			} {
 				if(event == \rest or: { event.class == Char }) {
 					if(parm == ~defaultParm) {
 						inEvent[\legato] = 0.9;
 					};
-					convert.(Rest(~parmMap[parm][\rest] ?? { 0 }), inEvent)
-				} {
-					convert.(event, inEvent)
-				}
+					event = Rest(~parmMap[parm][\rest] ?? { 0 });
+				};
+				convert.(event, inEvent) ?? { event }
 			};
 		} {
 			dict = ~parmMap[parm];
