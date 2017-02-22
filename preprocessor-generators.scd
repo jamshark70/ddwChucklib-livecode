@@ -362,19 +362,18 @@ protect {
 				while {
 					i = i - 1;
 					i >= 0 and: {
-						~items[i].isKindOf(SequenceNote).not or: {
-							// in here, ~items[i] must be a SequenceNote
-							~items[i].freq.isRest
+						~items[i].item.isKindOf(SequenceNote).not or: {
+							// in here, ~items[i].item must be a SequenceNote
+							~items[i].item.freq.isRest
 						}
 					}
 				};
 				prev = ~items[i];
 				if(prev.isNil) {
-					prev = rrand(~fallbackMin, ~fallbackMax);
+					pitch = rrand(~fallbackMin, ~fallbackMax);
 				} {
-					prev = prev.item;
+					pitch = prev.item.asFloat + ~intervalPool.choose;
 				};
-				pitch = prev.asFloat + ~intervalPool.choose;
 				SequenceNote(pitch, nil, ~artic[~articPool.choose] ?? { 0.9 })
 			}.asStream;
 		};
