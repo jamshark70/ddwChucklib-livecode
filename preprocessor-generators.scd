@@ -607,7 +607,7 @@ protect {
 			currentEnvironment
 		};
 		~process = {
-			var srcBP, i, endTime = ~time + ~dur;
+			var srcBP, i, endTime = ~time + ~dur, new;
 			~items = ~getUpstreamItems.();
 			if(BP.exists(~srcBP)) {
 				srcBP = BP(~srcBP);
@@ -621,7 +621,12 @@ protect {
 					.do { |item|
 						// if no item already at the source's time slot
 						if(~items.detect { |x| x.time == item.time }.isNil) {
-							~insertItem.((item: ~pool.choose.item, time: item.time));
+							if(~pool.notNil) {
+								new = ~pool.choose.item
+							} {
+								new = item.item;
+							};
+							~insertItem.((item: new, time: item.time));
 						};
 					};
 				};
