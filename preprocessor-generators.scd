@@ -626,7 +626,7 @@ protect {
 							} {
 								new = item.item;
 							};
-							~insertItem.((item: new, time: item.time));
+							~insertItem.((item: new, time: item.time, initialRest: item[\initialRest]));
 						};
 					};
 				};
@@ -687,6 +687,52 @@ protect {
 		};
 		~snippet.("fork", "\\fork(##src, genString##)");
 	} => PR(\clGenFork);
+
+	PR(\clGen).clone {
+		~prep = {
+			var stream, thing;
+			~baseItems = ~args[0];
+			~list = Array.new;
+			~weights = Array.new;
+			stream = Pseq(~args, 1).drop(1).asStream;
+			thing = stream.next;
+			while { thing.notNil } {
+				if(thing.isSequenceableCollection) {
+					~list = ~list.add(thing);
+					thing = stream.next;
+					if(thing.isNumber) {
+						~weights = ~weights.add(thing);
+						thing = stream.next;  // always leave 'thing' at the next item
+					} {
+						~weights = ~weights.add(1);
+					};
+				} {
+					"Invalid item in \\oneof(), skipping".warn;
+				};
+			};
+			~weights = ~weights.normalizeSum;
+			currentEnvironment
+		};
+		~process = {
+			var str, end;
+			~items = ~getUpstreamItems.();
+			str = ~list.wchoose(~weights);
+			// any generators inside, provide source items within gen's timespan and evaluate
+			str = str.collect { |item|
+				if(item.tryPerform(\isClGen) ?? { false }) {
+					end = item.time + item.dur;
+					item.baseItems = ~items.select { |it|
+						it.time >= item.time and: { it.time < end }
+					};
+					item.process;
+				} {
+					item
+				};
+			};
+			~items = str.flatten(1);
+		};
+		~snippet.("oneof", "\\oneof(##src, genStrings/probs##)");
+	} => PR(\clGenOneof);
 
 	// \gen1(...)::\gen2(...)::\gen3(...)
 	// gen1 processed items -> gen2 processed items -> gen3
