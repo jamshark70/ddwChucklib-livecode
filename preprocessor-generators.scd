@@ -613,20 +613,22 @@ protect {
 				srcBP = BP(~srcBP);
 				// lookup must be here: the parm index might be different in different phrases
 				i = ~getParmIndex.(srcBP, srcBP.lastPhrase, ~srcParm);
-				if(i.notNil) {
+				if(i.notNil and: { srcBP.phrases[srcBP.lastPhrase].pairs[i].source.isKindOf(Pcollect) }) {
 					srcBP.phrases[srcBP.lastPhrase].pairs[i].source.pattern.list[0].cachedItems
 					.select { |item|
-						item[\time] >= ~time and: { item[\time] < endTime }
+						item[\initialRest] != true and: {
+							item[\time] >= ~time and: { item[\time] < endTime }
+						}
 					}
 					.do { |item|
 						// if no item already at the source's time slot
 						if(~items.detect { |x| x.time == item.time }.isNil) {
 							if(~pool.notNil) {
-								new = ~pool.choose.item
+								new = ~pool.choose.item;
 							} {
 								new = item.item;
 							};
-							~insertItem.((item: new, time: item.time, initialRest: item[\initialRest]));
+							~insertItem.((item: new, time: item.time));
 						};
 					};
 				};
