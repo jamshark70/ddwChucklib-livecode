@@ -26,6 +26,7 @@ protect {
 		};
 
 		~doProcess = {
+			var temp;
 			if(~repository.isNil) {
 				if(BP.exists(~bpKey)) {
 					if(BP(~bpKey)[\genRepository].notNil) {
@@ -34,6 +35,12 @@ protect {
 						~repository = IdentityDictionary.new;
 						BP(~bpKey)[\genRepository] = ~repository;
 					};
+				};
+				if(~repository[~parm].isNil and: {
+					temp = BP(~bpKey).parmMap[~parm].tryPerform(\at, \default);
+					temp.notNil
+				}) {
+					~repository[~parm] = (time: 0, item: temp);
 				};
 			};
 			~process.();
