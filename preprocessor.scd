@@ -1865,6 +1865,150 @@ Proto {
 	{ ev[\dur] }
 } => Func(\evLength);
 
+(
+// because I haven't properly modularized even one single component of
+// ProtoEvent(\voicerNote), I have to copy/paste the entire thing.
+(	timingOffset: 0,
+stretch: 1.0,
+midiNoteToFreq: #{ |notenum|
+	~mode.notNil.if({ ~mode.asMode.cpsFunc.value(notenum) },
+		{ notenum.midicps });
+},
+sustain: { ~length.value },
+
+prepNote: #{
+	var i, args, argval, thisEvent = currentEnvironment;
+	~newFreq = ~freq ?? { ~note.asFloat };
+	~mtranspose.notNil.if({ ~newFreq = ~newFreq + ~mtranspose });
+	(~midi ? false).not.if({ ~newFreq = ~newFreq.unmapMode(~mode.asMode) });
+	~ctranspose.notNil.if({ ~newFreq = ~newFreq + ~ctranspose });
+
+	~newFreq = ~midiNoteToFreq.value(~newFreq).asArray;
+	~dur = ~dur ?? { ~delta ?? { ~note.dur } };
+	~length = (~length ?? { ~note.length }).asArray;
+
+	// some patterns (e.g. Pfindur) might shorten the delta
+	// in which case length could be too long
+	// but this really applies only to MonoPortaVoicers,
+	// hence the adjust... test
+	if(~adjustLengthToRealDelta.value and: { ~dur != currentEnvironment.delta }) {
+		~length = ~length * currentEnvironment.delta / ~dur;
+	};
+
+	if(~args.isNil) {
+		~args = ~note.tryPerform(\args);
+		if(~args.isNil or: { ~args.isNumber }) {
+			~args = [];
+		} {
+			~args = ~args.flatten(1);
+		};
+	};
+	i = 0;	// args should be key value pairs, but might be an array of velocities
+	// drop pairs that are not \symbol, value
+	{ i < ~args.size }.while({
+		~args[i].isSymbol.not.if({
+			try { ~args.removeAt(i); ~args.removeAt(i); };
+			}, {
+				i = i + 2;	// should increment only if not removing an item
+		});
+	});
+	~gate = (~gate ?? { ~note.gate }).asArray;
+
+	// for args array to be valid (argName, value pairs), must have at least 2 items
+	(~args.size < 2).if({ ~args = nil });
+	if(~voicer.notNil) {
+		if(~nodes.isNil) {
+			~nodes = ~voicer.perform(
+				if(~forceNew == true) { \prGetNodes } { \prGetArticNodes },
+				max(~newFreq.size, max(~sustain.size, ~gate.size)),
+				thisThread.seconds
+			);
+		};
+		~voicer.setArgsInEvent(currentEnvironment);
+	};
+	~sendBass.();
+},
+sendBass: {
+	var thisEvent = currentEnvironment;
+	~bassID.notNil.if({
+		~note ?? { ~note = SequenceNote(~freq, ~dur, ~length[0], ~gate[0]) };
+		Library.put(~bassID, ~note);
+		// allow this thread to finish before alerting dependents
+		thisThread.clock.sched(0, { BP.changed(thisEvent[\bassID], thisEvent); });
+	});
+},
+
+play: #{
+	var	lag = ~lag ? 0,
+	timingOffset = ~timingOffset ? 0,
+	clock = ~clock,
+	voicer = ~voicer,
+	bundle, releaseGate;
+	if((currentEnvironment.tryPerform(\isRest) ? false).not) {
+		~prepNote.value;
+		~finish.value;	// user-definable
+		(~debug == true).if({
+			"\n".debug;
+			["voicerNote event", ~clock.beats, ~clock.tempo].debug;
+			currentEnvironment.collect({ |value| value.isFunction.not.if(value, nil) }).postcs;
+		});
+		releaseGate = (~releaseGate ? 0).asArray;
+		~nodes.do({ |node, i|
+			var	freq = ~newFreq.wrapAt(i), length = ~length.wrapAt(i);
+			Func(\schedEventBundleArray).doAction(lag, ~timingOffset, node.server,
+				node.server.makeBundle(false, {
+					if(~forceNew == true) {
+						node.trigger(freq, ~gate.wrapAt(i), ~args.wrapAt(i));
+					} {
+						voicer.prArticulate1(node, freq, nil, ~gate.wrapAt(i), ~args.wrapAt(i),
+							slur: ~accent != true, seconds: thisThread.seconds
+						);
+					};
+				})
+			);
+			if(length.notNil and: { length != inf }) {
+				node.releaseTime = thisThread.clock.beats2secs(
+					thisThread.beats + length + timingOffset
+				);
+				thisThread.clock.sched(length + timingOffset, {
+					voicer.releaseNode(node, freq, releaseGate.wrapAt(i),
+						lag + (node.server.latency ? 0));
+				});
+			} {
+				node.releaseTime = nil;  // nil length or inf = ok to be rearticulated
+			};
+		});
+	} {
+		~delta ?? { ~delta = ~dur ?? { ~note.dur } };
+	};
+},
+releaseNote: #{
+	var lag, timingOffset;
+	((~immediateOSC ? false) or: { ~voicer.target.server.latency.isNil }).if({
+		~voicer.release(~newFreq);
+		}, {
+			lag = ~lag ?? { 0 };
+			timingOffset = ~timingOffset ?? { 0 };
+			~voicer.release(~newFreq,
+				((lag + timingOffset) / (~clock ?? { thisThread.clock }).tempo) + ~voicer.target.server.latency);
+	});
+},
+
+adjustLengthToRealDelta: { ~voicer.isKindOfByName(\MonoPortaVoicer) },
+
+keysToPropagate: #[\voicer, \midi, \mode, \timingOffset, \argKeys, \immediateOSC]
+) => ProtoEvent(\voicerArticOverlap);
+
+ProtoEvent(\voicerArticOverlap).parent.copy.putAll((
+	superPlay: ProtoEvent(\voicerArticOverlap).v[\play],
+	play: { |server|
+		if(~voicer.notNil and: { currentEnvironment.isRest.not }) {
+			~superPlay.(server);
+			~voicer.releaseSustainingBefore(thisThread.seconds, ~voicer.nodes[0].server.latency);
+		};
+	}
+)) => ProtoEvent(\voicerArtic);
+);
 
 (
 Proto {
