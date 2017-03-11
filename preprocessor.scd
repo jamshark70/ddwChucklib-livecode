@@ -615,7 +615,7 @@ Proto {
 					{ $+ } { degree = degree + 0.1 }
 					{ $, } { degree = degree - 7 }
 					{ $' } { degree = degree + 7 }
-					{ $~ } { legato = 1.01 }
+					{ $~ } { legato = inf /*1.01*/ }
 					{ $_ } { legato = 0.9 }
 					{ $. } { legato = 0.4 }
 					{ $> } { accent = true }
@@ -2051,6 +2051,10 @@ Proto {
 		};
 		~stopCleanup = {
 			~clearHighlights.();
+			if(~event[\voicer].notNil) {
+				~event[\voicer].releaseSustainingBefore(thisThread.seconds,
+					Server.default.latency);
+			};
 			~userStopCleanup.();
 		};
 		if(~clock.isNil) { ~clock = TempoClock.default };

@@ -342,7 +342,7 @@ protect {
 	PR(\clGenSeq).clone {
 		~defaults = [[], [(item: $*)], #[-2, -1, 1, 2].collect({ |int| (item: int) }), 0, 7, "_"];
 		~argNames = #[baseItems, replaceItems, intervalPool, fallbackMin, fallbackMax, articPool];
-		~artic = ($~: 1.01, $_: 0.9, $.: 0.4);
+		~artic = ($~: inf /*1.01*/, $_: 0.9, $.: 0.4);
 		~doReset = false;
 		~prep = {
 			~argNames.do { |key, i|
