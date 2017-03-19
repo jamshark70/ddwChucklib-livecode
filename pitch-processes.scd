@@ -9,6 +9,7 @@ make: { |name|
 	BP(name).free;
 	PR(\abstractLiveCode).chuck(BP(name), nil, (
 		event: (eventKey: \default, type: \voicerArtic),
+		bassID: ~bassID,
 		defaultParm: \degree,
 		parmMap: (
 			degree: (isPitch: true),
@@ -100,7 +101,7 @@ PR(\arpeg1).clone {
 } => PR(\arpeg1LC);
 
 (
-bassID: nil,
+bassID: \bass,
 chords: \ch,
 child: \arpeg1LC,
 prKey: \chTop,
@@ -290,7 +291,7 @@ make: { |name|
 					parentEvent = (top: ev[\top], delta: ev[\dur], length: inf,
 						arpegType: \block, microRhythm: \blockFollow,
 						// these, fix later
-						bassID: \bass, updateOnBass: false,
+						bassID: ~bassID, updateOnBass: false,
 						convertTopFunc: \convertMode,
 						mode: ev[\mode]
 					);
