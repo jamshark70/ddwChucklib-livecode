@@ -56,6 +56,6 @@ PstepDurPair : Pstep {
 + Rest {
 	== { |that|
 		if(that.isKindOf(Rest).not) { ^false };
-		^(dur == that.dur)
+		^(this.value == that.value)
 	}
 }
