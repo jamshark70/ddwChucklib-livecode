@@ -26,7 +26,10 @@ make: { |name|
 					if(~bassID.notNil) {
 						Library.put(~bassID, ev[\degree] % mode.scale.size)
 					};
-					ev[\accent] = ev[\acc].notNil and: { ev[\acc] > 0 };
+					if(ev[\accent].isNil) {
+						ev[\accent] = ev[\acc].notNil and: { ev[\acc] > 0 };
+					};
+					ev[\acc] = ev[\accent].asInteger;  // synchronize accent from note vs sub-parameter
 				};
 				ev
 			}
@@ -84,7 +87,8 @@ PR(\arpeg1).clone {
 			\mode, (Pfunc({
 				~currentChord.modeForEvent(inEvent)
 			})),
-			\accent, Pseq([inEvent[\top][\accent] ?? { false }, Pn(false, inf)])
+			\accent, Pseq([inEvent[\top][\accent] ?? { false }, Pn(false, inf)]),
+			\acc, Pkey(\accent).collect(_.asInteger)
 		);
 			// note, argpairs will reset every chord
 			// if you want a stream not to reset, use BPStream in the argPairs array
@@ -173,7 +177,14 @@ make: { |name|
 						\length, BPStream(\length),
 						\gate, BPStream(\gate),
 						\mode, BPStream(\mode),
-						\accent, Pfunc { |ev| ev[\acc].notNil and: { ev[\acc] > 0 } }
+						\accent, Pfunc { |ev|
+							if(ev[\accent].isNil) {
+								ev[\acc].notNil and: { ev[\acc] > 0 }
+							} {
+								ev[\accent]
+							}
+						},
+						\acc, Pkey(\accent).collect(_.asInteger)
 					)
 				} {
 					"Phrase % not found in BP(%)".format(phrase, ~bpKey.asCompileString).warn;
@@ -321,7 +332,14 @@ make: { |name|
 					// }
 				}
 			},
-			\accent, Pfunc { |ev| ev[\acc].notNil and: { ev[\acc] > 0 } }
+			\accent, Pfunc { |ev|
+				if(ev[\accent].isNil) {
+					ev[\acc].notNil and: { ev[\acc] > 0 }
+				} {
+					ev[\accent]
+				}
+			},
+			\acc, Pkey(\accent).collect(_.asInteger)
 		).collect { |ev|
 			if(~argPairs.notNil) {
 				ev = ~argPairsStream.next(ev);
