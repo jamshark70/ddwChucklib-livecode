@@ -73,12 +73,27 @@ protect {
 			// out.postcs
 		};
 		~updateDeltas = {
-			var prevItem;
+			var prevItem, default;
 			if(BP.exists(~bpKey) and: { ~parm != BP(~bpKey).defaultParm }) {
 				if(~items.isEmpty) {
 					~deltas = [~dur];
 					prevItem = ~repository[~parm];
-					if(prevItem.notNil) { prevItem = prevItem.item };
+					if(prevItem.notNil) {
+						prevItem = prevItem.item
+					} {
+						default = BP(~bpKey).parmMap[~parm][\default];
+						if(default.notNil) {
+							prevItem = default
+						} {
+							// suppresses event
+							// but that's better than returning nil and stopping the process
+							// for politeness, tell the user what happened
+							"BP(%) parameter % has no items and no default; substituting \\rest"
+							.format(~bpKey.asCompileString, ~parm.asCompileString)
+							.warn;
+							prevItem = \rest
+						};
+					};
 					~items = [(item: prevItem, time: 0)];
 				} {
 					~deltas = (~items.collect(_[\time]) ++ ~dur).differentiate;
