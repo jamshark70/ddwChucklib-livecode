@@ -182,7 +182,7 @@ PR(\abstractClParseNode).clone {
 				numerator * 4 / denominator  // "1:4" --> 1 (qtr)
 			} {
 				// 1:3 = qtr-note triplet = 2/3 beat
-				numerator * (denominator.nextPowerOfTwo div: 2) / denominator
+				Rational(numerator * (denominator.nextPowerOfTwo div: 2) / denominator)
 			}
 		} -> "[\\-+]?[0-9]*\\.?[0-9]+([eE][\\-+]?[0-9]+)?:[0-9]+",
 		_.asFloat -> "[\\-+]?[0-9]*\\.[0-9]+([eE][\\-+]?[0-9]+)?",
@@ -201,7 +201,11 @@ PR(\abstractClParseNode).clone {
 		};  // else leave state variables nil
 	};
 	~streamCode = { |stream|
-		stream <<< ~value;
+		if(~value.isKindOf(Rational)) {
+			stream <<< ~value.numerator << "/" <<< ~value.denominator;
+		} {
+			stream <<< ~value;
+		};
 		currentEnvironment
 	};
 } => PR(\clNumberNode);
