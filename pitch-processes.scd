@@ -252,6 +252,7 @@ fit: \chordFitInt,
 bassID: \bass,
 chords: \ch,
 make: { |name|
+	var chords, mode;
 	BP(name).free;
 	PR(\arpeg1) => BP(name);
 	PR(\abstractLiveCode).canWrap = true;
@@ -371,8 +372,14 @@ make: { |name|
 			"BP(%): VC(%) is dead".format(~collIndex.asCompileString, vc.collIndex.asCompileString).warn;
 		};
 	};
-	if(MBM.exists(0) and: { MBM(0)[~chords].notNil }) {
-		MBM(0)[~chords] => BP(name);
+	if(MBM.exists(0)) {
+		chords = MBM(0)[~chords];
+		if(chords.notNil) {
+			mode = chords.tryPerform(\properties).tryPerform(\at, \mode) ?? { \default };
+			BP(name).event[\mode] = mode;
+			BP(name).child[\mode] = mode;
+			chords => BP(name);
+		};
 	};
 	BP(name)
 },
