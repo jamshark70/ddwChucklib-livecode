@@ -36,7 +36,10 @@ PstepDurPair : Pstep {
 		Class.initClassTree(AbstractChuckArray);
 		Class.initClassTree(Library);
 		Library.put(\cl, \path, this.filenameSymbol.asString.dirname);
-		Library.put(\cl, \files, ["preprocessor.scd", "preprocessor-generators.scd", "helper-funcs.scd"]);
+		Library.put(\cl, \files, [
+			"preprocessor.scd", "preprocessor-generators.scd",
+			"helper-funcs.scd", "pitch-processes.scd"
+		]);
 		Library.put(\cl, \extras, ["edit-gui.scd", "mobile-objects.scd"]);
 
 		{ |files|
