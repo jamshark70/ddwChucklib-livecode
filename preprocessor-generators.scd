@@ -718,7 +718,7 @@ protect {
 			~baseItems = ~args[0];
 			~list = Array.new;
 			~weights = Array.new;
-			stream = Pseq(~args, 1).drop(1).asStream;
+			stream = Pseq(~args.drop(1), 1).asStream;
 			thing = stream.next;
 			while { thing.notNil } {
 				if(thing.isSequenceableCollection) {
