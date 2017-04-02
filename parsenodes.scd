@@ -173,8 +173,20 @@ PR(\clStringNode).clone {
 
 PR(\abstractClParseNode).clone {
 	~types = [
-		Float -> "[\\-+]?[0-9]*\\.?[0-9]+([eE][\\-+]?[0-9]+)?",
-		Integer -> "(-[0-9]+|[0-9]+)"
+		// tuplet: float:divisor
+		{ |str|
+			var colon = str.indexOf($:),  // regexp guarantees ":" is there
+			numerator = str[ .. colon-1].asFloat,
+			denominator = str[colon+1 .. ].asInteger;
+			if(numerator == 1 and: { denominator.isPowerOfTwo }) {
+				numerator * 4 / denominator  // "1:4" --> 1 (qtr)
+			} {
+				// 1:3 = qtr-note triplet = 2/3 beat
+				numerator * (denominator.nextPowerOfTwo div: 2) / denominator
+			}
+		} -> "[\\-+]?[0-9]*\\.?[0-9]+([eE][\\-+]?[0-9]+)?:[0-9]+",
+		_.asFloat -> "[\\-+]?[0-9]*\\.[0-9]+([eE][\\-+]?[0-9]+)?",
+		_.asInteger -> "(-[0-9]+|[0-9]+)"
 	];
 	~parse = { |stream|
 		// hack into CollStream -- will fail with other IO streams
@@ -185,8 +197,12 @@ PR(\abstractClParseNode).clone {
 		};
 		if(match.notNil) {
 			~string = stream.nextN(match[1]);  // match[1] = length of match
-			~value = ~string.perform(("as" ++ type.key.name).asSymbol);
+			~value = type.key.value(~string);
 		};  // else leave state variables nil
+	};
+	~streamCode = { |stream|
+		stream <<< ~value;
+		currentEnvironment
 	};
 } => PR(\clNumberNode);
 
