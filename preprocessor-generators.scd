@@ -557,6 +557,65 @@ protect {
 		~snippet.("ins", "\\ins(##src, pool, numToAdd, quant##)");
 	} => PR(\clGenIns);
 
+	// quant is minimum duration to divide
+	// divisor is how many to split into
+	// divisible allows e.g. 1.5 times units
+	PR(\clGenIns).clone {
+		~superprep = ~prep;
+		~prep = {
+			~superprep.();
+			~divisor = ~args[4] ?? { 2 };
+			if(~divisor <= 1) {
+				Error("\\clGenDiv divisor must be >= 1.0").throw;
+			};
+			~divisible = ~args[5] ?? { ~quant };
+			currentEnvironment
+		};
+		// copy/paste, pshaw
+		~modifySource = {
+			var avail = ~getAvail.(~items, ~quant).scramble;
+			avail.size.do { |i|
+				var newTime = avail[i],
+				new;
+				// should be guaranteed but, protect against mistakes
+				if(newTime.notNil) {
+					new = ~poolStream.next;
+					if(new.notNil) {
+						~insertItem.((item: new, time: newTime));
+					};
+				};
+			};
+			~items
+		};
+		~getAvail = { |items, quant, tolerance = 0.001|
+			var durs = (items.collect(_.time) ++ ~dur).differentiate.drop(1),
+			avail, numToAdd,
+			blocks, testUnit = 0, blockDur, i;
+			avail = ~items.collect { |item| BP(~bpKey).valueIsRest(item.item, ~parm).not };
+			numToAdd = min(~numToAdd, avail.count { |bool| bool });
+			blocks = Array(~numToAdd);
+			blockDur = quant;
+			while { numToAdd > 0 and: { blockDur < ~dur } } {
+				i = durs.collectIndices { |dur, i| avail[i] and: { dur == blockDur } };
+				if(i.isEmpty) {
+					testUnit = testUnit + 1;
+					blockDur = quant + (~divisible * testUnit);
+				} {
+					i = i.choose;
+					avail[i] = false;
+					blocks.add(i);
+					numToAdd = numToAdd - 1;
+				};
+			};
+			// now get times for these indices
+			blockDur = (1 .. ~divisor - 1) / ~divisor;
+			blocks.collect { |i|
+				~items[i].time + (~getIndexDur.(i) * blockDur)
+			}.flat;
+		};
+		~snippet.("div", "\\div(##src, pool, numToAdd, quant, divisor, divisible##)");
+	} => PR(\clGenDiv);
+
 	// \stutt(source, pool, numToAdd, quant, prob, insItem "-")
 	// choose numToAdd of "pool" items and of these, add more items after it
 	PR(\clGenIns).clone {
