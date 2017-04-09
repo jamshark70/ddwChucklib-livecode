@@ -62,3 +62,7 @@ PstepDurPair : Pstep {
 		^(this.value == that.value)
 	}
 }
+
++ Object {
+	processRest {}
+}
