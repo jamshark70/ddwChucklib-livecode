@@ -38,6 +38,21 @@ functions may produce new content in every bar.
 
 Full documentation is in PDF form: https://github.com/jamshark70/chucklib-livecode/blob/master/cl-manual.pdf
 
+* Pitch support and Voicer
+I recently added some standardized pitch-playing process prototypes
+(as yet undocumented). These depend on new code added into the
+ddwVoicer quark. However, the new code is not as thoroughly tested, so
+I'm keeping it out of that quark's master branch. If you're feeling
+brave and you want to use them anyway, you should switch your local
+copy of ddwVoicer to the topic/rearticulation branch. If you've made a
+normal clone of ddwVoicer, you should be able to do it like this (but
+I don't have time to test at the moment):
+
+#+BEGIN_SRC 
+git fetch origin
+git checkout topic/rearticulation
+#+END_SRC
+
 * License
 
 chucklib-livecode is licensed this under Creative Commons CC-BY-NC-SA
