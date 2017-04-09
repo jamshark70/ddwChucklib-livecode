@@ -563,15 +563,29 @@ protect {
 	PR(\clGenIns).clone {
 		~superprep = ~prep;
 		~prep = {
-			~superprep.();
-			~divisor = ~args[4] ?? { 2 };
+			~baseItems = ~args[0];
+			~pool = ~args[1];
+			~replaceItems = ~args[2] ?? { ~pool };
+			~numToAdd = ~args[3] ?? { 1 };
+			~quant = ~args[4] ?? { 0.25 };
+			~divisor = ~args[5] ?? { 2 };
 			if(~divisor <= 1) {
 				Error("\\clGenDiv divisor must be >= 1.0").throw;
 			};
-			~divisible = ~args[5] ?? { ~quant };
+			~divisible = ~args[6] ?? { ~quant };
+			~replaceItems = ~replaceItems.collect(_.item);
+			~poolItems = ~pool.collect(_.item);
+			if(~poolItems.size > 0) {
+				~poolStream = Prand(~poolItems, inf).asStream;
+			};
 			currentEnvironment
 		};
 		// copy/paste, pshaw
+		~process = {
+			~items = ~getUpstreamItems.();
+			~modifySource.();
+			~items
+		};
 		~modifySource = {
 			var avail = ~getAvail.(~items, ~quant).scramble;
 			avail.size.do { |i|
@@ -579,7 +593,7 @@ protect {
 				new;
 				// should be guaranteed but, protect against mistakes
 				if(newTime.notNil) {
-					new = ~poolStream.next;
+					new = ~poolStream.next ?? { ~findPreviousForTime.(newTime) };
 					if(new.notNil) {
 						~insertItem.((item: new, time: newTime));
 					};
@@ -591,7 +605,9 @@ protect {
 			var durs = (items.collect(_.time) ++ ~dur).differentiate.drop(1),
 			avail, numToAdd,
 			blocks, testUnit = 0, blockDur, i;
-			avail = ~items.collect { |item| BP(~bpKey).valueIsRest(item.item, ~parm).not };
+			avail = ~items.collect { |item|
+				~replaceItems.isEmpty or: { ~replaceItems.includesEqual(item.item) }
+			};
 			numToAdd = min(~numToAdd, avail.count { |bool| bool });
 			blocks = Array(~numToAdd);
 			blockDur = quant;
@@ -613,7 +629,25 @@ protect {
 				~items[i].time + (~getIndexDur.(i) * blockDur)
 			}.flat;
 		};
-		~snippet.("div", "\\div(##src, pool, numToAdd, quant, divisor, divisible##)");
+		~findPreviousForTime = { |time|
+			var prev;  // optimization, don't scan back unless you have to
+			i = ~items.detectIndex { |item|
+				if(item.time >= time) {
+					true
+				} {
+					prev = item;
+					false
+				}
+			};
+			if(prev.notNil) {
+				prev.item
+			} {
+				// in theory this should never happen,
+				// because all 'avail' times should be > incoming event times
+				~items.first.item
+			}
+		};
+		~snippet.("div", "\\div(##src, pool, replaceItems, numToAdd, quant, divisor, divisible##)");
 	} => PR(\clGenDiv);
 
 	// \stutt(source, pool, numToAdd, quant, prob, insItem "-")
