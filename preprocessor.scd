@@ -1950,7 +1950,8 @@ play: #{
 		(~debug == true).if({
 			"\n".debug;
 			["voicerNote event", ~clock.beats, ~clock.tempo].debug;
-			currentEnvironment.collect({ |value| value.isFunction.not.if(value, nil) }).postcs;
+			currentEnvironment.collect({ |value| value.isFunction.not.if(value, nil) })
+			.parent_(nil).postcs;
 		});
 		releaseGate = (~releaseGate ? 0).asArray;
 		~nodes.do({ |node, i|
