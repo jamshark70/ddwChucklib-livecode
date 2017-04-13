@@ -728,6 +728,71 @@ protect {
 	}.import((clGenIns: #[insertItem])) => PR(\clGenChoke);
 
 	PR(\clGenIns).clone {
+		~prep = {
+			~baseItems = ~args[0];
+			~pool = ~args[1];
+			~quant = ~args[2] ?? { 0.25 };
+			~weights = ~args[3..];
+			if(~weights.last.isSymbol) {
+				~initRest = true;
+				~weights = ~weights.drop(-1);
+			} {
+				~initRest = false;
+			};
+			~weights = ~weights.normalizeSum;
+			~poolStream = Prand(~pool.collect(_.item), inf).asStream;
+			~availPat = Pseries(
+				~time,
+				Pconst(~dur, Pwrand(Array.series(~weights.size, ~quant, ~quant), ~weights, inf)),
+				inf
+			);
+			currentEnvironment
+		};
+		~modifySource = {
+			var avail = ~getAvail.(~items, ~quant), didInsertFirst = false;
+			avail.size.do { |i|
+				var newTime = avail[i],
+				new;
+				// should be guaranteed but, protect against mistakes
+				if(newTime.notNil) {
+					if(newTime == ~time and: { ~initRest and: { 0.5.coin } }) {
+						// this will always touch only the first item of this generator
+						if(~items[0].isNil) {
+							~insertItem.((item: \rest, time: newTime));
+						};  // else leave the existing item alone
+					} {
+						new = ~poolStream.next;
+						if(new.notNil) {
+							~insertItem.((item: new, time: newTime));
+							if(newTime == ~time) { didInsertFirst = true };
+						};
+					};
+				};
+			};
+			~items
+		};
+		~getAvail = { |items, quant|
+			// for now, just blow away existing items
+			// future: recursive testing to avoid existing items
+			~availPat.asStream.all;
+		};
+		~insertItem = { |new|
+			var insertI = ~items.detectIndex { |item| new[\time] <= item[\time] };
+			if(insertI.isNil) {
+				~items = ~items.add(new);
+			} {
+				if(new[\time] < ~items[insertI][\time]) {
+					~items = ~items.insert(insertI, new);
+				} {
+					~items[insertI] = new;
+				};
+			};
+			currentEnvironment
+		};
+		~snippet.("delta", "\\delta(##src, pool, quant, weights...##)");
+	} => PR(\clGenDelta);
+
+	PR(\clGenIns).clone {
 		~superprep = ~prep;
 		~prep = {
 			~superprep.();
