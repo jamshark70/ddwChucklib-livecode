@@ -110,6 +110,8 @@ Proto {
 // first: TEXTVIEW WRAPPERS for content change tracking
 
 Proto {
+	var ddwSnippets = 'DDWSnippets'.asClass;
+
 	~background = Color.white;
 	~stringColor = Color.black;
 	~markColor = Color(0.8, 0, 0);
@@ -189,6 +191,15 @@ Proto {
 			);
 		});
 		currentEnvironment
+	};
+	if(ddwSnippets.notNil) {
+		~keyDownAction = { |view, char, mod, unicode, keycode, key|
+			if(keycode == ddwSnippets.hotkeyCode and: {
+				mod bitAnd: ddwSnippets.hotkeyMods == ddwSnippets.hotkeyMods
+			}) {
+				ddwSnippets.makeGui(view);  // changes focus to GUI window
+			}
+		};
 	};
 	// DO NOT OVERRIDE
 	~prKeyUpAction = { |view, char, mod, unicode, keycode, key|
@@ -613,9 +624,9 @@ Proto {
 				~model.changed(\escKey);
 			};
 		};
-		~view.keyDownAction = e { |view, char, mods, unicode, keycode|
+		~view.keyDownAction = ~view[\keyDownAction].addFunc(e { |view, char, mods, unicode, keycode|
 			case
-			{ mods == 262144 and: { #[65361, 65363].includes(keycode) } } {
+			{ mods == 524288 and: { #[65361, 65363].includes(keycode) } } {
 				PR(\clNavJumpBrackets).jumpInTextView(view, keycode - 65362);
 				true
 			}
@@ -631,7 +642,7 @@ Proto {
 					true
 				};
 			};
-		};
+		});
 		currentEnvironment
 	};
 	~free = {
