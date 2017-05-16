@@ -102,10 +102,28 @@ PR(\arpeg1).clone {
 		};
 		~asPatternHook.(out) ?? { out };
 	};
+	~superPrepareSequence = ~prepareSequence;
+	~prepareSequence = { |buf, parms|
+		var result = ~superPrepareSequence.(buf, parms);
+		~mode ?? { ~mode = parms.atBackup(\mode, buf.properties, parms) ?? { \default } };
+		// put: do not remap MIDI notes
+		// retain the diatonic information as is
+		result.do { |ch| ch.put(\modeOverride, ~mode) };
+		result
+	};
+	~modeForChordObjects = { |buf, parms|
+		if(buf.properties.notNil) {
+			buf.properties.atBackup(\mode, parms, currentEnvironment)
+		} {
+			parms.atBackup(\mode, currentEnvironment)
+		}
+		?? { \default }
+	};
 } => PR(\arpeg1LC);
 
 (
 bassID: \bass,
+mode: nil,
 chords: \ch,
 child: \arpeg1LC,
 prKey: \chTop,
@@ -118,7 +136,7 @@ make: { |name|
 	BP(name).free;
 
 	buf = MBM(0)[~chords];
-	mode = buf.tryPerform(\properties).tryPerform(\at, \mode) ?? { \default };
+	mode = ~mode ?? { buf.tryPerform(\properties).tryPerform(\at, \mode) ?? { \default } };
 	p = \newCh.eval(name, ~child, ~prKey, buf, nil, 4, ~micro, ~arpeg, nil, mode);
 	p.child.argPairs = ~argPairs;
 	p.v.import((abstractLiveCode: #[setPattern, valueForParm, parmIsPitch, beatsPerBar,
