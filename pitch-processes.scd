@@ -269,10 +269,16 @@ make: { |name|
 fit: \chordFitInt,
 bassID: \bass,
 chords: \ch,
+mode: nil,  // use MIDIRecBuf's mode unless overridden here
 make: { |name|
 	var chords, mode;
 	BP(name).free;
+	// minor hack here. I don't want to override everything in arpeg1
+	// but I do need the mode handling from arpeg1LC. So, chuck and replace.
 	PR(\arpeg1) => BP(name);
+	#[prepareSequence, superPrepareSequence, modeForChordObjects].do { |key|
+		BP(name)[key] = PR(\arpeg1LC)[key];
+	};
 	PR(\abstractLiveCode).canWrap = true;
 	PR(\abstractLiveCode).chuck(BP(name), nil, (
 		event: (eventKey: \default, type: \voicerArtic),
@@ -393,7 +399,7 @@ make: { |name|
 	if(MBM.exists(0)) {
 		chords = MBM(0)[~chords];
 		if(chords.notNil) {
-			mode = chords.tryPerform(\properties).tryPerform(\at, \mode) ?? { \default };
+			mode = ~mode ?? { chords.tryPerform(\properties).tryPerform(\at, \mode) ?? { \default } };
 			BP(name).event[\mode] = mode;
 			BP(name).child[\mode] = mode;
 			chords => BP(name);
