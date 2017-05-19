@@ -409,14 +409,19 @@ make: { |name|
 },
 type: \bp) => Fact(\arpegBP);
 
+// helper function to auto-bind args from the VC object
 { |vc|
 	var temp, chain;
 	if(vc.exists) {
 		temp = vc.env[\argPairs].value(vc);
 		if(temp.notNil) {
+			if(~origDefaults.isNil) {
+				~origDefaults = ~defaults.copy;
+			};
 			case
 			{ ~defaults.isKindOf(Dictionary) } {
 				if(temp.isKindOf(SequenceableCollection)) {
+					~defaults = ~origDefaults.copy;
 					temp.pairsDo { |key, value|
 						~defaults.put(key, value);
 					}
@@ -429,10 +434,7 @@ type: \bp) => Fact(\arpegBP);
 				if(temp.isKindOf(SequenceableCollection)) {
 					temp = Pbind(*temp);
 				};
-				if(~origDefaults.isNil) {
-					~origDefaults = ~defaults;
-				};
-				~defaults = Pchain(~origDefaults, temp);
+				~defaults = Pchain(temp, ~origDefaults);
 			};
 		};
 		if(~child.notNil) {
