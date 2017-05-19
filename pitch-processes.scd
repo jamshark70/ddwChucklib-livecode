@@ -426,8 +426,7 @@ type: \bp) => Fact(\arpegBP);
 						~defaults.put(key, value);
 					}
 				} {
-					"BP(%) defaults are not compatible with VC(%) argPairs"
-					.format(~collIndex.asCompileString, vc.collIndex.asCompileString).warn;
+					~defaults = Pchain(temp, ~origDefaults);
 				}
 			}
 			{ ~defaults.isKindOf(Pattern) } {
