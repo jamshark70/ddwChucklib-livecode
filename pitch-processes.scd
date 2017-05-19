@@ -444,6 +444,12 @@ type: \bp) => Fact(\arpegBP);
 				};
 			};
 		};
+		temp = vc.env[\extraParms].value(vc);
+		if(temp.notNil) {
+			temp.keysValuesDo { |key, value|
+				key.envirPut(value);
+			};
+		};
 		currentEnvironment
 	} {
 		"BP(%): VC(%) is dead".format(~collIndex.asCompileString, vc.collIndex.asCompileString).warn;
