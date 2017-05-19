@@ -1,5 +1,53 @@
 // some reusable pitch-playing processes
 
+// defaults handling is quite complex
+// proc events can be an event or a pattern
+// voicer argPairs can override
+// then, setDefaults can override the override
+(
+Proto {
+	~noop = Pfunc { |ev| ev };
+	~prep = { |base, bpKey|
+		~base = base;
+		~voicerOverride = ~noop;
+		~override = PbindProxy.new;
+		if(BP.exists(bpKey)) { ~bpKey = bpKey };
+		currentEnvironment
+	};
+	~setDefault = { |key, value|
+		~override.set(key, value);
+		~setDefaultHook.(key, value);
+		currentEnvironment
+	};
+	~setVoicerParms = { |parms|
+		case
+		{ parms.isNil } {
+			parms = ~noop;
+			~setDefaultHook.();  // should handle nil
+		}
+		{ parms.isKindOf(SequenceableCollection) } {
+			parms.pairsDo { |key, value| ~setDefaultHook.(key, value); };
+			parms = Pbind(*parms);
+		};
+		~voicerOverride = parms;
+		currentEnvironment
+	};
+	~setDefaultHook = { |key, value|
+		if(~bpKey.notNil) {
+			BP(~bpKey).tryPerform(\setDefaultHook, key, value);
+		};
+	};
+	~asPattern = {
+		Pchain(
+			BPStream(\override),
+			BPStream(\voicerOverride),
+			BPStream(\base)
+		)
+	};
+	~asStream = { ~asPattern.().asStream };  // for BPStream, in parent
+} => PR(\clDefaults);
+);
+
 // basic melody
 (
 bassID: nil,
@@ -15,7 +63,10 @@ make: { |name|
 			degree: (isPitch: true),
 			acc: ($>: 1, $-: 0, $.: 0, default: $-/*, alias: \accent*/)
 		),
-		defaults: (mode: ~mode ?? { \default }, octave: ~octave ?? { 5 }),
+		defaults: PR(\clDefaults).copy.prep((
+			mode: ~mode ?? { \default },
+			octave: ~octave ?? { 5 }
+		)),
 		postDefaults: Pchain(
 			BPStream(\userPost),
 			Pfunc { |ev|
@@ -35,7 +86,9 @@ make: { |name|
 			}
 		),
 		userPost: Pfunc { |ev| ev },
-		bindVC: Func(\bindVC).v
+		bindVC: Func(\bindVC).v,
+		modeKeys: #[mode, root, scale, tuning, octave],
+		setDefault: { |key, value| ~defaults.setDefault(key, value) }
 	));
 }, type: \bp) => Fact(\melBP);
 
@@ -315,11 +368,11 @@ make: { |name|
 		),
 		// default event, hard to check if sus or legato changed
 		// stuff in dummy values before other processing
-		defaults: Pbind(
+		defaults: PR(\clDefaults).copy.prep(Pbind(
 			\nextChord, false,
 			\sustain, 0, \legato, 0, \skip, 2,
 			\mode, Pfunc { ~child[\mode] ?? { \default } },
-		),
+		)),
 		postDefaults: Pbind(
 			\nextChord, Pfunc { |ev|
 				var parentEvent;
@@ -405,6 +458,7 @@ make: { |name|
 			chords => BP(name);
 		};
 	};
+	BP(name).v.import((melBP: #[modeKeys, setDefault]));
 	BP(name)
 },
 type: \bp) => Fact(\arpegBP);
@@ -413,28 +467,8 @@ type: \bp) => Fact(\arpegBP);
 { |vc|
 	var temp, chain;
 	if(vc.exists) {
-		temp = vc.env[\argPairs].value(vc);
-		if(temp.notNil) {
-			if(~origDefaults.isNil) {
-				~origDefaults = ~defaults.copy;
-			};
-			case
-			{ ~defaults.isKindOf(Dictionary) } {
-				if(temp.isKindOf(SequenceableCollection)) {
-					~defaults = ~origDefaults.copy;
-					temp.pairsDo { |key, value|
-						~defaults.put(key, value);
-					}
-				} {
-					~defaults = Pchain(temp, ~origDefaults);
-				}
-			}
-			{ ~defaults.isKindOf(Pattern) } {
-				if(temp.isKindOf(SequenceableCollection)) {
-					temp = Pbind(*temp);
-				};
-				~defaults = Pchain(temp, ~origDefaults);
-			};
+		if(~defaults.respondsTo(\setVoicerParms)) {
+			~defaults.setVoicerParms(vc.env[\argPairs].value(vc));
 		};
 		if(~child.notNil) {
 			temp = vc.env[\extraChildParms].value(vc);
