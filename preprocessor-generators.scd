@@ -364,7 +364,9 @@ protect {
 	PR(\clGenSeq).clone {
 		~defaults = [[], [(item: $*)], #[-2, -1, 1, 2].collect({ |int| (item: int) }), 0, 7, "_"];
 		~argNames = #[baseItems, replaceItems, intervalPool, fallbackMin, fallbackMax, articPool];
-		~artic = ($~: inf /*1.01*/, $_: 0.9, $.: 0.4);
+		~artic = ($~: inf /*1.01*/, $_: 0.9, $.: 0.4,
+			$>: { |note| note.args = \accent; nil }  // don't change length
+		);
 		~doReset = false;
 		~prep = {
 			~argNames.do { |key, i|
@@ -380,7 +382,7 @@ protect {
 		};
 		~makeStream = {
 			~seqStream = Pfunc {
-				var i = ~currentIndex, pitch, prev;
+				var i = ~currentIndex, pitch, prev, new, newLen;
 				while {
 					i = i - 1;
 					i >= 0 and: {
@@ -396,7 +398,10 @@ protect {
 				} {
 					pitch = prev.item.asFloat + ~intervalPool.choose;
 				};
-				SequenceNote(pitch, nil, ~artic[~articPool.choose] ?? { 0.9 })
+				new = SequenceNote(pitch);
+				newLen = ~artic[~articPool.choose].value(new);  // > accent is a side effect
+				new.length = newLen ?? { 0.9 };  // we know new.length was nil, so we need this
+				new
 			}.asStream;
 		};
 		~snippet.("pitch", "\\pitch(##src, replaceItems, intervalPool, fallbackMin, fallbackMax, articPool##)");
@@ -409,7 +414,7 @@ protect {
 		~makeStream = {
 			~seqStream = Routine {
 				// first init only is from previous item
-				var pitch, prev, i;
+				var pitch, prev, i, new, newLen;
 				if(~connect > 0) {
 					// prev item might be a rest, if it's a placeholder from \ins
 					// so, scan backward through rests; normally this won't loop
@@ -428,7 +433,10 @@ protect {
 				loop {
 					pitch = prev.asFloat + ~intervalPool.choose;
 					prev = pitch;  // loop is always going forward
-					SequenceNote(pitch, nil, ~artic[~articPool.choose] ?? { 0.9 }).yield
+					new = SequenceNote(pitch);
+					newLen = ~artic[~articPool.choose].value(new);  // > accent is a side effect
+					new.length = newLen ?? { 0.9 };
+					new.yield
 				}
 			}
 		};
@@ -884,6 +892,9 @@ protect {
 		~prep = {
 			~baseItems = ~args[0];
 			~pool = ~args[1] ?? { "_" };
+			if(~pool.isString.not) {
+				Error("\\artic() invalid articPool").throw;
+			};
 			// Possible future feature
 			// ~durSplit = ~args[1];
 			// if(~durSplit.isNumber.not) {
@@ -896,10 +907,13 @@ protect {
 		~process = {
 			~items = ~getUpstreamItems.();
 			~items.collect { |item|
-				var artic;
+				var artic, new, newLen;
 				if(item.item.isKindOf(SequenceNote)) {
 					artic = ~pool.choose;
-					item.copy.put(\item, item.item.copy.length_(~artic[artic] ?? { ~artic[$_] }));
+					new = item.item.copy;
+					newLen = ~artic[artic].value(new);
+					if(newLen.notNil) { new.length = newLen };
+					item.copy.put(\item, new);
 				} {
 					item
 				};

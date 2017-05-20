@@ -341,9 +341,9 @@ PR(\abstractClParseNode).clone {
 		(type: \clRhythmGenNode, regexp: "^:[a-zA-Z0-9_]+\\(.*\\)"),
 		(type: \clGeneratorNode, regexp: "^\\\\[a-zA-Z0-9_]+\\(.*\\)"),
 		// more specific "" test must come first
-		(type: \clStringNode, regexp: "^\"[._~]+\"",
+		(type: \clStringNode, regexp: "^\"[._~>]+\"",
 			match: { ~isPitch ?? { false } },
-			endTest: { |ch| "~_.\"".includes(ch).not }
+			endTest: { |ch| "~_.>\"".includes(ch).not }
 		),
 		(type: \clPatStringNode, regexp: "^\".*\""),
 		(type: \clNumberNode, regexp: "^-?[0-9]"),
