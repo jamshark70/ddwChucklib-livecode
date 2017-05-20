@@ -8,10 +8,18 @@
 Proto {
 	~noop = Pfunc { |ev| ev };
 	~prep = { |base, bpKey|
-		~base = base;
+		// BP(bpKey) may not exist yet
+		~base = if(base.isPattern and: { BP.exists(bpKey) }) {
+			Plazy {
+				Penvir(BP(bpKey).v, base, false)  // not independent, use real BP environment
+			}
+		} {
+			base
+		};
 		~voicerOverride = ~noop;
-		~override = PbindProxy.new;
-		if(BP.exists(bpKey)) { ~bpKey = bpKey };
+		~override = PbindProxy.new.quant_(0);
+		~voicerPostArgs = ~noop;
+		~bpKey = bpKey;
 		currentEnvironment
 	};
 	~setDefault = { |key, value|
@@ -19,7 +27,7 @@ Proto {
 		~setDefaultHook.(key, value);
 		currentEnvironment
 	};
-	~setVoicerParms = { |parms|
+	~setVoicerParms = { |parms, post|
 		case
 		{ parms.isNil } {
 			parms = ~noop;
@@ -29,16 +37,31 @@ Proto {
 			parms.pairsDo { |key, value| ~setDefaultHook.(key, value); };
 			parms = Pbind(*parms);
 		};
+		case
+		{ post.isNil } {
+			post = ~noop;
+			~setDefaultHook.();  // should handle nil
+		}
+		{ post.isKindOf(SequenceableCollection) } {
+			post.pairsDo { |key, value| ~setDefaultHook.(key, value); };
+			post = Pbind(*post);
+		};
+		if(BP.exists(~bpKey)) {
+			parms = Penvir(BP(~bpKey).v, parms, false);  // not independent, use real BP environment
+			post = Penvir(BP(~bpKey).v, post, false);
+		};
 		~voicerOverride = parms;
+		~voicerPostArgs = post;
 		currentEnvironment
 	};
 	~setDefaultHook = { |key, value|
-		if(~bpKey.notNil) {
-			BP(~bpKey).tryPerform(\setDefaultHook, key, value);
+		if(BP.exists(~bpKey)) {
+			BP(~bpKey).v.tryPerform(\setDefaultHook, key, value);
 		};
 	};
 	~asPattern = {
 		Pchain(
+			BPStream(\voicerPostArgs),
 			BPStream(\override),
 			BPStream(\voicerOverride),
 			BPStream(\base)
@@ -66,7 +89,7 @@ make: { |name|
 		defaults: PR(\clDefaults).copy.prep((
 			mode: ~mode ?? { \default },
 			octave: ~octave ?? { 5 }
-		)),
+		), name),
 		postDefaults: Pchain(
 			BPStream(\userPost),
 			Pfunc { |ev|
@@ -372,7 +395,7 @@ make: { |name|
 			\nextChord, false,
 			\sustain, 0, \legato, 0, \skip, 2,
 			\mode, Pfunc { ~child[\mode] ?? { \default } },
-		)),
+		), name),
 		postDefaults: Pbind(
 			\nextChord, Pfunc { |ev|
 				var parentEvent;
@@ -468,7 +491,10 @@ type: \bp) => Fact(\arpegBP);
 	var temp, chain;
 	if(vc.exists) {
 		if(~defaults.respondsTo(\setVoicerParms)) {
-			~defaults.setVoicerParms(vc.env[\argPairs].value(vc));
+			~defaults.setVoicerParms(
+				vc.env[\argPairs].value(vc),
+				vc.env[\postArgs].value(vc)
+			);
 		};
 		if(~child.notNil) {
 			temp = vc.env[\extraChildParms].value(vc);
