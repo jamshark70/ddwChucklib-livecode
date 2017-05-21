@@ -41,6 +41,14 @@ PstepDurPair : Pstep {
 			"helper-funcs.scd", "pitch-processes.scd"
 		]);
 		Library.put(\cl, \extras, ["edit-gui.scd", "mobile-objects.scd"]);
+		if(File.exists(Quarks.folder +/+ "ddwLivecodeInstruments")) {
+			Library.put(\cl, \instr, (Quarks.folder +/+ "ddwLivecodeInstruments/*.scd").pathMatch);
+			{
+				(Quarks.folder +/+ "ddwLivecodeInstruments/*.scd").pathMatch.do { |path|
+					path.loadPath
+				};
+			} => Func(\loadClInstr);
+		};
 
 		{ |files|
 			var dir = Library.at(\cl, \path);
@@ -49,7 +57,7 @@ PstepDurPair : Pstep {
 
 		{ \loadClFiles.eval(Library.at(\cl, \files)) } => Func(\loadCl);
 		{ \loadClFiles.eval(Library.at(\cl, \extras)) } => Func(\loadClExtras);
-		{ #[loadCl, loadClExtras].do(_.eval) } => Func(\loadAllCl);
+		{ #[loadCl, loadClExtras, loadClInstr].do(_.eval) } => Func(\loadAllCl);
 	}
 }
 
