@@ -1654,6 +1654,11 @@ Proto {
 		};
 		if(ch == $:) {
 			#target, ch = ~parseWord.(stream);
+			if(target.isEmpty) {
+				"clMake: empty target name for Fact(%), reverting to default"
+				.format(fact.asSymbol.asCompileString).warn;
+				target = nil;
+			};
 		};
 		if(ch == $() {
 			start = stream.pos;
