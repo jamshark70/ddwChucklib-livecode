@@ -1689,7 +1689,8 @@ Proto {
 		[str, ch]
 	};
 	~writeCode = {
-		var out = CollStream.new;
+		var out = CollStream.new,
+		lastWasVoicer = false;
 		~ids.do { |id, i|
 			if(Fact.exists(id[0])) {
 				if(out.pos > 0) {
@@ -1704,6 +1705,10 @@ Proto {
 					out << ", nil, " << id[2];
 				};
 				out << ")";
+				if(lastWasVoicer and: { Fact(id[0]).type == \bp }) {
+					out << ";\nVC(%) => BP(%)".format(~ids[i-1][1].asCompileString, id[1].asCompileString);
+				};
+				lastWasVoicer = Fact(id[0]).isVoicer;
 			};
 		};
 		out.collection
