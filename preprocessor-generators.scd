@@ -68,7 +68,13 @@ protect {
 		~getUpstreamItems = { |key(\baseItems)|
 			var out;
 			// ">> % getUpstreamItems".format(~protoID).debug;
-			out = key.envirGet.asArray.collect { |item| item.value }.flatten(1);
+			out = key.envirGet.asArray
+			.collect { |item| item.value }
+			.flatten(1)
+			.collect { |item|
+				if(item[\wildcard].isNil) { item[\wildcard] = item[\item] };
+				item
+			};
 			// "<< % getUpstreamItems".format(~protoID).debug;
 			// out.postcs
 		};
@@ -520,7 +526,7 @@ protect {
 				if(newTime.notNil) {
 					new = ~poolStream.next;
 					if(new.notNil) {
-						~insertItem.((item: new, time: newTime));
+						~insertItem.((item: new, wildcard: new, src: \ins, time: newTime));
 					};
 				};
 			};
@@ -603,7 +609,8 @@ protect {
 				if(newTime.notNil) {
 					new = ~poolStream.next ?? { ~findPreviousForTime.(newTime) };
 					if(new.notNil) {
-						~insertItem.((item: new, time: newTime));
+						// I am not sure about wildcard: new
+						~insertItem.((item: new, wildcard: new, src: \div, time: newTime));
 					};
 				};
 			};
@@ -689,7 +696,7 @@ protect {
 			}
 		};
 		~modifySource = {
-			var nextTime, time;
+			var nextTime, time, new;
 			// get source indices
 			~items.collectIndices { |item, index| ~canStutter.(item, index) }
 			.scramble.keep(~numToAdd).scramble.do { |index|
@@ -704,7 +711,8 @@ protect {
 					time < nextTime
 				} {
 					if(~prob.coin) {
-						~items = ~items.add((item: ~insStream.value(index), time: time));
+						new = ~insStream.value(index);
+						~items = ~items.add((item: new, wildcard: new, src: \stutt, time: time));
 					};
 				};
 			};
@@ -718,14 +726,15 @@ protect {
 		~defaultNames = #[baseItems, maxDur, insPool];
 		~defaults = [nil, 0.5, [(item: $x, time: 0)]];
 		~process = {
-			var lastEvent, localItems;
+			var lastEvent, localItems, new;
 			~items = ~getUpstreamItems.();
 			localItems = ~items.copy;
 			(localItems.collect(_.time) ++ [~time + ~dur]).do { |time, i|
 				if(lastEvent.notNil and: {
 					lastEvent[\initialRest] != true and: { time - lastEvent.time > ~maxDur }
 				}) {
-					~insertItem.((item: ~insStream.next, time: lastEvent.time + ~maxDur));
+					new = ~insStream.next;
+					~insertItem.((item: new, wildcard: new, src: \choke, time: lastEvent.time + ~maxDur));
 				};
 				lastEvent = localItems[i];
 			};
@@ -771,7 +780,7 @@ protect {
 					} {
 						new = ~poolStream.next;
 						if(new.notNil) {
-							~insertItem.((item: new, time: newTime));
+							~insertItem.((item: new, wildcard: new, src: \delta, time: newTime));
 							if(newTime == ~time) { didInsertFirst = true };
 						};
 					};
@@ -895,6 +904,10 @@ protect {
 			if(~pool.isString.not) {
 				Error("\\artic() invalid articPool").throw;
 			};
+			~wildcards = ~args[2];
+			if(~wildcards.notNil) {
+				~wildcards = ~wildcards.collect(_.item);
+			};
 			// Possible future feature
 			// ~durSplit = ~args[1];
 			// if(~durSplit.isNumber.not) {
@@ -908,7 +921,9 @@ protect {
 			~items = ~getUpstreamItems.();
 			~items.collect { |item|
 				var artic, new, newLen;
-				if(item.item.isKindOf(SequenceNote)) {
+				if(item.item.isKindOf(SequenceNote) and: {
+					~wildcards.isNil or: { ~wildcards.includes(item.wildcard) }
+				}) {
 					artic = ~pool.choose;
 					new = item.item.copy;
 					newLen = ~artic[artic].value(new);
@@ -957,7 +972,7 @@ protect {
 							} {
 								new = item.item;
 							};
-							~insertItem.((item: new, time: item.time));
+							~insertItem.((item: new, wildcard: new, src: \unis, time: item.time));
 						};
 					};
 				};
