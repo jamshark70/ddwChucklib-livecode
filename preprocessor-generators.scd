@@ -934,7 +934,7 @@ protect {
 				};
 			};
 		};
-		~snippet.("artic", "\\artic(##src, articPool##)");
+		~snippet.("artic", "\\artic(##src, articPool, wildcards##)");
 	}.import((clGenPitch: #[artic])) => PR(\clGenArtic);
 
 	PR(\clGen).clone {
