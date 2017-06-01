@@ -207,6 +207,36 @@ protect {
 		if('DDWSnippets'.asClass.notNil) {
 			~snippet = { |key, value| 'DDWSnippets'.asClass.put(key, value) };
 		};
+
+		// articulation support; not all generators will use this,
+		// but inheritance is complex enough, just put it here
+		~artic = ($~: inf /*1.01*/, $_: 0.9, $.: 0.4,
+			$>: { |note| note.args = \accent; nil }  // don't change length
+		);
+		~checkArticPool = { |pool|
+			// for now, shortcut, assume Association's key is \accent
+			// because there is no other usage currently
+			pool.do { |item|
+				if(~artic[item.value].isNil) {
+					Error("Invalid articulation pool").throw;
+				};
+			};
+			true
+		};
+		~applyArtic = { |artic, note|
+			var item = artic.tryPerform(\key), didCopy = false;
+			if(item.notNil) {
+				note = note.copy.args_(item);
+				didCopy = true;
+			};
+			item = ~artic[artic.value];
+			if(item.notNil) {
+				if(didCopy.not) { note = note.copy };
+				note.length = item;
+			};
+			if(note.length.isNil) { note.length = 0.9 };
+			note
+		};
 	}, parentKeys: #[canEmbed, protoID, isClGen, patternStringKeys, patternStringFuncs])
 	.import((clPatternSet: #[decodePitch])) => PR(\clGen);
 
@@ -370,20 +400,14 @@ protect {
 	PR(\clGenSeq).clone {
 		~defaults = [[], [(item: $*)], #[-2, -1, 1, 2].collect({ |int| (item: int) }), 0, 7, "_"];
 		~argNames = #[baseItems, replaceItems, intervalPool, fallbackMin, fallbackMax, articPool];
-		~artic = ($~: inf /*1.01*/, $_: 0.9, $.: 0.4,
-			$>: { |note| note.args = \accent; nil }  // don't change length
-		);
 		~doReset = false;
 		~prep = {
 			~argNames.do { |key, i|
 				key.envirPut(~args[i] ?? { ~defaults[i] });
 			};
-			if(~articPool.isString.not) {
-				Error("\\pitch() invalid articPool").throw;
-			};
+			~checkArticPool.(~articPool);  // throws error on failure
 			~replaceItems = ~replaceItems.collect { |item| item.item };
 			~intervalPool = ~intervalPool.collect { |item| item.item.asFloat };
-			~articPool = ~articPool.reject(_ == $");
 			currentEnvironment
 		};
 		~makeStream = {
@@ -405,8 +429,7 @@ protect {
 					pitch = prev.item.asFloat + ~intervalPool.choose;
 				};
 				new = SequenceNote(pitch);
-				newLen = ~artic[~articPool.choose].value(new);  // > accent is a side effect
-				new.length = newLen ?? { 0.9 };  // we know new.length was nil, so we need this
+				new = ~applyArtic.(~articPool.choose, new);
 				new
 			}.asStream;
 		};
@@ -440,8 +463,7 @@ protect {
 					pitch = prev.asFloat + ~intervalPool.choose;
 					prev = pitch;  // loop is always going forward
 					new = SequenceNote(pitch);
-					newLen = ~artic[~articPool.choose].value(new);  // > accent is a side effect
-					new.length = newLen ?? { 0.9 };
+					new = ~applyArtic.(~articPool.choose, new);
 					new.yield
 				}
 			}
@@ -901,9 +923,7 @@ protect {
 		~prep = {
 			~baseItems = ~args[0];
 			~pool = ~args[1] ?? { "_" };
-			if(~pool.isString.not) {
-				Error("\\artic() invalid articPool").throw;
-			};
+			~checkArticPool.(~pool);
 			~wildcards = ~args[2];
 			if(~wildcards.notNil) {
 				~wildcards = ~wildcards.collect(_.item);
@@ -926,8 +946,7 @@ protect {
 				}) {
 					artic = ~pool.choose;
 					new = item.item.copy;
-					newLen = ~artic[artic].value(new);
-					if(newLen.notNil) { new.length = newLen };
+					new = ~applyArtic.(artic, new);
 					item.copy.put(\item, new);
 				} {
 					item

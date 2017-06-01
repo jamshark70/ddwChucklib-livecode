@@ -171,6 +171,68 @@ PR(\clStringNode).clone {
 	};
 }.import((clPatternSet: #[decodePitch])) => PR(\clEventStringNode);
 
+PR(\clStringNode).clone {
+	~artic = "_.~";
+	~accent = ">";
+	~parse = { |stream|
+		var ch;
+		ch = stream.next;
+		if(~accent.includes(ch)) {
+			~accented = true;
+			ch = stream.next;
+			~checkArtic.(ch, stream);
+		} {
+			~checkArtic.(ch, stream);
+		};
+		currentEnvironment
+	};
+	~checkArtic = { |ch, stream|
+		case
+		{ ~artic.includes(ch) } {
+			~char = ch;
+			ch
+		}
+		{ ~accent.includes(ch) or: { ch == $" } } {
+			~char = nil;  // special case (also valid for terminating quote)
+			stream.pos = stream.pos - 1;  // >~ is 2 chars; >> is two things of one char each
+		}
+		{
+			Error("Articulation pool: Bad character $%".format(ch)).throw;
+		}
+	};
+	~streamCode = { |stream|
+		if(~accented == true) {
+			stream << "\\accent -> " <<< ~char;
+		} {
+			stream <<< ~char;
+		};
+		currentEnvironment
+	};
+} => PR(\clArticNode);
+
+PR(\clStringNode).clone {
+	~parse = { |stream|
+		var ch;
+		while {
+			ch = stream.peek;
+			ch.notNil and: { ~endTest.(ch).not }
+		} {
+			~children = ~children.add(PR(\clArticNode).copy.prep(stream));
+		};
+		stream.next;  // eat the last quote
+		~children
+	};
+	~streamCode = { |stream|
+		stream << "[";
+		~children.do { |item, i|
+			if(i > 0) { stream << ", " };
+			item.streamCode(stream);
+		};
+		stream << "]";
+		currentEnvironment
+	};
+} => PR(\clArticPoolNode);
+
 PR(\abstractClParseNode).clone {
 	~types = [
 		// tuplet: float:divisor
@@ -341,9 +403,9 @@ PR(\abstractClParseNode).clone {
 		(type: \clRhythmGenNode, regexp: "^:[a-zA-Z0-9_]+\\(.*\\)"),
 		(type: \clGeneratorNode, regexp: "^\\\\[a-zA-Z0-9_]+\\(.*\\)"),
 		// more specific "" test must come first
-		(type: \clStringNode, regexp: "^\"[._~>]+\"",
+		(type: \clArticPoolNode, regexp: "^\"[._~>]+\"",
 			match: { ~isPitch ?? { false } },
-			endTest: { |ch| "~_.>\"".includes(ch).not }
+			pre: { |stream| stream.next }  // stringnodes assume you've already dropped the opening quote
 		),
 		(type: \clPatStringNode, regexp: "^\".*\""),
 		(type: \clNumberNode, regexp: "^-?[0-9]"),
@@ -385,7 +447,7 @@ PR(\abstractClParseNode).clone {
 		// stream.collection[stream.pos .. stream.pos + 10].debug(">> parseArg");
 		type = ~types.detect { |entry|
 			(entry[\match].value ?? { true }) and: {
-				entry[\regexp].matchRegexp(stream.collection, stream.pos);
+				entry[\regexp].matchRegexp(stream.collection, stream.pos)
 			}
 		};
 		if(type/*.debug("type")*/.notNil) {
@@ -399,7 +461,7 @@ PR(\abstractClParseNode).clone {
 			};
 			new.prep(stream, currentEnvironment);
 		} {
-			Error("Syntax error in % arg list".format(~name)).throw;
+			Error("Syntax error in % arg list, at '%'".format(~name, stream.collection[stream.pos .. stream.pos + 10])).throw;
 		};
 		ch = stream.next;
 		if(ch == $,) { ~skipSpaces.(stream) } {
@@ -408,7 +470,6 @@ PR(\abstractClParseNode).clone {
 		// new.listVars; "<< parseArg".debug;
 		new
 	};
-//PR('clGenTest').copy.putAll((bpKey: 'x', args: [[$., $., $., $.]], dur: 4.0, isPitch: false, isMain: true, parm: 'a')).prep
 
 	~streamCode = { |stream|
 		var name = ~children[0].string;
