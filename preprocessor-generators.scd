@@ -224,17 +224,23 @@ protect {
 			true
 		};
 		~applyArtic = { |artic, note|
-			var item = artic.tryPerform(\key), didCopy = false;
-			if(item.notNil) {
-				note = note.copy.args_(item);
-				didCopy = true;
+			var didCopy = false, item;
+			if(note.isKindOf(SequenceNote)) {
+				item = artic.tryPerform(\key);
+				if(item.notNil) {
+					note = note.copy.args_(item);
+					didCopy = true;
+				};
+				item = ~artic[artic.value];
+				if(item.notNil) {
+					if(didCopy.not) { note = note.copy };
+					note.length = item;
+				};
+				if(note.length.isNil) { note.length = 0.9 };
+			} {
+				"Generator tried to apply articulation '%' to '%'"
+				.format(artic, note).warn;
 			};
-			item = ~artic[artic.value];
-			if(item.notNil) {
-				if(didCopy.not) { note = note.copy };
-				note.length = item;
-			};
-			if(note.length.isNil) { note.length = 0.9 };
 			note
 		};
 	}, parentKeys: #[canEmbed, protoID, isClGen, patternStringKeys, patternStringFuncs])
@@ -519,9 +525,9 @@ protect {
 				};
 				if(~isPitch ?? { false }) {
 					if(~getIndexDur.(~currentIndex) <= ~staccDur) {
-						new.length = ~artic[$.];
+						~applyArtic.($., new);
 					} {
-						new.length = ~artic[$_];
+						~applyArtic.($_, new);
 					};
 				};
 				new
@@ -702,7 +708,7 @@ protect {
 				{ |srcIndex| // will only be called internally
 					var new = ~items[srcIndex].item;
 					if(~isPitch ?? { false }) {
-						new.length = ~artic[$.];  // all stuttered notes should be staccato
+						~applyArtic.($., new);  // all stuttered notes should be staccato
 					};
 					new
 				}
