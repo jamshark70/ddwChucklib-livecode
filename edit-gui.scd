@@ -364,7 +364,7 @@ Proto {
 		while { looking and: { pos >= 0 } } {
 			if(str[pos] == $/) {
 				match = cl.statements.detect { |assn|
-					cl.replaceRegexpMacros(assn.value).matchRegexp(str, pos + 1)
+					str.findRegexpAt(cl.replaceRegexpMacros(assn.value), pos + 1).notNil
 				};
 				if(match.notNil) {
 					looking = false;
