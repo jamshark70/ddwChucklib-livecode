@@ -710,7 +710,7 @@ protect {
 				{ |srcIndex| // will only be called internally
 					var new = ~items[srcIndex].item;
 					if(~isPitch ?? { false }) {
-						~applyArtic.($., new);  // all stuttered notes should be staccato
+						new = ~applyArtic.($., new);  // all stuttered notes should be staccato
 					};
 					new
 				}
@@ -722,7 +722,9 @@ protect {
 		~defaults = [nil, Error("Must specify pool"), 1, 0.25, 0.75, nil];
 		~canStutter = { |item, index|
 			item[\initialRest] != true and: {
-				~poolItems.isEmpty or: { ~poolItems.includesEqual(item.item) }
+				~getIndexDur.(index) >= (2 * ~quant) and: {
+					~poolItems.isEmpty or: { ~poolItems.includesEqual(item.item) }
+				}
 			}
 		};
 		~modifySource = {
@@ -730,6 +732,7 @@ protect {
 			// get source indices
 			~items.collectIndices { |item, index| ~canStutter.(item, index) }
 			.scramble.keep(~numToAdd).scramble.do { |index|
+				var didAdd = false;
 				time = ~items[index].time;
 				nextTime = if(index < (~items.size - 1)) {
 					~items[index + 1].time
@@ -743,7 +746,11 @@ protect {
 					if(~prob.coin) {
 						new = ~insStream.value(index);
 						~items = ~items.add((item: new, wildcard: new, src: \stutt, time: time));
+						didAdd = true;
 					};
+				};
+				if(didAdd and: { ~isPitch ?? { false } }) {
+					~items[index].item = ~applyArtic.($., ~items[index].item);
 				};
 			};
 			~items.sort { |a, b| a.time < b.time }
