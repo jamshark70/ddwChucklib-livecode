@@ -527,7 +527,9 @@ protect {
 					if(~getIndexDur.(~currentIndex) <= ~staccDur) {
 						new = ~applyArtic.($., new);
 					} {
-						new = ~applyArtic.($_, new);
+						if(new.length.isNil) {
+							new = ~applyArtic.($_, new);
+						};
 					};
 				};
 				new
