@@ -525,9 +525,9 @@ protect {
 				};
 				if(~isPitch ?? { false }) {
 					if(~getIndexDur.(~currentIndex) <= ~staccDur) {
-						~applyArtic.($., new);
+						new = ~applyArtic.($., new);
 					} {
-						~applyArtic.($_, new);
+						new = ~applyArtic.($_, new);
 					};
 				};
 				new
@@ -992,7 +992,7 @@ protect {
 					.do { |item|
 						// if no item already at the source's time slot
 						if(~items.detect { |x| x.time == item.time }.isNil) {
-							if(~pool.notNil) {
+							if(~pool.size > 0) {
 								new = ~pool.choose.item;
 							} {
 								new = item.item;
