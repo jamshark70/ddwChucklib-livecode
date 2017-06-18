@@ -1,6 +1,15 @@
 
 // common helper funcs
 Library.put(\clLivecode, \setupbars, \addToDoc, Main.versionAtLeast(3, 7) and: { Platform.ideName == "scqt" });
+// when GUI window is front, /bars.(...) should NOT affect current document
+Library.put(\clLivecode, \setupbars, \guiIsFront, false);
+
+{
+	Library.at(\clLivecode, \setupbars, \addToDoc) ?? { false }
+	and: {
+		not(Library.at(\clLivecode, \setupbars, \guiIsFront) ?? { false })
+	}
+} => Func(\clBarFuncMayAddToDoc);
 
 { |key, n(4), prefix("m")|
 	var phrases = [[prefix], (0 .. n-1)].flop.collect(_.join),
@@ -8,7 +17,7 @@ Library.put(\clLivecode, \setupbars, \addToDoc, Main.versionAtLeast(3, 7) and: {
 	phrases.do { |phrase, i|
 		\chucklibLiveCode.eval("/%.% = \"\";".format(key, phrase)).interpret;
 	};
-	if(Library.at(\clLivecode, \setupbars, \addToDoc) ? false) {
+	if(\clBarFuncMayAddToDoc.eval) {
 		stepForward = PR(\clPatternToDoc)[\stepForward];
 		if(stepForward.isNil) {
 			stepForward = PR(\clPatternToDoc).checkStepForward;
