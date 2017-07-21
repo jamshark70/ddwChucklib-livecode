@@ -213,11 +213,16 @@ protect {
 		~artic = ($~: inf /*1.01*/, $_: 0.9, $.: 0.4,
 			$>: { |note| note.args = \accent; nil }  // don't change length
 		);
+		~isValidArtic = { |artic|
+			~artic[artic.value].notNil or: {
+				artic.tryPerform(\key) == \accent
+			}
+		};
 		~checkArticPool = { |pool|
 			// for now, shortcut, assume Association's key is \accent
 			// because there is no other usage currently
 			pool.do { |item|
-				if(~artic[item.value].isNil) {
+				if(~isValidArtic.(item).not) {
 					Error("Invalid articulation pool").throw;
 				};
 			};
@@ -406,6 +411,9 @@ protect {
 	PR(\clGenSeq).clone {
 		~defaults = [[], [(item: $*)], #[-2, -1, 1, 2].collect({ |int| (item: int) }), 0, 7, "_"];
 		~argNames = #[baseItems, replaceItems, intervalPool, fallbackMin, fallbackMax, articPool];
+		~artic = ($~: inf /*1.01*/, $_: 0.9, $.: 0.4,
+			$>: { |note| note.args = \accent; nil }  // don't change length
+		);
 		~doReset = false;
 		~prep = {
 			~argNames.do { |key, i|
@@ -414,6 +422,7 @@ protect {
 			~checkArticPool.(~articPool);  // throws error on failure
 			~replaceItems = ~replaceItems.collect { |item| item.item };
 			~intervalPool = ~intervalPool.collect { |item| item.item.asFloat };
+			~articPool = ~articPool.reject(_ == $");
 			currentEnvironment
 		};
 		~makeStream = {
@@ -543,6 +552,9 @@ protect {
 			~baseItems = ~args[0];
 			~pool = ~args[1];
 			~numToAdd = ~args[2] ?? { 1 };
+			if(~numToAdd.isNumber.not) {
+				Error("numToAdd '%' is not a number".format(~numToAdd)).throw;
+			};
 			~quant = ~args[3] ?? { 0.25 };
 			~poolStream = Prand(~pool.collect(_.item), inf).asStream;
 			currentEnvironment
@@ -611,6 +623,9 @@ protect {
 			~pool = ~args[1];
 			~replaceItems = ~args[2] ?? { ~pool };
 			~numToAdd = ~args[3] ?? { 1 };
+			if(~numToAdd.isNumber.not) {
+				Error("numToAdd '%' is not a number".format(~numToAdd)).throw;
+			};
 			~quant = ~args[4] ?? { 0.25 };
 			~divisor = ~args[5] ?? { 2 };
 			if(~divisor <= 1) {
