@@ -1635,7 +1635,6 @@ Proto {
 		};
 		while { continue } {
 			~ids = ~ids.add(~parseOne.(stream));
-			ch = stream.next;
 			case
 			{ ch == $/ } { continue = true }
 			{ ch.isNil or: { ch == $) } } { continue = false }
@@ -1664,8 +1663,9 @@ Proto {
 			start = stream.pos;
 			\clParseBracketed.eval(stream, $(, false);
 			parms = stream.collection[start - 1 .. stream.pos - 1];
+		} {
+			stream.pos = stream.pos - 1;
 		};
-		stream.pos = stream.pos - 1;
 		[
 			fact.asSymbol,
 			asSymbol(target ?? {
