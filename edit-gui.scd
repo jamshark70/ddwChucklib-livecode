@@ -290,9 +290,10 @@ Proto {
 	~string = "";
 	~pos = 0;
 	~existing = false;
+	~doHighlighting = true;  // PR(\clGuiString).doHighlighting = false before making the GUI
 
 	~prep = {
-		if(~objKey.notNil and: { ~phrase.notNil }) {
+		if(~doHighlighting and: { ~objKey.notNil and: { ~phrase.notNil } }) {
 			NotificationCenter.register(
 				~objKey.asSymbol, ~phrase.asSymbol, currentEnvironment,
 				e { |highlight(false)|
