@@ -1635,8 +1635,9 @@ Proto {
 		};
 		while { continue } {
 			~ids = ~ids.add(~parseOne.(stream));
+			ch = stream.peek;
 			case
-			{ ch == $/ } { continue = true }
+			{ ch == $/ } { continue = true; stream.next }
 			{ ch.isNil or: { ch == $) } } { continue = false }
 			{ Error("clMake: invalid separator '%'".format(ch)).throw };
 		};
