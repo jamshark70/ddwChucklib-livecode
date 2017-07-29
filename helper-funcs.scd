@@ -11,11 +11,12 @@ Library.put(\clLivecode, \setupbars, \guiIsFront, false);
 	}
 } => Func(\clBarFuncMayAddToDoc);
 
-{ |key, n(4), prefix("m")|
+{ |key, n(4), prefix("m"), meters|
 	var phrases = [[prefix], (0 .. n-1)].flop.collect(_.join),
 	stepForward, pos;
+	meters = meters.asArray;
 	phrases.do { |phrase, i|
-		\chucklibLiveCode.eval("/%.% = \"\";".format(key, phrase)).interpret;
+		\chucklibLiveCode.eval("/%.% = %\"\";".format(key, phrase, meters.wrapAt(i) ?? { "" })).interpret;
 	};
 	if(\clBarFuncMayAddToDoc.eval) {
 		stepForward = PR(\clPatternToDoc)[\stepForward];
