@@ -84,7 +84,7 @@ this.preProcessor = { |code|
 					// and the following code matches the set-pattern template,
 					// parse accordingly
 					start = code.pos - 2;  // for all cl statement types
-					if("^[A-Za-z0-9_]+(\\.[A-Za-z0-9_]+)*[ 	]*=[ 	]*\\\""
+					if("^[A-Za-z0-9_]+(\\.[A-Za-z0-9_]+)*[ 	]*=[ 	]*[0-9/]*\\\""
 						.matchRegexp(code.collection, code.pos - 1)
 					) {
 						while {
@@ -140,6 +140,7 @@ this.preProcessor = { |code|
 // assumes "open" already read
 { |code, open, patString(false)|
 	var brak = "()[]{}", i = brak.indexOf(open), close, wrongClose, ch, ch2;
+	var savePos = code.pos;
 	if(i.notNil) {
 		close = brak[i+1];
 		wrongClose = brak[1, 3..].reject(_ == close);
@@ -186,6 +187,7 @@ this.preProcessor = { |code|
 
 { |code, quote($")|
 	var escaped = false, ch, pos = code.pos;
+	var savePos = code.pos;
 	while {
 		ch = code.next;
 		ch.notNil and: { escaped or: { ch != quote } }
@@ -198,6 +200,7 @@ this.preProcessor = { |code|
 
 { |code|
 	var ch;
+	var savePos = code.pos;
 	while {
 		ch = code.next;
 		ch.notNil and: { ch != $" }
@@ -216,6 +219,7 @@ this.preProcessor = { |code|
 
 { |code, patString(false)|
 	var ch;
+	var savePos = code.pos;
 	// ["[a-zA-Z0-9_]+\\(", code.collection[code.pos ..]].debug("check gen");
 	if("[a-zA-Z0-9_]+\\(".matchRegexp(code.collection, code.pos)) {
 		while { (ch = code.next) != $( };
@@ -230,6 +234,7 @@ this.preProcessor = { |code|
 // assumes we've already read the slash-star
 { |code|
 	var ch, ch2, continue = true;
+	var savePos = code.pos;
 	while { (ch = ch2 ?? { code.next }).notNil and: { continue } } {
 		ch2 = nil;
 		switch(ch)
