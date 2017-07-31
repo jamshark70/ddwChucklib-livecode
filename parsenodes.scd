@@ -823,7 +823,7 @@ PR(\abstractClParseNode).clone {
 // set nodeType tags
 current = thisProcess.nowExecutingPath.basename;
 PR.all.do { |pr|
-	if(pr.path.basename == current) {
+	if(pr.path.tryPerform(\basename) == current) {
 		pr.v[\nodeType] = pr.collIndex;
 	};
 };
