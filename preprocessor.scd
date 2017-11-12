@@ -192,7 +192,7 @@ this.preProcessor = { |code|
 		ch = code.next;
 		ch.notNil and: { escaped or: { ch != quote } }
 	} {
-		if(ch == $\\) { escaped = true } { escaped = false };
+		if(ch == $\\ and: { escaped.not }) { escaped = true } { escaped = false };
 	};
 	if(ch.isNil) { Error("Unclosed quote " ++ quote ++ " : " ++ code.collection[max(0, pos - 20) .. pos + 20]).throw };
 	ch
