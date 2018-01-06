@@ -1881,7 +1881,8 @@ Proto {
 	{ ev[\dur] }
 } => Func(\evLength);
 
-(
+{
+var defaultParent = Event.default.parent;
 // because I haven't properly modularized even one single component of
 // ProtoEvent(\voicerNote), I have to copy/paste the entire thing.
 (	timingOffset: 0,
@@ -1924,8 +1925,8 @@ prepNote: #{
 	{ i < ~args.size }.while({
 		~args[i].isSymbol.not.if({
 			try { ~args.removeAt(i); ~args.removeAt(i); };
-			}, {
-				i = i + 2;	// should increment only if not removing an item
+		}, {
+			i = i + 2;	// should increment only if not removing an item
 		});
 	});
 	~gate = (~gate ?? { ~note.gate }).asArray;
@@ -2003,11 +2004,11 @@ releaseNote: #{
 	var lag, timingOffset;
 	((~immediateOSC ? false) or: { ~voicer.target.server.latency.isNil }).if({
 		~voicer.release(~newFreq);
-		}, {
-			lag = ~lag ?? { 0 };
-			timingOffset = ~timingOffset ?? { 0 };
-			~voicer.release(~newFreq,
-				((lag + timingOffset) / (~clock ?? { thisThread.clock }).tempo) + ~voicer.target.server.latency);
+	}, {
+		lag = ~lag ?? { 0 };
+		timingOffset = ~timingOffset ?? { 0 };
+		~voicer.release(~newFreq,
+			((lag + timingOffset) / (~clock ?? { thisThread.clock }).tempo) + ~voicer.target.server.latency);
 	});
 },
 
@@ -2021,11 +2022,34 @@ ProtoEvent(\voicerArticOverlap).parent.copy.putAll((
 	play: { |server|
 		if(~voicer.notNil and: { currentEnvironment.isRest.not }) {
 			~superPlay.(server);
+		};
+		if(currentEnvironment[\initialRest] != true) {
 			~voicer.releaseSustainingBefore(thisThread.seconds, ~voicer.nodes[0].server.latency);
 		};
 	}
 )) => ProtoEvent(\voicerArtic);
-);
+
+defaultParent.copy.put(\play, {
+	var tempo, server, eventTypes, parentType;
+
+	parentType = ~parentTypes[~type];
+	parentType !? { currentEnvironment.parent = parentType };
+
+	server = ~server = ~server ? Server.default;
+
+	~finish.value(currentEnvironment);
+
+	tempo = ~tempo;
+	tempo !? { thisThread.clock.tempo = tempo };
+
+	if(currentEnvironment.isRest.not or: { #[voicerArtic, voicerArticOverlap].includes(~type) }) {
+		eventTypes = ~eventTypes;
+		(eventTypes[~type] ?? { eventTypes[\note] }).value(server)
+	};
+
+	~callback.value(currentEnvironment);
+}) => ProtoEvent(\defaultPassRests);
+}.value;
 
 (
 Proto {
