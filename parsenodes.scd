@@ -414,13 +414,27 @@ PR(\abstractClParseNode).clone {
 			openDelimiter: $', closeDelimiter: $',
 			pre: { |stream| stream.next }  // drop ` intro
 		),
+		(type: \clChainNode, regexp: "^::",
+			pre: { |stream| stream.nextN(2) },  // drop ::
+			// chain node needs to get the first sub-generator at prep time
+			// also the chain replaces the last-parsed sub-generator
+			parseSpecial: { |new, stream|
+				if(~children.last.nodeType == \clGeneratorNode) {
+					new.prep(stream, currentEnvironment, ~children.last);
+					~children = ~children.drop(-1);  // last is subsumed into 'new'
+					new
+				} {
+					Error("'::' syntax is valid between two generators only").throw;
+				};
+			}
+		),
 		(type: \clStringNode, regexp: "^,",  // empty arg
 			endTest: { |ch| ch == $, }
-		)
+		),
 	];
 	~extras = #[endTest, openDelimiter, closeDelimiter];
 	~parse = { |stream|
-		var name, ch;
+		var name, ch, newArg;
 		// stream.collection[stream.pos .. stream.pos + 10].debug(">> clGeneratorNode");
 		if(stream.peek == $\\) { stream.next };
 		name = ~getID.(stream);
@@ -433,7 +447,11 @@ PR(\abstractClParseNode).clone {
 				ch.notNil and: { ch != $) }
 			} {
 				stream.pos = stream.pos - 1;
-				~children = ~children.add(~parseArg.(stream));
+				// note: it is now not valid to collapse to ~children.add(~parseArg.(stream))
+				// because ~parseArg will modify ~children if it encounters a chain node
+				// ~parseArg must finish before determining the receiver of 'add'
+				newArg = ~parseArg.(stream);
+				~children = ~children.add(newArg);
 			};
 			// if(ch.notNil) { stream.pos = stream.pos - 1 };
 		} {
@@ -459,7 +477,11 @@ PR(\abstractClParseNode).clone {
 					new.put(key, type[key]);
 				};
 			};
-			new.prep(stream, currentEnvironment);
+			if(type[\parseSpecial].notNil) {
+				type[\parseSpecial].value(new, stream);
+			} {
+				new.prep(stream, currentEnvironment);
+			};
 		} {
 			Error("Syntax error in % arg list, at '%'".format(~name, stream.collection[stream.pos .. stream.pos + 10])).throw;
 		};
