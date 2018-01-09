@@ -256,6 +256,98 @@ practice, you can read the rhythm directly from the ASCII notation.
   rhythms. After every change, reevaluate the line. This is the basic
   process of improvising with /cll/.
 
+** Generators
+#+begin_figure
+#+NAME: drums2
+#+caption: Generators for drums.
+#+BEGIN_SRC {SuperCollider} -i
+/hhh/tsn/dk+
+
+// A
+/tsn = "\ins(" - -", ".", 2, 0.25)";
+
+// B
+/tsn = "\ins(" - -", ".", 2, 0.5)";
+
+// C
+/tsn = "\ins(" - -", ".", 2, 0.5)::\shift(, ".", 2, 0.25)";
+
+// D
+/hhh = "\ins("", "-", 1, 0.5)::\ins(, ".", 7, 0.5)";
+
+// E
+/hhh = "\ins(".", "-", 1, 0.5)::\ins(, ".", 6, 0.5)";
+
+// F
+/hhh = "\ins(".", "-", 1, 0.5)::\ins(, ".", 6, 0.5)::\ins(, ".", 2, 0.25)";
+
+// G
+/hhh = "\fork("", "|\ins(, "-", 1, 0.5)||x")::\ins(, ".", 7, 0.5)::\ins(, ".", 2, 0.25)";
+
+/hhh/tsn/dk-
+#+END_SRC
+#+end_figure
+
+/Cll/ can also generate new materials algorithmically. (The Quick
+start guide can provide only a brief demonstration, not complete
+documentation. See Section [[Generators]] for more detail.)
+
+Generators take a given pattern string as their initial input, and
+modify it by inserting, deleting or replacing entries. (The initial
+pattern string can be empty, by the way.) A few basic functions are:
+
+- =\ins("string", "item pool", number, quant)=: Insert /number/ new
+  items, randomly chosen from the /item pool/, at rhythmic intervals
+  given by /quant/ (e.g. 0.25 = quarter beats = 16th-notes).
+- =\shift("string", "item pool", number, quant)=: Locate /number/ of
+  the items in /item pool/, and shift them earlier or later by the
+  rhythmic value given by /quant/.
+- I will expand this list later.
+
+For example, the snare drum would benefit from some ghost notes, and
+it's more fun if they change from bar to bar. We could insert them
+into any open 16th-note (Listing [[drums2]], example A). But if you
+play this long enough, eventually you will hear some bars with too
+many 8th-notes. This sounds stilted. It would be better to force the
+ghost notes onto off-beat 16ths. An easy way to do that is to place
+the ghost notes onto 8th-notes (B), and then shift them (C). Note the
+=::= syntax. This creates a /generator chain/, where the result of the
+first generator feeds into the first input of the second. (Because the
+chain provides the source string for =\shift()=, you don't need to
+write a source---but you still need the comma.)
+
+For hi-hats, a musically sensible way to operate is to place one or
+more open hats, and then fill the remaining spaces with closed hats
+(D). Here too, eventually you will run into a musical problem: an open
+hat on the downbeat sounds awkward. Instead, you can place a closed
+hat explicitly in the first slot (E), "protecting" that space from
+insertion. (The example adjusts the number of closed hats to insert at
+the end, from 7 to 6. While formally correct, it isn't necessary in
+the performance. =\ins()= will add as many as it can, and not complain
+if it doesn't reach the requested number.) Finally, for some more
+spice, you can add a few 16th-notes.
+
+Another way to "protect" part of the bar from a generator is to
+=\fork()= it. =\fork()= takes a source string, and another string
+placing generators in specific parts of the bar. In example G, the
+fork string places an =\ins()= on beat 2, and follows it with an =x=
+on beat 4. The =\ins()=, then, cannot operate before beat 2, and the
+=x= ends the =\ins()= generator's range of influence. So the open hat
+can be inserted in positions 2, 2.5, 3 and 3.5 (not including 4, which
+belongs to =x=). =x= is not a generator, so it does nothing in the
+context of =\fork()= except delimit time. After the =fork()=, the
+remaining generators operate on the whole bar, as before. This is an
+important technique to control the time over which generators may take
+effect.
+
+It isn't very useful for drums, but a typical generator usage is to
+insert wildcards (usually =*= or =@=) to define the rhythm, and then
+replace them using a number of generators inspired by SuperCollider
+patterns: =\seq()=, =\rand()=, =\shuf()=, =\wrand()= and such. These
+are more useful when you have a larger number of possible items to
+choose from
+
+** TODO Pitched notes
 
 
 * Process prototype
