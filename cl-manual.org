@@ -83,8 +83,9 @@ Thanks are due to:
   the inspiration for /cll/ syntax.
 
 * Installation
-/cll/ requires SuperCollider 3.7 or later. (It is released using the
-Quarks v2 system, which is not supported prior to SC 3.7.)
+/cll/ requires SuperCollider 3.7 or later, and recommends v3.9+. (It
+is released using the Quarks v2 system, which is not supported prior
+to SC 3.7.)
 
 ** Installation with /git/
 If you have installed the /git/ version-control system on your
@@ -93,6 +94,10 @@ extensions. Simply evaluate
 =Quarks.install("ddwChucklib-livecode")=. If there are no error
 messages, recompile the class library and you should be ready to
 proceed.
+
+Optionally, also evaluate =Quarks.install("ddwLivecodeInstruments")=
+to install a pack of ready-to-play instruments. These are used in the
+Quick start guide ([[Quick start]]).
 
 ** Installation without /git/
 If you haven't installed /git/ or don't want to, you can download the
@@ -109,9 +114,7 @@ ZIP.
 - ddwTemperament: https://github.com/jamshark70/ddwTemperament
 - ddwVoicer: https://github.com/jamshark70/ddwVoicer
 - crucial-library: https://github.com/crucialfelix/crucial-library@tags/4.1.5
-
-Additionally, ddwVoicer (https://github.com/jamshark70/ddwVoicer) is
-not strictly required, but is useful for instrumental sounds.
+- [optional] ddwLiveCodeInstruments: https://github.com/jamshark70/ddwLivecodeInstruments
 
 1. In the SC IDE, go to File $\to$ /Open user support directory/.
 
@@ -121,7 +124,8 @@ not strictly required, but is useful for instrumental sounds.
 3. Unpack all the ZIP files into the directory. After this, you should have:
    - =downloaded-quarks/ddwChucklib=
    - =downloaded-quarks/ddwPrototype=
-   - ... and so on.
+   - ... and so on. If there is a =-master= suffix on the directory
+     names, please remove it.
 
 4. In SC, run the statement
    =Quarks.install("ddwChucklib-livecode")=. If it doesn't find the
@@ -144,6 +148,116 @@ want the preprocessor in every SC session. Once you load the
 environment, the preprocessor is active until the next time you
 recompile the class library.
 
+* Quick start
+First, if you didn't install the optional =ddwLivecodeInstruments=
+quark, please do so now. Without these, you will have to learn the
+mechanics of creating a live-coding process before playing any
+music. See section [[Installation]] for details.
+
+When starting a new session, run =\loadAllCl.eval= first.
+
+=ddwLivecodeInstruments= provides a set of standard electronic drums,
+and several synthesizers for pitched notes.
+
+** Drums
+#+begin_figure
+#+name: drums1
+#+caption: A quick techno-ish drumset.
+#+BEGIN_SRC {SuperCollider} -i
+\loadAllCl.eval;
+TempoClock.tempo = 124/60;
+
+/hh.(\hardhh);
+/hhh = ".-.-.-.-";
+/hhh+
+
+/drum.(\tightsnr);
+/tsn = " - -";
+/tsn+
+
+/drum.(\deepkick);
+/dk = "o| o| _o |";
+/dk+
+
+// mixing board
+/makeEmptyMixer8.();
+/hhh => MCG(0);
+/tsn => MCG(1);
+/dk => MCG(2);
+
+/hhh/tsn/dk-
+#+END_SRC
+#+end_figure
+
+We'll start with drums (Listing [[drums1]]), because the notation is a
+little simpler.
+
+Kicks and snares are created by the convenience function
+=/drum.(name)=; use =/hh.(name)= for hi-hats. Available names are:
+
+- =/drum.(name)=
+  - =\deepkick=: =BP(\dk)=
+  - =\tightkick=: =BP(\tk)=
+  - =\midkick=: =BP(\mk)=
+  - =\tightsnr=: =BP(\tsn)=
+  - =\fatsnr=: =BP(\fsn)=
+  - =\pitchsnr=: =BP(\psn)=
+  - =\snr80=: =BP(\s8)=
+  - =\clap=: =BP(\clp)=
+
+- =/hh.(name)=
+  - =\thickhh=: =BP(\hh)=
+  - =\thinhh=: =BP(\thh)=
+  - =\hardhh=: =BP(\hhh)=
+  - =\synthhh=: =BP(\shh)=
+
+Note the pattern to use an instrument:
+
+- Create it, using the right convenience function. The result is a
+  =BP= object---a Chucklib "bound process." Address commands to the
+  process object by putting its name in parentheses: =BP(\dk)=, for
+  instance. Many /cll/ commands use only the name with a leading
+  slash: =/dk=.
+
+- Give it some music to play (by assigning it a pattern string). More
+  about pattern strings below.
+
+- Start it (=+=). If =+= is start, =-= is stop. You can start and stop
+  several processes at once by listing them on the same line, each
+  name beginning with its slash. By default, the processes will start
+  or stop on the next bar line. You can override this by putting a
+  number of beats after the =+= or =-=: =/dk+8= for the next even bar
+  line.
+
+** Pattern strings
+
+Cll uses single characters for notes, and spaces for timing placeholders.
+
+- Kick drums: =o= = normal weight, =_= = ghost note
+- Snare drums: =-= = normal weight, =.= = ghost note[fn:147fab2abb1605f6]
+- Hi-hats: =-= = open hat, =.= = closed hat
+
+By default, the unit of time is one bar (taken from the default
+=TempoClock=, whose default =beatsPerBar= is 4). The characters and
+placeholders divide this time span equally: =/hhh= has 8 characters,
+splitting the bar into 8th-notes, while =/tsn= has 4. You might think
+the spaces in =/tsn= are rests, but they aren't: they only specify the
+passage of time, here forcing the two snare drum strokes onto beats 2
+and 4.
+
+The kick drum pattern is slightly more complicated. The vertical pipes
+(=|=) are dividers: before, after and between the dividers, there are
+4 time spans (beats), each of which is divided equally by the
+characters contained within. So the first beat is a quarter-note, the
+second divides into 8th-notes and the third into 16ths. With a little
+practice, you can read the rhythm directly from the ASCII notation.
+
+- Exercise: Edit the given pattern strings to create more interesting
+  rhythms. After every change, reevaluate the line. This is the basic
+  process of improvising with /cll/.
+
+
+
 * Process prototype
 ** Data structure
 /cll/ organizes musical behavior, and musical content, hierarchically:
@@ -153,7 +267,7 @@ recompile the class library.
   namespace). Activity in one process does not interfere with other
   processes.
 - Each /phrase/ contains multiple /parameters/. (The phrase itself is
-  implemented as a [[Classes/PbindProxy][PbindProxy]], so that its contents can be changed at
+  implemented as a =PbindProxy=, so that its contents can be changed at
   any time.)
 - Each /parameter/ is defined by a pattern string, parsed and rendered
   into SuperCollider pattern syntax by the /Set pattern/ statement
@@ -293,7 +407,7 @@ code.)
 #+end_boxnote
 
 ** Parameter map
-The parameter map =parmMap= is easiest to write as a set of nested [[Classes/Event][Events]]:
+The parameter map =parmMap= is easiest to write as a set of nested Events:
 
 #+name: parmMap1
 #+caption: Template for the parameter map.
@@ -309,7 +423,7 @@ parmMap: (
 #+END_SRC
 
 =parmName= keys should be Symbols. The keys of the inner dictionaries
-should be characters ([[Classes/Char][Char]]), because the elements of the pattern
+should be characters (=Char=), because the elements of the pattern
 strings that represent "notes" are characters.
 
 The inner dictionaries may contain two other items, optionally:
@@ -416,8 +530,7 @@ This design supports musical contrast. The performer can create
 divergent materials under different phrase identifiers. Then, during
 the performance, she can change the phrase-selection pattern to switch
 materials on the fly. Sudden textural changes require changing many
-phrase-selection pattern at once. For this, [[Register]] commands can save
-sequences of statements to reuse quickly and easily.
+phrase-selection pattern at once. +For this, Register commands can save sequences of statements to reuse quickly and easily.+
 
 ** TODO Importing the cll API into another process prototype	   :noexport:
 ** TODO Document registers					   :noexport:
@@ -840,7 +953,7 @@ process on the next bar line; =/proc+8= will start on the next
 event-numbered bar line (i.e., every other bar). =quant= is optional;
 if not given, each process will use its own internal =quant=
 setting. By default, this is one bar; however, the =setm= 
-helper function overrides this for the given number of bars (Section [[Helper functions]]).
+helper function overrides this for the given number of bars.
 
 ** TODO *Deprecate* Randomizer statement
 Randomizers create randomized variations on a given string:
@@ -941,7 +1054,7 @@ time point (or nil). You may add other arguments, in parentheses,
 after the function name; e.g. =+3\myRand(1, 3)= would call
 =\myRand.eval(prev, next, 1, 3)=.
 
-** TODO Make statement *parameters*
+** Make statement
 The make statement instantiates one or more /chucklib/ factories.
 
 #+name: clMake1
@@ -989,6 +1102,7 @@ make: { |name|
 /dm(free);
 #+END_SRC
 
+*** TODO Make statement *parameters*
 ** Passthrough statement
 The passthrough statement takes arbitrary SuperCollider code, enclosed
 in parentheses, and applies it to any existing /chucklib/ object. If
@@ -1029,8 +1143,7 @@ BP(\snr) => MCG(0);
 ** Func call statement
 The =Func= call statement is a shortcut to evaluate a function saved
 in /chucklib/'s =Func= collection. This makes it easier to use helper
-functions (Section [[Helper functions]]). No syntax checking is done
-in the preprocessor.
+functions. No syntax checking is done in the preprocessor.
 
 #+name: clFunc1
 #+caption: Syntax template for func-call statements.
@@ -1638,6 +1751,11 @@ PR(\chucklibLiveCode).clMyNewStatement = { |code|
 #+LaTeX: \lstlistoflistings
 
 * Footnotes
+
+[fn:147fab2abb1605f6] The characters for kicks and snares are
+different, so that a kick and a snare could be combined into one
+process. However, this feature is not fully implemented as of this
+writing.
 
 [fn:84cfcfa1] In SuperCollider pattern terms, =1= translates into degree 0.
 
