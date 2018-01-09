@@ -171,6 +171,68 @@ PR(\clStringNode).clone {
 	};
 }.import((clPatternSet: #[decodePitch])) => PR(\clEventStringNode);
 
+PR(\clStringNode).clone {
+	~artic = "_.~";
+	~accent = ">";
+	~parse = { |stream|
+		var ch;
+		ch = stream.next;
+		if(~accent.includes(ch)) {
+			~accented = true;
+			ch = stream.next;
+			~checkArtic.(ch, stream);
+		} {
+			~checkArtic.(ch, stream);
+		};
+		currentEnvironment
+	};
+	~checkArtic = { |ch, stream|
+		case
+		{ ~artic.includes(ch) } {
+			~char = ch;
+			ch
+		}
+		{ ~accent.includes(ch) or: { ch == $" } } {
+			~char = nil;  // special case (also valid for terminating quote)
+			stream.pos = stream.pos - 1;  // >~ is 2 chars; >> is two things of one char each
+		}
+		{
+			Error("Articulation pool: Bad character $%".format(ch)).throw;
+		}
+	};
+	~streamCode = { |stream|
+		if(~accented == true) {
+			stream << "\\accent -> " <<< ~char;
+		} {
+			stream <<< ~char;
+		};
+		currentEnvironment
+	};
+} => PR(\clArticNode);
+
+PR(\clStringNode).clone {
+	~parse = { |stream|
+		var ch;
+		while {
+			ch = stream.peek;
+			ch.notNil and: { ~endTest.(ch).not }
+		} {
+			~children = ~children.add(PR(\clArticNode).copy.prep(stream));
+		};
+		stream.next;  // eat the last quote
+		~children
+	};
+	~streamCode = { |stream|
+		stream << "[";
+		~children.do { |item, i|
+			if(i > 0) { stream << ", " };
+			item.streamCode(stream);
+		};
+		stream << "]";
+		currentEnvironment
+	};
+} => PR(\clArticPoolNode);
+
 PR(\abstractClParseNode).clone {
 	~types = [
 		// tuplet: float:divisor
@@ -341,9 +403,9 @@ PR(\abstractClParseNode).clone {
 		(type: \clRhythmGenNode, regexp: "^:[a-zA-Z0-9_]+\\(.*\\)"),
 		(type: \clGeneratorNode, regexp: "^\\\\[a-zA-Z0-9_]+\\(.*\\)"),
 		// more specific "" test must come first
-		(type: \clStringNode, regexp: "^\"[._~>]+\"",
+		(type: \clArticPoolNode, regexp: "^\"[._~>]+\"",
 			match: { ~isPitch ?? { false } },
-			endTest: { |ch| "~_.>\"".includes(ch).not }
+			pre: { |stream| stream.next }  // stringnodes assume you've already dropped the opening quote
 		),
 		(type: \clPatStringNode, regexp: "^\".*\""),
 		(type: \clNumberNode, regexp: "^-?[0-9]"),
@@ -352,13 +414,27 @@ PR(\abstractClParseNode).clone {
 			openDelimiter: $', closeDelimiter: $',
 			pre: { |stream| stream.next }  // drop ` intro
 		),
+		(type: \clChainNode, regexp: "^::",
+			pre: { |stream| stream.nextN(2) },  // drop ::
+			// chain node needs to get the first sub-generator at prep time
+			// also the chain replaces the last-parsed sub-generator
+			parseSpecial: { |new, stream|
+				if(~children.last.nodeType == \clGeneratorNode) {
+					new.prep(stream, currentEnvironment, ~children.last);
+					~children = ~children.drop(-1);  // last is subsumed into 'new'
+					new
+				} {
+					Error("'::' syntax is valid between two generators only").throw;
+				};
+			}
+		),
 		(type: \clStringNode, regexp: "^,",  // empty arg
 			endTest: { |ch| ch == $, }
-		)
+		),
 	];
 	~extras = #[endTest, openDelimiter, closeDelimiter];
 	~parse = { |stream|
-		var name, ch;
+		var name, ch, newArg;
 		// stream.collection[stream.pos .. stream.pos + 10].debug(">> clGeneratorNode");
 		if(stream.peek == $\\) { stream.next };
 		name = ~getID.(stream);
@@ -371,7 +447,11 @@ PR(\abstractClParseNode).clone {
 				ch.notNil and: { ch != $) }
 			} {
 				stream.pos = stream.pos - 1;
-				~children = ~children.add(~parseArg.(stream));
+				// note: it is now not valid to collapse to ~children.add(~parseArg.(stream))
+				// because ~parseArg will modify ~children if it encounters a chain node
+				// ~parseArg must finish before determining the receiver of 'add'
+				newArg = ~parseArg.(stream);
+				~children = ~children.add(newArg);
 			};
 			// if(ch.notNil) { stream.pos = stream.pos - 1 };
 		} {
@@ -385,7 +465,7 @@ PR(\abstractClParseNode).clone {
 		// stream.collection[stream.pos .. stream.pos + 10].debug(">> parseArg");
 		type = ~types.detect { |entry|
 			(entry[\match].value ?? { true }) and: {
-				entry[\regexp].matchRegexp(stream.collection, stream.pos);
+				entry[\regexp].matchRegexp(stream.collection, stream.pos)
 			}
 		};
 		if(type/*.debug("type")*/.notNil) {
@@ -397,9 +477,13 @@ PR(\abstractClParseNode).clone {
 					new.put(key, type[key]);
 				};
 			};
-			new.prep(stream, currentEnvironment);
+			if(type[\parseSpecial].notNil) {
+				type[\parseSpecial].value(new, stream);
+			} {
+				new.prep(stream, currentEnvironment);
+			};
 		} {
-			Error("Syntax error in % arg list".format(~name)).throw;
+			Error("Syntax error in % arg list, at '%'".format(~name, stream.collection[stream.pos .. stream.pos + 10])).throw;
 		};
 		ch = stream.next;
 		if(ch == $,) { ~skipSpaces.(stream) } {
@@ -408,7 +492,6 @@ PR(\abstractClParseNode).clone {
 		// new.listVars; "<< parseArg".debug;
 		new
 	};
-//PR('clGenTest').copy.putAll((bpKey: 'x', args: [[$., $., $., $.]], dur: 4.0, isPitch: false, isMain: true, parm: 'a')).prep
 
 	~streamCode = { |stream|
 		var name = ~children[0].string;
@@ -762,7 +845,7 @@ PR(\abstractClParseNode).clone {
 // set nodeType tags
 current = thisProcess.nowExecutingPath.basename;
 PR.all.do { |pr|
-	if(pr.path.basename == current) {
+	if(pr.path.tryPerform(\basename) == current) {
 		pr.v[\nodeType] = pr.collIndex;
 	};
 };

@@ -84,7 +84,7 @@ this.preProcessor = { |code|
 					// and the following code matches the set-pattern template,
 					// parse accordingly
 					start = code.pos - 2;  // for all cl statement types
-					if("^[A-Za-z0-9_]+(\\.[A-Za-z0-9_]+)*[ 	]*=[ 	]*\\\""
+					if("^[A-Za-z0-9_]+(\\.[A-Za-z0-9_]+)*[ 	]*=[ 	]*[0-9/]*\\\""
 						.matchRegexp(code.collection, code.pos - 1)
 					) {
 						while {
@@ -140,6 +140,7 @@ this.preProcessor = { |code|
 // assumes "open" already read
 { |code, open, patString(false)|
 	var brak = "()[]{}", i = brak.indexOf(open), close, wrongClose, ch, ch2;
+	var savePos = code.pos;
 	if(i.notNil) {
 		close = brak[i+1];
 		wrongClose = brak[1, 3..].reject(_ == close);
@@ -186,6 +187,7 @@ this.preProcessor = { |code|
 
 { |code, quote($")|
 	var escaped = false, ch, pos = code.pos;
+	var savePos = code.pos;
 	while {
 		ch = code.next;
 		ch.notNil and: { escaped or: { ch != quote } }
@@ -198,6 +200,7 @@ this.preProcessor = { |code|
 
 { |code|
 	var ch;
+	var savePos = code.pos;
 	while {
 		ch = code.next;
 		ch.notNil and: { ch != $" }
@@ -216,6 +219,7 @@ this.preProcessor = { |code|
 
 { |code, patString(false)|
 	var ch;
+	var savePos = code.pos;
 	// ["[a-zA-Z0-9_]+\\(", code.collection[code.pos ..]].debug("check gen");
 	if("[a-zA-Z0-9_]+\\(".matchRegexp(code.collection, code.pos)) {
 		while { (ch = code.next) != $( };
@@ -230,6 +234,7 @@ this.preProcessor = { |code|
 // assumes we've already read the slash-star
 { |code|
 	var ch, ch2, continue = true;
+	var savePos = code.pos;
 	while { (ch = ch2 ?? { code.next }).notNil and: { continue } } {
 		ch2 = nil;
 		switch(ch)
@@ -1876,7 +1881,8 @@ Proto {
 	{ ev[\dur] }
 } => Func(\evLength);
 
-(
+{
+var defaultParent = Event.default.parent;
 // because I haven't properly modularized even one single component of
 // ProtoEvent(\voicerNote), I have to copy/paste the entire thing.
 (	timingOffset: 0,
@@ -1919,8 +1925,8 @@ prepNote: #{
 	{ i < ~args.size }.while({
 		~args[i].isSymbol.not.if({
 			try { ~args.removeAt(i); ~args.removeAt(i); };
-			}, {
-				i = i + 2;	// should increment only if not removing an item
+		}, {
+			i = i + 2;	// should increment only if not removing an item
 		});
 	});
 	~gate = (~gate ?? { ~note.gate }).asArray;
@@ -1998,11 +2004,11 @@ releaseNote: #{
 	var lag, timingOffset;
 	((~immediateOSC ? false) or: { ~voicer.target.server.latency.isNil }).if({
 		~voicer.release(~newFreq);
-		}, {
-			lag = ~lag ?? { 0 };
-			timingOffset = ~timingOffset ?? { 0 };
-			~voicer.release(~newFreq,
-				((lag + timingOffset) / (~clock ?? { thisThread.clock }).tempo) + ~voicer.target.server.latency);
+	}, {
+		lag = ~lag ?? { 0 };
+		timingOffset = ~timingOffset ?? { 0 };
+		~voicer.release(~newFreq,
+			((lag + timingOffset) / (~clock ?? { thisThread.clock }).tempo) + ~voicer.target.server.latency);
 	});
 },
 
@@ -2016,11 +2022,34 @@ ProtoEvent(\voicerArticOverlap).parent.copy.putAll((
 	play: { |server|
 		if(~voicer.notNil and: { currentEnvironment.isRest.not }) {
 			~superPlay.(server);
+		};
+		if(currentEnvironment[\initialRest] != true) {
 			~voicer.releaseSustainingBefore(thisThread.seconds, ~voicer.nodes[0].server.latency);
 		};
 	}
 )) => ProtoEvent(\voicerArtic);
-);
+
+defaultParent.copy.put(\play, {
+	var tempo, server, eventTypes, parentType;
+
+	parentType = ~parentTypes[~type];
+	parentType !? { currentEnvironment.parent = parentType };
+
+	server = ~server = ~server ? Server.default;
+
+	~finish.value(currentEnvironment);
+
+	tempo = ~tempo;
+	tempo !? { thisThread.clock.tempo = tempo };
+
+	if(currentEnvironment.isRest.not or: { #[voicerArtic, voicerArticOverlap].includes(~type) }) {
+		eventTypes = ~eventTypes;
+		(eventTypes[~type] ?? { eventTypes[\note] }).value(server)
+	};
+
+	~callback.value(currentEnvironment);
+}) => ProtoEvent(\defaultPassRests);
+}.value;
 
 (
 Proto {

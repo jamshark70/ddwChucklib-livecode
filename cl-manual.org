@@ -669,7 +669,9 @@ bar, then it will pick up =c=, without any other change needed.
 /x = "-|-  -";  // now "c" is heard on beat 4.5
 #+END_SRC
 
-*** Pitch notation
+*** TODO Pitch notation [0/2]
+**** TODO Accents in list (also: no =PmonoArtic= support)
+**** TODO Fix bass example
 #+begin_figure
 #+name: pitchSet1
 #+caption: A retro acid-house bassline, demonstrating pitch notation.
@@ -840,7 +842,7 @@ if not given, each process will use its own internal =quant=
 setting. By default, this is one bar; however, the =setm= 
 helper function overrides this for the given number of bars (Section [[Helper functions]]).
 
-** Randomizer statement
+** TODO *Deprecate* Randomizer statement
 Randomizers create randomized variations on a given string:
 
 #+name: clGen1
@@ -939,7 +941,7 @@ time point (or nil). You may add other arguments, in parentheses,
 after the function name; e.g. =+3\myRand(1, 3)= would call
 =\myRand.eval(prev, next, 1, 3)=.
 
-** Make statement
+** TODO Make statement *parameters*
 The make statement instantiates one or more /chucklib/ factories.
 
 #+name: clMake1
@@ -1109,7 +1111,7 @@ insertion is not supported for other editors, or in SC 3.6.x (as it
 uses new features introduced in SC 3.7).
 #+END_boxnote
 
-** Helper functions
+** TODO *Check for more* Helper functions
 Three =Func= definitions are provided to make it easier to work with
 multi-bar phrase groups. I will introduce them using /cll/ Func call
 statement syntax (Section [[Func call statement]]).
@@ -1151,7 +1153,8 @@ sequences, which always play exactly the same events. /Generators/
 create phrases whose contents can change on each iteration, adding
 another dimension of musical interest.
 
-** Generator design
+** TODO Generator design [0/1]
+*** TODO Clarify location of chaining example
 Generators manipulate lists of events, provided by "set pattern"
 strings, one bar at a time. (As such, they are not a precise analog to
 SuperCollider patterns.)
@@ -1366,7 +1369,7 @@ non-default parameters.
 # /beep = "^\rand("-.")  |||";
 # #+END_SRC
 
-** Built-in generators
+** TODO *Check for new* Built-in generators
 *** Rhythm generators
 
 - =\ins("source", "new items", numToAdd, quant)= :: Locates unoccupied

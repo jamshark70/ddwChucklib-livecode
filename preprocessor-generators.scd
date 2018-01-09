@@ -207,6 +207,47 @@ protect {
 		if('DDWSnippets'.asClass.notNil) {
 			~snippet = { |key, value| 'DDWSnippets'.asClass.put(key, value) };
 		};
+
+		// articulation support; not all generators will use this,
+		// but inheritance is complex enough, just put it here
+		~artic = ($~: inf /*1.01*/, $_: 0.9, $.: 0.4,
+			$>: { |note| note.args = \accent; nil }  // don't change length
+		);
+		~isValidArtic = { |artic|
+			~artic[artic.value].notNil or: {
+				artic.tryPerform(\key) == \accent
+			}
+		};
+		~checkArticPool = { |pool|
+			// for now, shortcut, assume Association's key is \accent
+			// because there is no other usage currently
+			pool.do { |item|
+				if(~isValidArtic.(item).not) {
+					Error("Invalid articulation pool").throw;
+				};
+			};
+			true
+		};
+		~applyArtic = { |artic, note|
+			var didCopy = false, item;
+			if(note.isKindOf(SequenceNote)) {
+				item = artic.tryPerform(\key);
+				if(item.notNil) {
+					note = note.copy.args_(item);
+					didCopy = true;
+				};
+				item = ~artic[artic.value];
+				if(item.notNil) {
+					if(didCopy.not) { note = note.copy };
+					note.length = item;
+				};
+				if(note.length.isNil) { note.length = 0.9 };
+			} {
+				"Generator tried to apply articulation '%' to '%'"
+				.format(artic, note).warn;
+			};
+			note
+		};
 	}, parentKeys: #[canEmbed, protoID, isClGen, patternStringKeys, patternStringFuncs])
 	.import((clPatternSet: #[decodePitch])) => PR(\clGen);
 
@@ -378,9 +419,7 @@ protect {
 			~argNames.do { |key, i|
 				key.envirPut(~args[i] ?? { ~defaults[i] });
 			};
-			if(~articPool.isString.not) {
-				Error("\\pitch() invalid articPool").throw;
-			};
+			~checkArticPool.(~articPool);  // throws error on failure
 			~replaceItems = ~replaceItems.collect { |item| item.item };
 			~intervalPool = ~intervalPool.collect { |item| item.item.asFloat };
 			~articPool = ~articPool.reject(_ == $");
@@ -405,8 +444,7 @@ protect {
 					pitch = prev.item.asFloat + ~intervalPool.choose;
 				};
 				new = SequenceNote(pitch);
-				newLen = ~artic[~articPool.choose].value(new);  // > accent is a side effect
-				new.length = newLen ?? { 0.9 };  // we know new.length was nil, so we need this
+				new = ~applyArtic.(~articPool.choose, new);
 				new
 			}.asStream;
 		};
@@ -440,8 +478,7 @@ protect {
 					pitch = prev.asFloat + ~intervalPool.choose;
 					prev = pitch;  // loop is always going forward
 					new = SequenceNote(pitch);
-					newLen = ~artic[~articPool.choose].value(new);  // > accent is a side effect
-					new.length = newLen ?? { 0.9 };
+					new = ~applyArtic.(~articPool.choose, new);
 					new.yield
 				}
 			}
@@ -497,9 +534,11 @@ protect {
 				};
 				if(~isPitch ?? { false }) {
 					if(~getIndexDur.(~currentIndex) <= ~staccDur) {
-						new.length = ~artic[$.];
+						new = ~applyArtic.($., new);
 					} {
-						new.length = ~artic[$_];
+						if(new.length.isNil) {
+							new = ~applyArtic.($_, new);
+						};
 					};
 				};
 				new
@@ -513,6 +552,9 @@ protect {
 			~baseItems = ~args[0];
 			~pool = ~args[1];
 			~numToAdd = ~args[2] ?? { 1 };
+			if(~numToAdd.isNumber.not) {
+				Error("numToAdd '%' is not a number".format(~numToAdd)).throw;
+			};
 			~quant = ~args[3] ?? { 0.25 };
 			~poolStream = Prand(~pool.collect(_.item), inf).asStream;
 			currentEnvironment
@@ -581,6 +623,9 @@ protect {
 			~pool = ~args[1];
 			~replaceItems = ~args[2] ?? { ~pool };
 			~numToAdd = ~args[3] ?? { 1 };
+			if(~numToAdd.isNumber.not) {
+				Error("numToAdd '%' is not a number".format(~numToAdd)).throw;
+			};
 			~quant = ~args[4] ?? { 0.25 };
 			~divisor = ~args[5] ?? { 2 };
 			if(~divisor <= 1) {
@@ -680,7 +725,7 @@ protect {
 				{ |srcIndex| // will only be called internally
 					var new = ~items[srcIndex].item;
 					if(~isPitch ?? { false }) {
-						new.length = ~artic[$.];  // all stuttered notes should be staccato
+						new = ~applyArtic.($., new);  // all stuttered notes should be staccato
 					};
 					new
 				}
@@ -692,7 +737,9 @@ protect {
 		~defaults = [nil, Error("Must specify pool"), 1, 0.25, 0.75, nil];
 		~canStutter = { |item, index|
 			item[\initialRest] != true and: {
-				~poolItems.isEmpty or: { ~poolItems.includesEqual(item.item) }
+				~getIndexDur.(index) >= (2 * ~quant) and: {
+					~poolItems.isEmpty or: { ~poolItems.includesEqual(item.item) }
+				}
 			}
 		};
 		~modifySource = {
@@ -700,6 +747,7 @@ protect {
 			// get source indices
 			~items.collectIndices { |item, index| ~canStutter.(item, index) }
 			.scramble.keep(~numToAdd).scramble.do { |index|
+				var didAdd = false;
 				time = ~items[index].time;
 				nextTime = if(index < (~items.size - 1)) {
 					~items[index + 1].time
@@ -713,7 +761,11 @@ protect {
 					if(~prob.coin) {
 						new = ~insStream.value(index);
 						~items = ~items.add((item: new, wildcard: new, src: \stutt, time: time));
+						didAdd = true;
 					};
+				};
+				if(didAdd and: { ~isPitch ?? { false } }) {
+					~items[index].item = ~applyArtic.($., ~items[index].item);
 				};
 			};
 			~items.sort { |a, b| a.time < b.time }
@@ -901,9 +953,7 @@ protect {
 		~prep = {
 			~baseItems = ~args[0];
 			~pool = ~args[1] ?? { "_" };
-			if(~pool.isString.not) {
-				Error("\\artic() invalid articPool").throw;
-			};
+			~checkArticPool.(~pool);
 			~wildcards = ~args[2];
 			if(~wildcards.notNil) {
 				~wildcards = ~wildcards.collect(_.item);
@@ -926,8 +976,7 @@ protect {
 				}) {
 					artic = ~pool.choose;
 					new = item.item.copy;
-					newLen = ~artic[artic].value(new);
-					if(newLen.notNil) { new.length = newLen };
+					new = ~applyArtic.(artic, new);
 					item.copy.put(\item, new);
 				} {
 					item
@@ -967,7 +1016,7 @@ protect {
 					.do { |item|
 						// if no item already at the source's time slot
 						if(~items.detect { |x| x.time == item.time }.isNil) {
-							if(~pool.notNil) {
+							if(~pool.size > 0) {
 								new = ~pool.choose.item;
 							} {
 								new = item.item;

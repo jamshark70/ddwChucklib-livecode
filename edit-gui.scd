@@ -290,9 +290,10 @@ Proto {
 	~string = "";
 	~pos = 0;
 	~existing = false;
+	~doHighlighting = true;  // PR(\clGuiString).doHighlighting = false before making the GUI
 
 	~prep = {
-		if(~objKey.notNil and: { ~phrase.notNil }) {
+		if(~doHighlighting and: { ~objKey.notNil and: { ~phrase.notNil } }) {
 			NotificationCenter.register(
 				~objKey.asSymbol, ~phrase.asSymbol, currentEnvironment,
 				e { |highlight(false)|
@@ -840,11 +841,18 @@ Proto {
 		~pages[0].sections[0][0].dependants;
 		~pages[0].sections[0][0].changed(\focus, true);
 		~setPage.(0);
-		~win.front;
-		~win.onClose = e {
+		~win.onClose_(e {
 			~win.onClose = nil;
 			BP(~collIndex).free;
-		};
+		})
+		// when GUI window is front, /bars.(...) should NOT affect current document
+		.toFrontAction_({
+			Library.put(\clLivecode, \setupbars, \guiIsFront, true);
+		})
+		.endFrontAction_({
+			Library.put(\clLivecode, \setupbars, \guiIsFront, false);
+		});
+		~win.front;
 	};
 
 	~newPage = { |key|
