@@ -345,9 +345,185 @@ insert wildcards (usually =*= or =@=) to define the rhythm, and then
 replace them using a number of generators inspired by SuperCollider
 patterns: =\seq()=, =\rand()=, =\shuf()=, =\wrand()= and such. These
 are more useful when you have a larger number of possible items to
-choose from
+choose from, such as when playing a pitched instrument.
+
+*HINT:* If you have installed the ddwSnippets Quark, generator objects
+will automatically add their own templates into the snippets
+collection. The snippets can help you with the order of arguments:
+press the snippet hotkey (which you configure using
+=DDWSnippets.learn=), type a few letters of the generator name, and
+the template will be inserted into your document.
 
 ** TODO Pitched notes
+#+begin_figure
+#+NAME: bass1
+#+caption: Bassline template.
+#+BEGIN_SRC {SuperCollider} -i
+Mode(\dmixo) => Mode(\default);
+/make(pbsVC:pbs/melBP:bs(octave:3));
+
+/bs = "1_| 1.|  7~4|x";
+
+/bs+
+/bs-
+#+END_SRC
+#+end_figure
+
+Pitched-note processes require a Voicer instrument and a BP process to
+play the notes.
+
+Available Voicers:
+
+- anapadVC: Analog-style pad.
+- distbsVC: Distorted-sine bass.
+- fmMelVC: Maps notes onto FM modulator ratio, playing harmonics. A bit strange.
+- fmbassVC: FM bass.
+- fmbrassVC: Brassy FM tone.
+- fmclavVC: FM clav tone.
+- fmpadVC: FM pad.
+- klankVC: Detuned bell-like timbre. Not sustaining.
+- pbsVC: Pulse-wave bass.
+- pulseLeadVC: Pulse-wave synth lead.
+- staccVC: Analog-style staccato notes.
+
+Available BP processes:
+
+- melBP: Monophonic melody player. Use for basses and leads.
+- chordBP: Block-chord player.
+- arpegBP: Chord arpeggiator.
+
+*** Basses and leads
+First, make the instrument and player. Behind the scenes, this is a
+three-step process: create the Voicer instrument, create the playing
+process, and connect the instrument to the player. If you write the
+=/make= command as shown in Listing [[bass1]], /cll/ will do all three
+in one go.
+
+The general form is =/make(factoryID:instanceID(parameters...))= with
+additional factory/instance pairs separated by slashes.
+
+For basses in particular, get in the habit of assigning the
+octave. This is the normal =octave= event parameter from the
+SuperCollider pattern system. Assuming C as the modal root, octave 5
+puts scale degree 0 at middle C. Octave 3 in the example pulls the
+bass two octaves lower. If you forget, you can correct it later by
+=/bs(setDefault(\octave, 4))= or whichever octave number you need.
+
+Then you can assign notes using /cll/'s pitch notation. Pitches are
+/modal/ (and currently assume seven degrees to the octave, like
+Western scales---a later enhancement may support more or fewer
+degrees). So, it's recommended to choose the mode before you play by
+"chucking" (~=>~) a specific mode into =Mode(\default)=. Modes are
+identified by the root pitch (=c=, =cs= = c-sharp, =db= = d-flat, and
+so on) plus a modal identifier (Table [[modes]]). B-flat lydian is
+=Mode(\bblyd)=.
+
+#+Name: modes
+#+caption: Modal identifiers.
+#+ATTR_LATEX: :align |c|c|
+|-----------------+--------|
+| Mode            | ID     |
+|-----------------+--------|
+| Major (Ionian)  | =maj=  |
+| Dorian          | =dor=  |
+| Phrygian        | =phr=  |
+| Lydian          | =lyd=  |
+| Mixolydian      | =mixo= |
+| Minor (Aeolian) | =min=  |
+| Locrian         | =loc=  |
+|-----------------+--------|
+
+The modal root is =1=. Each note begins with a single digit, going up
+from there: 8 is an octave higher, 9 is the 9th, and 0 is the 10th
+(octave above the third). This follows the arrangement of digits on
+the keyboard: the further right you go, the higher the pitch. You can
+also attach various modifiers:
+
+- ='= or @@latex:\texttt{,}@@: Up or down one octave. =''= is up two
+  octaves, and so on.
+- =+= or =-=: Up or down a semitone (like sharp or flat). *NOTE:*
+  Flats are not completely working as of this writing.
+- =.= or =_= or =~=: Staccato, legato or slurred articulation. A slur
+  will slide into the next note, if the instrument supports it.
+- =>=: Accent articulation. Always prevents a slur, and depending on
+  the instrument, it might hit the note a little harder. =>= may be
+  combined with other articulations.
+
+The digit plus its modifiers becomes a single event---so, in Listing
+[[bass1]], beat 3 contains five characters but four events (=7~= is
+just one event). Timing is based on events, not characters.
+
+Any event that does not begin with a digit---the =x=---is a rest,
+which cuts off the preceding note (in contrast to a space, which
+affects timing only).
+
+Leads follow the same principles, except in a higher octave.
+
+Exercise: Modify the given template to add more notes. Try the
+different articulation styles.
+
+*** Chords
+#+begin_figure
+#+NAME: chord1
+#+caption: Chord-playing template.
+#+BEGIN_SRC {SuperCollider} -i
+/make(anapadVC:pad/chordBP:ch(chords:\one));
+/ch = "87~05";
+/ch+
+
+VC(\pad).gui
+
+MBM(0)[\two] => BP(\ch);
+
+MBM(0)[\smallch] => BP(\ch);
+
+/ch-
+#+END_SRC
+#+end_figure
+
+=chordBP= uses the same pitch notation, but to control the top note of
+a harmony. The harmonies come from chord templates stored in a MIDI
+buffer object (=MIDIRecBuf=). Currently, four are provided (later
+documentation: how to create your own chord templates).
+
+- one: Single notes (so that the chord player can start as a melody,
+  and grow into harmony).
+- two: Two-note chords, in all intervals from a second to an octave.
+- smallch: Three-note chords, not all standard triads.
+- bigch: Six-note chords.
+
+The chord templates will be adapted to the top note and the current
+bass foundation (later documentation: how to control the bass).
+
+Articulations (including slur!) are valid.
+
+*** TODO Arpeggiator example
+The arpeggiator is a bit strange. It uses the same harmony-processing
+logic as =chordBP=, but the pitches in the pattern string are indices
+of chord notes, not the actual sounding pitches. 1 is the top note, 2
+is the next lower, and so on proceeding down the chord to 7. 8, as a
+normal pitch, is an octave higher than 1; in the arpeggiator, it takes
+the top note of the chord and raises it by an octave (and all seven
+indices do octave displacement in the same way).
+
+To make best use of this process, you need to assign alternate
+parameters: =top= for the top note of the harmony (which behaves like
+=chordBP=) and =skip= for extra thickness. The default =skip= is 0,
+meaning to play single notes. Try the other values (1--5). Note that
+the harmony will not change unless =top= changes, so it's a good idea
+to supply a slower-moving pattern for this parameter.
+
+The double-dots are a syntax shortcut. Cll processes can store any
+number of phrases and switch between them. So far, we are using only
+the default phrase, =main=. The full form of the =skip= and =top=
+statements in the example is, in fact, =/arp.main.top = "..."=;
+omitting =main= leaves =/arp..top=. (You can't leave out one of the
+dots. If you do, =top= will be interpreted as a phrase name, and it
+won't behave the way you want.)
+
+*** TODO Pitched instrument parameters
+
+** TODO Errors
 
 
 * Process prototype
