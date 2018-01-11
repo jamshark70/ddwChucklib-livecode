@@ -2020,11 +2020,13 @@ keysToPropagate: #[\voicer, \midi, \mode, \timingOffset, \argKeys, \immediateOSC
 ProtoEvent(\voicerArticOverlap).parent.copy.putAll((
 	superPlay: ProtoEvent(\voicerArticOverlap).v[\play],
 	play: { |server|
-		if(~voicer.notNil and: { currentEnvironment.isRest.not }) {
-			~superPlay.(server);
-		};
-		if(currentEnvironment[\initialRest] != true) {
-			~voicer.releaseSustainingBefore(thisThread.seconds, ~voicer.nodes[0].server.latency);
+		if(~voicer.notNil) {
+			if(currentEnvironment.isRest.not) {
+				~superPlay.(server);
+			};
+			if(currentEnvironment[\initialRest] != true) {
+				~voicer.releaseSustainingBefore(thisThread.seconds, ~voicer.nodes[0].server.latency);
+			};
 		};
 	}
 )) => ProtoEvent(\voicerArtic);
