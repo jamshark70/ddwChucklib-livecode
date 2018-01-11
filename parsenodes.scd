@@ -434,10 +434,15 @@ PR(\abstractClParseNode).clone {
 	];
 	~extras = #[endTest, openDelimiter, closeDelimiter];
 	~parse = { |stream|
-		var name, ch, newArg;
+		var name, ch, newArg, testName;
 		// stream.collection[stream.pos .. stream.pos + 10].debug(">> clGeneratorNode");
 		if(stream.peek == $\\) { stream.next };
 		name = ~getID.(stream);
+		testName = name.string.copy;
+		testName[0] = testName[0].toUpper;
+		if(PR.exists(("clGen" ++ testName).asSymbol).not) {
+			Error("Incorrect generator name %".format(name.string)).throw;
+		};
 		~children = ~children.add(name);
 		~name = name.string;
 		ch = stream.next;
