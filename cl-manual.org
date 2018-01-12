@@ -87,6 +87,11 @@ Thanks are due to:
 is released using the Quarks v2 system, which is not supported prior
 to SC 3.7.)
 
+2018/01/12: You should update all of the =ddw*= quarks. The built-in
+instruments in the =ddwLivecodeInstruments= quark require code changes
+in several places, and they will not work correctly if you're using
+out of date quark versions.
+
 ** Installation with /git/
 If you have installed the /git/ version-control system on your
 machine, SuperCollider can automatically download and install Quark
@@ -97,7 +102,7 @@ proceed.
 
 Optionally, also evaluate =Quarks.install("ddwLivecodeInstruments")=
 to install a pack of ready-to-play instruments. These are used in the
-Quick start guide ([[Quick start]]).
+Tutorial ([[Tutorial]]).
 
 ** Installation without /git/
 If you haven't installed /git/ or don't want to, you can download the
@@ -148,7 +153,7 @@ want the preprocessor in every SC session. Once you load the
 environment, the preprocessor is active until the next time you
 recompile the class library.
 
-* Quick start
+* Tutorial
 First, if you didn't install the optional =ddwLivecodeInstruments=
 quark, please do so now. Without these, you will have to learn the
 mechanics of creating a live-coding process before playing any
@@ -156,8 +161,26 @@ music. See section [[Installation]] for details.
 
 When starting a new session, run =\loadAllCl.eval= first.
 
-=ddwLivecodeInstruments= provides a set of standard electronic drums,
-and several synthesizers for pitched notes.
+=ddwLivecodeInstruments= provides a set of standard electronic drums
+(Section [[Drums]]), and several synthesizers for pitched notes (Section
+[[Pitched notes]]).
+
+I recommend working step-by-step, starting with the drums (because
+there are fewer variables and moving parts) before moving on to
+pitches. You will probably get more out of it by typing the code
+examples yourself, rather than copying/pasting.[fn:1b0c24216590cdea]
+I've tried to make it easy to get started, but bear in mind that this
+improvisational instrument has 3.5 years of development behind it. You
+shouldn't expect to understand it all in 15 minutes (just as you
+wouldn't expect to read a couple of tutorials about SuperCollider
+itself and "understand" it in depth). Take your
+time. Experiment. Start with the examples and change them.
+
+If you encounter problems, you could post on the SuperCollider users
+mailing list[fn:1d1127de28e64f74] or the ddwChucklib-livecode issue
+tracker.[fn:147fd1c7c7020707] (Also note that this is the first
+version of the tutorial. Many things may be badly explained as
+yet. Don't hesitate to raise an issue if something is confusing.)
 
 ** Drums
 #+begin_figure
@@ -228,6 +251,17 @@ Note the pattern to use an instrument:
   or stop on the next bar line. You can override this by putting a
   number of beats after the =+= or =-=: =/dk+8= for the next even bar
   line.
+
+=loadAllCl= creates a few =MixerChannel= objects: =~master= (main
+output), =~rvbmc= (long-tail reverb) and =~shortrvbmc= (short-tale
+reverb). If you want to adjust the mix, first run
+=/makeEmptyMixer8.()=. After that, you can "chuck" mixers, processes
+or Voicers into mixing board slots: =~master => MCG(7)=, e.g., for the
+rightmost slot. Later, when you create playing objects, you can chuck
+them in as well. For instance, where Listing [[drums1]] creates a
+=tightsnr= player, you can do =/tsn => MCG(0)= and adjust the level
+and post-send reverb amount. For pitched instruments (later), you need
+to chuck the Voicer: =VC(\pbs) => MCG(1)= or =/VC.pbs => MCG(1)=.
 
 ** Pattern strings
 
@@ -354,7 +388,7 @@ press the snippet hotkey (which you configure using
 =DDWSnippets.learn=), type a few letters of the generator name, and
 the template will be inserted into your document.
 
-** TODO Pitched notes
+** Pitched notes
 #+begin_figure
 #+NAME: bass1
 #+caption: Bassline template.
@@ -481,10 +515,11 @@ MBM(0)[\smallch] => BP(\ch);
 #+END_SRC
 #+end_figure
 
-=chordBP= uses the same pitch notation, but to control the top note of
-a harmony. The harmonies come from chord templates stored in a MIDI
-buffer object (=MIDIRecBuf=). Currently, four are provided (later
-documentation: how to create your own chord templates).
+=chordBP= (Listing [[chord1]]) uses the same pitch notation, but to
+control the top note of a harmony. The harmonies come from chord
+templates stored in a MIDI buffer object (=MIDIRecBuf=). Currently,
+four are provided (later documentation: how to create your own chord
+templates).
 
 - one: Single notes (so that the chord player can start as a melody,
   and grow into harmony).
@@ -493,11 +528,63 @@ documentation: how to create your own chord templates).
 - bigch: Six-note chords.
 
 The chord templates will be adapted to the top note and the current
-bass foundation (later documentation: how to control the bass).
+chord root (later documentation: how to control the root).
 
 Articulations (including slur!) are valid.
 
-*** TODO Arpeggiator example
+*** Arpeggiator
+#+begin_figure
+#+NAME: arpeg1
+#+caption: Example of arpeggiator usage.
+#+BEGIN_SRC {SuperCollider} -i
+/make(fmclavVC:fmc/arpegBP:arp(chords:\bigch));
+
+// These are indices, from the top down, into the current chord.
+/arp = "1234";
+
+/arp+
+
+// Add some lower notes as a second layer.
+// Accent articulates the start of the bar.
+/arp = "\ins("1>234", "456", 6, 0.25)";
+
+// Extend the second layer higher.
+/arp = "\ins("1>234", "23456", 7, 0.25)";
+
+// Use wildcards to substitute a sequential pattern.
+/arp = "\ins("1>234", "*", 7, 0.25)::\seq(, "65432")";
+
+// Change the harmony's top note every bar.
+/arp..top = "\seq("*", "5'6'3'2'")";
+
+// Skip: Play dyads instead of single notes.
+/arp..skip = "2";
+
+// Skip can also accent specific notes.
+/arp..skip = "20  |20  |20  |20  ";
+
+// same, but algorithmic
+/arp..skip = "\choke("2222", 0.25, "0")";
+
+// Add a second process to change the chord root.
+// After this, you should hear tonic, dominant
+// and subdominant functions.
+// No instrument -- this is for data only.
+/make(melBP:root(bassID:\bass));
+/root = "\seq("*", "154")";
+/root+
+
+/arp/root-
+#+END_SRC
+#+end_figure
+
+*NOTE:* The arpeggiator is a bit complex to use, and it isn't a high
+priority for the first round of documentation. I'm providing an
+example (Listing [[arpeg1]]) to give you some hints, and I want to expand
+the documentation later. For now, try it, and if you run into trouble,
+file an issue at
+https://github.com/jamshark70/ddwChucklib-livecode/issues.
+
 The arpeggiator is a bit strange. It uses the same harmony-processing
 logic as =chordBP=, but the pitches in the pattern string are indices
 of chord notes, not the actual sounding pitches. 1 is the top note, 2
@@ -521,10 +608,145 @@ omitting =main= leaves =/arp..top=. (You can't leave out one of the
 dots. If you do, =top= will be interpreted as a phrase name, and it
 won't behave the way you want.)
 
-*** TODO Pitched instrument parameters
+*** Pitched instrument parameters
+Voicer instruments have two types of parameters: "global controls" and
+event parameters.
 
-** TODO Errors
+Global controls act like knobs on conventional synthesizers, by
+affecting all playing notes. These can be displayed automatically in a
+GUI window by running =VC(\name).gui=. Alternately, you could load
+Chucklib's performance GUI (=BP.loadGui=) and "chuck" (or drag)
+Voicers into the control slots at the right: =VC(\name) => VP(0)= to
+put the instrument into the topmost space, and so on.
 
+Event parameters should normally take care of themselves. If you need
+to override, use the form =/processName(setDefault(\parameter,
+value))=. It should be rare to need to do this, but it's useful, for
+instance, if you forget to set the octave of a bass process and it
+starts playing in the middle register. Just do
+=/process(setDefault(\octave, 3))= (or other value) and the next note
+will be lower.
+
+(This is a tutorial, not reference documentation for all the
+instruments. Documentation to be expanded later.)
+
+** Phrases
+#+begin_figure
+#+NAME: fill1
+#+caption: Phrase selection for drum fills.
+#+BEGIN_SRC {SuperCollider} -i
+TempoClock.tempo = 124/60;
+
+/drum.(\tightkick); /drum.(\tightsnr); /hh.(\thinhh);
+
+/tk = "oooo";
+/tsn = " - -";
+/thh = "\ins(".", "-", 1, 0.5)::\ins(, ".", 6, 0.5)";
+
+/tk/tsn/thh+
+
+/tk.fill = "o||   _|o __";
+/tsn.fill = "|-| \ins(" - ", ".", 4, 0.25)|";
+
+/tk = (main*3.fill); /tsn = (main*3.fill);
+
+/tk/tsn/thh-
+#+END_SRC
+#+end_figure
+
+The examples so far repeat a single bar's worth of content. Cll
+processes allow you to define multiple bars, and choose between them.
+
+Each bar, or /phrase/, has a name. Attach it after the process name,
+with a dot: =/process.phrase = "content"=. Then, use a phrase
+selection pattern (Section [[Phrase selection]]) to choose the bars in
+succession. Listing [[fill1]] demonstrates with drum processes, playing
+the basic pattern for three bars and a fill pattern for the fourth.
+
+#+begin_figure
+#+NAME: qsphrases1
+#+caption: Multi-bar bassline.
+#+BEGIN_SRC {SuperCollider} -i
+// If the bass doesn't exist, first do this:
+/make(pbsVC:pbs/melBP:bs(octave:3));
+
+/bars.(\bs, 2, \a);
+
+/bs.a0 = "1>|4~5~7 | 4~|3'~";
+/bs.a1 = " 5>~|6| 4~| 3";
+
+/setupbars.(\bs, 2, \b);
+
+/bs.b0 = "9>.9.9 | 4'~|   3'|8~7~8~ ";
+/bs.b1 = "  33.| 4.5~ | 431.|6.6. 6.";
+
+// short form of /setm.(\bs, 2, \b)
+/bs = (b**2);
+
+/bs+
+/bs-
+#+END_SRC
+#+end_figure
+
+Alternately, you can create multi-bar structures using a few
+convenience functions (Listing [[qsphrases1]]):
+
+- =/setupbars.(\proc, n, \prefix)=: Creates /n/ empty bars, named
+  =\prefix0=, =\prefix1= and so on.
+- =/setm.(\proc, n, \prefix)=: Tell the process to use a multi-bar
+  phrase set for playback.
+- =/bars.(\proc, n, \prefix)=: Do both at the same time.
+
+*IMPORTANT:* Do not omit the =.= between the function name and the
+arguments. Cll distinguishes between a /function-call/ shortcut
+=/name.(args)= and a /method-passthrough/ shortcut
+=/proc(method(args))=, with the dot to tell the difference.
+
+Note that =/bars.()= will tell the process to start playing a silent
+phrase structure. So, you should use it only when setting up a new
+process. If you're already playing material, it's better to
+=/setupbars.()= first, fill the bars with material, and then switch to
+the material using =/setm.()=.
+
+An alternate syntax for =/setm.()= is =/proc = (prefix**n)=. This
+command also sets the process's =quant= to the same number of bars, so
+that the process will start and stop on the boundaries of the entire
+phrase set. Be careful when switching from a single-bar structure to
+multiple bars: you should hit =/setm.()= or the alternate syntax
+within the bar before the boundary.
+
+For convenience, =/setupbars.()= will try to insert a code template
+with the empty bars into the current SC-IDE document.
+
+** Errors
+Cll syntax errors will usually be reported as SuperCollider execution
+errors, with a full stack trace. In general, you can ignore the stack
+trace.
+
+A common error is "ERROR: clPatternSet: BP('abc') does not exist,"
+meaning that a cll command referred to a process that hasn't been
+created. Look for a misspelled name. (Cll is a translator, converting
+its own syntax into SC language code. Many of the translations depend
+on information within the object. If the objects don't exist,
+translation is impossible. So, it fails in the translation stage---but
+the translation happens in SC language code, so it must be reported as
+an execution error.)
+
+If an error occurs within a process while it's playing, usually the
+bottom of the stack trace will refer to =awake= or =prStart=. Please
+report such errors to
+https://github.com/jamshark70/ddwChucklib-livecode/issues; as much as
+possible, cll should try to continue playing without stopping
+processes. If this does happen to you, the way to recover is to stop,
+reset, play (it is necessary to stop the process before replaying it):
+
+#+BEGIN_SRC {SuperCollider} -i
+// Playback error recovery
+
+/proc-;
+/proc(reset);
+/proc+;
+#+END_SRC
 
 * Process prototype
 ** Data structure
@@ -2019,6 +2241,14 @@ PR(\chucklibLiveCode).clMyNewStatement = { |code|
 #+LaTeX: \lstlistoflistings
 
 * Footnotes
+
+[fn:147fd1c7c7020707] https://github.com/jamshark70/ddwChucklib-livecode/issues
+
+[fn:1d1127de28e64f74] https://www.birmingham.ac.uk/facilities/ea-studios/research/supercollider/mailinglist.aspx
+
+[fn:1b0c24216590cdea] Copying from this PDF is likely to change the
+code formatting and possibly break the code. If you must copy/paste,
+use the file =cl-manual-examples.scd=.
 
 [fn:147fab2abb1605f6] The characters for kicks and snares are
 different, so that a kick and a snare could be combined into one
