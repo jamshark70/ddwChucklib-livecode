@@ -5,5 +5,5 @@
 	version:		0.3,
 //	helpdoc:		"Help/ChuckOverview.html",
 	url:			"http://www.dewdrop-world.net/display.php?src=sc.md",
-	dependencies:	["ddwChucklib"]
+	dependencies:	["ddwChucklib", "TabbedView"]
 )
