@@ -213,7 +213,7 @@ TempoClock.tempo = 124/60;
 #+end_figure
 
 We'll start with drums (Listing [[drums1]]), because the notation is a
-little simpler.
+little simpler.[fn:80657f61093a950]
 
 Kicks and snares are created by the convenience function
 =/drum.(name)=; use =/hh.(name)= for hi-hats. Available names are:
@@ -388,21 +388,77 @@ press the snippet hotkey (which you configure using
 =DDWSnippets.learn=), type a few letters of the generator name, and
 the template will be inserted into your document.
 
-** Pitched notes
+** Sound effects
 #+begin_figure
-#+NAME: bass1
-#+caption: Bassline template.
+#+name: sfx1
+#+caption: Adding sound effects to a simple beat.
 #+BEGIN_SRC {SuperCollider} -i
-Mode(\dmixo) => Mode(\default);
-/make(pbsVC:pbs/melBP:bs(octave:3));
+\loadAllCl.eval;  // If you haven't already done this
+TempoClock.tempo = 124/60;
 
-/bs = "1_| 1.|  7~4|x";
+// The beat
+BP(#[tk, clp, hhh, tsn]).free;  // Clean up first
+/drum.(\tightkick); /drum.(\clap); /hh.(\hardhh);
+/tk = "o|| o|";
+/clp = " -  ";
+/hhh = "........";
 
-/bs+
-/bs-
+/tk/clp/hhh+
+
+/drum.(\tightsnr);
+/tsn = "|||.";
+
+/tsn+
+
+/clp = "|-|| .  ";
+/tsn = "|||.  .";
+
+// make the effects
+/make(bufBP:mch(set:\machine));
+/mch = "| -||";
+/mch+
+
+/mch = "| -| , ,|";
+
+/tk/clp/hhh/tsn/mch-;
 #+END_SRC
 #+end_figure
 
+The =bufBP= template provides some unusual percussion sounds, for
+extra color.
+
+The sounds are organized into "sets," so that each resulting process
+has a simpler interface. To choose a sound set, use the parameter
+notation of the =/make= command: =/make(bufBP:name(set:\setName))=,
+substituting your desired process name for =name= and the name of the
+set for =setName=.
+
+- machine: Servomotor clips (3)
+- tink: Metallic (2)
+- whistle: A sound reminiscent of a train whistle (3)
+- wiggle: A, well, "wiggle" (for lack of a better word) (3)
+
+In pattern strings, you can use the following characters (chosen as a
+visual approximation of pitch level and duration):
+
+#+ATTR_LATEX: :align |c|c|c|
+|---------+--------+----------------------|
+| *Pitch* | *Long* | *Short*              |
+|---------+--------+----------------------|
+| High    | =^=    | =!=                  |
+|---------+--------+----------------------|
+| Middle  | =-=    | =.=                  |
+|---------+--------+----------------------|
+| Low     | =_=    | @@latex:\texttt{,}@@ |
+|---------+--------+----------------------|
+
+Note, however, that the =tink= set has only two sounds, omitting the
+high pitch level. With this set, =^= and =!= are rests (silent).
+
+Figure [[sfx1]] is a simple example. You should play with the other sets
+and make your own rhythms.
+
+** Pitched notes
 Pitched-note processes require a Voicer instrument and a BP process to
 play the notes.
 
@@ -427,6 +483,20 @@ Available BP processes:
 - arpegBP: Chord arpeggiator.
 
 *** Basses and leads
+#+begin_figure
+#+NAME: bass1
+#+caption: Bassline template.
+#+BEGIN_SRC {SuperCollider} -i
+Mode(\dmixo) => Mode(\default);
+/make(pbsVC:pbs/melBP:bs(octave:3));
+
+/bs = "1_| 1.|  7~4|x";
+
+/bs+
+/bs-
+#+END_SRC
+#+end_figure
+
 First, make the instrument and player. Behind the scenes, this is a
 three-step process: create the Voicer instrument, create the playing
 process, and connect the instrument to the player. If you write the
@@ -2241,6 +2311,10 @@ PR(\chucklibLiveCode).clMyNewStatement = { |code|
 #+LaTeX: \lstlistoflistings
 
 * Footnotes
+
+[fn:80657f61093a950] Drum samples, and the "sound effects" samples in
+section [[Sound effects]], are used with permission from
+http://sampleswap.org.
 
 [fn:147fd1c7c7020707] https://github.com/jamshark70/ddwChucklib-livecode/issues
 

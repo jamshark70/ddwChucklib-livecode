@@ -57,7 +57,41 @@ TempoClock.tempo = 124/60;
 
 
 /**************
- Listing 3. Bassline template.
+ Listing 3. Adding sound effects to a simple beat.
+ **************/
+
+\loadAllCl.eval;  // If you haven't already done this
+TempoClock.tempo = 124/60;
+
+// The beat
+BP(#[tk, clp, hhh, tsn]).free;  // Clean up first
+/drum.(\tightkick); /drum.(\clap); /hh.(\hardhh);
+/tk = "o|| o|";
+/clp = " -  ";
+/hhh = "........";
+
+/tk/clp/hhh+
+
+/drum.(\tightsnr);
+/tsn = "|||.";
+
+/tsn+
+
+/clp = "|-|| .  ";
+/tsn = "|||.  .";
+
+// make the effects
+/make(bufBP:mch(set:\machine));
+/mch = "| -||";
+/mch+
+
+/mch = "| -| , ,|";
+
+/tk/clp/hhh/tsn/mch-;
+
+
+/**************
+ Listing 4. Bassline template.
  **************/
 
 Mode(\dmixo) => Mode(\default);
@@ -70,7 +104,7 @@ Mode(\dmixo) => Mode(\default);
 
 
 /**************
- Listing 4. Chord-playing template.
+ Listing 5. Chord-playing template.
  **************/
 
 /make(anapadVC:pad/chordBP:ch(chords:\one));
@@ -87,7 +121,7 @@ MBM(0)[\smallch] => BP(\ch);
 
 
 /**************
- Listing 5. Example of arpeggiator usage.
+ Listing 6. Example of arpeggiator usage.
  **************/
 
 /make(fmclavVC:fmc/arpegBP:arp(chords:\bigch));
@@ -131,7 +165,7 @@ MBM(0)[\smallch] => BP(\ch);
 
 
 /**************
- Listing 6. Phrase selection for drum fills.
+ Listing 7. Phrase selection for drum fills.
  **************/
 
 TempoClock.tempo = 124/60;
@@ -153,7 +187,7 @@ TempoClock.tempo = 124/60;
 
 
 /**************
- Listing 7. Multi-bar bassline.
+ Listing 8. Multi-bar bassline.
  **************/
 
 // If the bass doesn't exist, first do this:
@@ -177,7 +211,7 @@ TempoClock.tempo = 124/60;
 
 
 /**************
- Listing 8. A simple cll process.
+ Listing 9. A simple cll process.
  **************/
 
 (
@@ -231,7 +265,7 @@ TempoClock.tempo = 2;
 
 
 /**************
- Listing 9. Template for the parameter map.
+ Listing 10. Template for the parameter map.
  **************/
 
 parmMap: (
@@ -245,7 +279,7 @@ parmMap: (
 
 
 /**************
- Listing 10. How to write arrays in the parameter map.
+ Listing 11. How to write arrays in the parameter map.
  **************/
 
 parmMap: (
@@ -257,7 +291,7 @@ parmMap: (
 
 
 /**************
- Listing 11. Arrays for multiple-parameter setting using one cll parameter.
+ Listing 12. Arrays for multiple-parameter setting using one cll parameter.
  **************/
 
 parmMap: (
@@ -269,7 +303,7 @@ parmMap: (
 
 
 /**************
- Listing 12. Cll statements, one by one or as a batch.
+ Listing 13. Cll statements, one by one or as a batch.
  **************/
 
 // run one at a time
@@ -281,14 +315,14 @@ parmMap: (
 
 
 /**************
- Listing 13. Syntax template for the Set pattern statement.
+ Listing 14. Syntax template for the Set pattern statement.
  **************/
 
 /proc.phrase.parm = quant"string";
 
 
 /**************
- Listing 14. Multiple parameters with different timing.
+ Listing 15. Multiple parameters with different timing.
  **************/
 
 /x = "--";
@@ -298,7 +332,7 @@ parmMap: (
 
 
 /**************
- Listing 15. A retro acid-house bassline, demonstrating pitch notation.
+ Listing 16. A retro acid-house bassline, demonstrating pitch notation.
  **************/
 
 (
@@ -351,28 +385,28 @@ TempoClock.tempo = 132/60;
 
 
 /**************
- Listing 16. Syntax template for "Set pattern" phrase selection.
+ Listing 17. Syntax template for "Set pattern" phrase selection.
  **************/
 
 /proc = (group...);
 
 
 /**************
- Listing 17. Nested phrase-selection groups.
+ Listing 18. Nested phrase-selection groups.
  **************/
 
 ((a%4|b)*4.(a|b%4)*2)
 
 
 /**************
- Listing 18. Syntax template for randomizer statement.
+ Listing 19. Syntax template for randomizer statement.
  **************/
 
 /proc.prefix.parm *n +ki %q "string"
 
 
 /**************
- Listing 19. Examples of randomizer statements.
+ Listing 20. Examples of randomizer statements.
  **************/
 
 // assuming BP(\snr) defines:
@@ -409,14 +443,14 @@ TempoClock.tempo = 132/60;
 
 
 /**************
- Listing 20. Syntax template for make statements.
+ Listing 21. Syntax template for make statements.
  **************/
 
 /make(factory0:targetName0/factory1:targetName1/...);
 
 
 /**************
- Listing 21. Example of the make statement.
+ Listing 22. Example of the make statement.
  **************/
 
 (
@@ -443,7 +477,7 @@ make: { |name|
 
 
 /**************
- Listing 22. Syntax template for passthrough statements.
+ Listing 23. Syntax template for passthrough statements.
  **************/
 
 // This...
@@ -457,7 +491,7 @@ BP(\snr).clock = ~myTempoClock;
 
 
 /**************
- Listing 23. Syntax template for Chuck statements.
+ Listing 24. Syntax template for Chuck statements.
  **************/
 
 // This...
@@ -471,7 +505,7 @@ BP(\snr) => MCG(0);
 
 
 /**************
- Listing 24. Syntax template for func-call statements.
+ Listing 25. Syntax template for func-call statements.
  **************/
 
 /func.(arguments);
@@ -481,7 +515,7 @@ BP(\snr) => MCG(0);
 
 
 /**************
- Listing 25. Syntax template for copy/transfer statements.
+ Listing 26. Syntax template for copy/transfer statements.
  **************/
 
 /proc.phrase*n -> newPhrase;  // copy
@@ -490,7 +524,7 @@ BP(\snr) => MCG(0);
 
 
 /**************
- Listing 26. Demonstration of "Show pattern" statements.
+ Listing 27. Demonstration of "Show pattern" statements.
  **************/
 
 /snr.a = " - -";
@@ -504,7 +538,7 @@ BP(\snr) => MCG(0);
 
 
 /**************
- Listing 27. Common initialization sequence, using helper functions.
+ Listing 28. Common initialization sequence, using helper functions.
  **************/
 
 /make(kick);
@@ -516,7 +550,7 @@ BP(\snr) => MCG(0);
 
 
 /**************
- Listing 28. Isorhythmic cycles with generators.
+ Listing 29. Isorhythmic cycles with generators.
  **************/
 
 (
@@ -546,7 +580,7 @@ TempoClock.tempo = 140/60;
 
 
 /**************
- Listing 29. Interaction between generator syntax and "set pattern" rhythmic notation.
+ Listing 30. Interaction between generator syntax and "set pattern" rhythmic notation.
  **************/
 
 // 1. \rand starts on the downbeat and occupies the whole bar.
@@ -568,7 +602,7 @@ TempoClock.tempo = 140/60;
 
 
 /**************
- Listing 30. Cll statement regular expression templates.
+ Listing 31. Cll statement regular expression templates.
  **************/
 
    ~statements = [
@@ -587,7 +621,7 @@ TempoClock.tempo = 140/60;
 
 
 /**************
- Listing 31. Regular expression macros for SC language tokens.
+ Listing 32. Regular expression macros for SC language tokens.
  **************/
 
    ~tokens = (
@@ -602,7 +636,7 @@ TempoClock.tempo = 140/60;
 
 
 /**************
- Listing 32. Template for cll statement handlers.
+ Listing 33. Template for cll statement handlers.
  **************/
 
 Proto {
@@ -614,7 +648,7 @@ Proto {
 
 
 /**************
- Listing 33. Adding a function into PR(\chucklibLiveCode)
+ Listing 34. Adding a function into PR(
  **************/
 
 PR(\chucklibLiveCode).clMyNewStatement = { |code|
