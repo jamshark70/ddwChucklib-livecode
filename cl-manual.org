@@ -82,6 +82,11 @@ Thanks are due to:
 - Thor Magnusson, whose /ixilang/ system[fn:19d80e0a] provided some of
   the inspiration for /cll/ syntax.
 
+- Canton Becker of http://sampleswap.org for granting permission to
+  redistribute some audio files from sampleswap's online collection.
+  These are used in the =ddwLivecodeInstruments= quark, referenced
+  in the Tutorial (section [[Tutorial]]).
+
 * Installation
 /cll/ requires SuperCollider 3.7 or later, and recommends v3.9+. (It
 is released using the Quarks v2 system, which is not supported prior
@@ -213,7 +218,9 @@ TempoClock.tempo = 124/60;
 #+end_figure
 
 We'll start with drums (Listing [[drums1]]), because the notation is a
-little simpler.[fn:80657f61093a950]
+little simpler.
+
+# deleted footnote reference [fn:80657f61093a950]
 
 Kicks and snares are created by the convenience function
 =/drum.(name)=; use =/hh.(name)= for hi-hats. Available names are:
@@ -227,6 +234,8 @@ Kicks and snares are created by the convenience function
   - =\pitchsnr=: =BP(\psn)=
   - =\snr80=: =BP(\s8)=
   - =\clap=: =BP(\clp)=
+
+#+LaTeX: \newpage  % HACK to keep /hh heading with its children
 
 - =/hh.(name)=
   - =\thickhh=: =BP(\hh)=
