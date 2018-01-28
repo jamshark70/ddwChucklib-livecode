@@ -285,7 +285,7 @@ Proto {
 	);
 
 	~statements = [
-		\clMake -> "^ *make\\(.*\\)",
+		\clMake -> "^ *make\\*?\\(.*\\)",
 		\clFuncCall -> "^ *`id\\.\\(.*\\)",
 		\clPassThru -> "^ *([A-Z][A-Za-z0-9_]*\\.)?`id\\(.*\\)",
 		\clChuck -> "^ *([A-Z][A-Za-z0-9_]*\\.)?`id *=>.*",
@@ -1627,6 +1627,9 @@ PR(\clPatternSet).v.import((clPassThru: #[stringInMatchingBrackets]));
 
 Proto {
 	~clClass = BP;
+	// // automatically plug mixers and voicers into GUI
+	// // good for improv, bad for prepared setups
+	// ~autoGui = true;
 	~process = { |code|
 		~parseIDs.(code);
 		~writeCode.();
@@ -1634,7 +1637,9 @@ Proto {
 	~parseIDs = { |code|
 		var stream = CollStream(code), ch, continue = true;
 		~ids = Array.new;
-		while { (ch = stream.next).notNil and: { ch != $( } };
+		while { (ch = stream.next).notNil and: { "*(".includes(ch).not } };  // skip 'make'
+		~autoGui = (ch == $*);
+		if(~autoGui) { ch = stream.next };
 		if(ch != $() {
 			Error("clMake expected parentheses").throw;
 		};
@@ -1711,6 +1716,19 @@ Proto {
 					out << ", nil, " << id[2];
 				};
 				out << ")";
+				if(~autoGui) {
+					// Can't chuck to specific GUI slots here
+					// because the slots' states won't change until later
+					if(Fact(id[0]).type == \bp) {
+						out << ";\nPR(\\clMake).autoAssignMixer(BP(%)[\\chan])".format(
+							id[1].asCompileString
+						);
+					} {
+						out << ";\nPR(\\clMake).autoAssignVoicer(VC(%))".format(
+							id[1].asCompileString
+						);
+					};
+				};
 				if(lastWasVoicer and: { Fact(id[0]).type == \bp }) {
 					out << ";\nVC(%) => BP(%)".format(~ids[i-1][1].asCompileString, id[1].asCompileString);
 				};
@@ -1724,6 +1742,16 @@ Proto {
 		{ \bp } { BP }
 		{ \vc } { VC }
 		{ \voicer } { VC }
+	};
+	// for autoGui: Keeping track of open slots needs to be stateful?
+	~mcgIndex = 0;
+	~vpIndex = 0;
+	~touchIndex = 0;
+	~autoAssignMixer = { |mixer|
+		mixer.debug("Called autoAssignMixer for");
+	};
+	~autoAssignVoicer = { |vc|
+		vc.debug("Called autoAssignVoicer for");
 	};
 } => PR(\clMake);
 
