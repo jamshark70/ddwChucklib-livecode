@@ -878,6 +878,7 @@ protect {
 			if(~poolItems.notNil) {
 				numToShift = min(numToShift, ~items.count { |item| ~poolItems.includes(item.item) });
 			};
+			~endTime = ~time + ~dur;  // traverseShifts needs this value, many times
 			~traverseShifts.(numToShift, ~items, ~poolItems.copy, possShifts);
 			~items
 		};
@@ -903,7 +904,7 @@ protect {
 			shift = block { |break|
 				shiftArray.do { |sh|
 					newTime = ~items[shiftIndex][\time] + sh;
-					if(newTime.inclusivelyBetween(0, ~dur - 0.001) and: {
+					if(newTime.inclusivelyBetween(~time, ~endTime - 0.001) and: {
 						newTime != ~items[shiftIndex + sh.sign].tryPerform(\at, \time)
 					}) {
 						oldItem = ~items[shiftIndex];
