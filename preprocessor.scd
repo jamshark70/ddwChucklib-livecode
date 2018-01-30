@@ -1747,11 +1747,9 @@ Proto({
 	// round-robin reuse them after running out
 	// this may not be the best algorithm
 	// parent is to persist across instances (like a classvar)
-	// currentEnvironment.parent.use {
-		~assignedMCGs = List.new;
-		~assignedVPs = List.new;
-		// ~assignedTouches = List.new;  // not implemented yet
-// };
+	~assignedMCGs = List.new;
+	~assignedVPs = List.new;
+	// ~assignedTouches = List.new;  // not implemented yet
 	~autoAssignMixer = { |mixer|
 		var index;
 		if(mixer.notNil and: { MCG.all.notEmpty }) {
