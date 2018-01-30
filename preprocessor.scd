@@ -1625,7 +1625,7 @@ PR(\clPassThru).clone {
 // hack: should define in a different order
 PR(\clPatternSet).v.import((clPassThru: #[stringInMatchingBrackets]));
 
-Proto {
+Proto({
 	~clClass = BP;
 	// // automatically plug mixers and voicers into GUI
 	// // good for improv, bad for prepared setups
@@ -1716,6 +1716,9 @@ Proto {
 					out << ", nil, " << id[2];
 				};
 				out << ")";
+				if(lastWasVoicer and: { Fact(id[0]).type == \bp }) {
+					out << ";\nVC(%) => BP(%)".format(~ids[i-1][1].asCompileString, id[1].asCompileString);
+				};
 				if(~autoGui) {
 					// Can't chuck to specific GUI slots here
 					// because the slots' states won't change until later
@@ -1729,9 +1732,6 @@ Proto {
 						);
 					};
 				};
-				if(lastWasVoicer and: { Fact(id[0]).type == \bp }) {
-					out << ";\nVC(%) => BP(%)".format(~ids[i-1][1].asCompileString, id[1].asCompileString);
-				};
 				lastWasVoicer = Fact(id[0]).isVoicer;
 			};
 		};
@@ -1743,17 +1743,68 @@ Proto {
 		{ \vc } { VC }
 		{ \voicer } { VC }
 	};
-	// for autoGui: Keeping track of open slots needs to be stateful?
-	~mcgIndex = 0;
-	~vpIndex = 0;
-	~touchIndex = 0;
+	// for autoGui: Remember which slots were auto-assigned
+	// round-robin reuse them after running out
+	// this may not be the best algorithm
+	// parent is to persist across instances (like a classvar)
+	// currentEnvironment.parent.use {
+		~assignedMCGs = List.new;
+		~assignedVPs = List.new;
+		// ~assignedTouches = List.new;  // not implemented yet
+// };
 	~autoAssignMixer = { |mixer|
-		mixer.debug("Called autoAssignMixer for");
+		var index;
+		if(mixer.notNil and: { MCG.all.notEmpty }) {
+			index = ~getIndex.(MCG.all, \assignedMCGs, { |mcg| mcg.mixer.isNil });
+			if(index.notNil) {
+				mixer => MCG(index);
+				"MixerChannel(%) => MCG(%)\n".postf(mixer.name.asCompileString, index);
+			};
+		};
 	};
 	~autoAssignVoicer = { |vc|
-		vc.debug("Called autoAssignVoicer for");
+		var index;
+		if(vc.notNil) {
+			if(VP.all.notEmpty) {
+				index = ~getIndex.(VP.all, \assignedVPs, { |vp|
+					vp.notNil and: { vp.voicer.isKindOf(NullVoicer) } }
+				);
+				if(index.notNil) {
+					vc => VP(index);
+					"VC(%) => VP(%)\n".postf(vc.collIndex.asCompileString, index);
+				};
+			};
+			if(vc.env.target.notNil) {
+				index = ~getIndex.(MCG.all, \assignedMCGs, { |mcg| mcg.mixer.isNil });
+				if(index.notNil) {
+					vc.env.target => MCG(index);
+					"VC(%) => MCG(%)\n".postf(vc.collIndex.asCompileString, index);
+				};
+			};
+		};
 	};
-} => PR(\clMake);
+	// 'assigned' should be a symbol pointing to this environment
+	// because of the reassignment for 'rotate'
+	~getIndex = { |collection, assigned, test|
+		var index = collection.detectIndex { |item| test.value(item) },
+		asgList = assigned.envirGet;
+		if(index.notNil) {
+			if(asgList.includes(index).not) {
+				asgList.add(index);
+			};
+			index
+		} {
+			if(asgList.notEmpty) {
+				index = asgList[0];
+				currentEnvironment.parent[assigned] = asgList.rotate(-1);
+				index
+			} {
+				"Collection is already full, can't auto-gui".warn;
+				nil
+			};
+		};
+	};
+}, parentKeys: #[assignedMCGs, assignedVPs]) => PR(\clMake);
 
 Proto {
 	~clClass = BP;
