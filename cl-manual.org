@@ -1630,6 +1630,9 @@ The make statement instantiates one or more /chucklib/ factories.
 #+caption: Syntax template for make statements.
 #+BEGIN_SRC {SuperCollider} -i
 /make(factory0:targetName0/factory1:targetName1/...);
+
+// Or, with autoGui
+/make*(factory0:targetName0/factory1:targetName1/...);
 #+END_SRC
 
 - =factory= :: The name of a =Fact= object to create.
@@ -1670,6 +1673,12 @@ make: { |name|
 
 /dm(free);
 #+END_SRC
+
+=/make*= instead of =/make= will try to chuck process or voicer mixers
+into chucklib =MCG= objects, for display in a mixing board, and
+voicers into empty chucklib =VP= objects, for speed in setting up
+players during performance. =MCG= and =VP= arrays are created by
+=BP.loadGui=.
 
 *** TODO Make statement *parameters*
 ** Passthrough statement
