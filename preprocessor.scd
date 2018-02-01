@@ -1723,12 +1723,12 @@ Proto({
 					// Can't chuck to specific GUI slots here
 					// because the slots' states won't change until later
 					if(Fact(id[0]).type == \bp) {
-						out << ";\nPR(\\clMake).autoAssignMixer(BP(%)[\\chan])".format(
-							id[1].asCompileString
+						out << ";\nPR(\\clMake).autoAssignMixer(BP(%)[\\chan]); BP(%)".format(
+							id[1].asCompileString, id[1].asCompileString
 						);
 					} {
-						out << ";\nPR(\\clMake).autoAssignVoicer(VC(%))".format(
-							id[1].asCompileString
+						out << ";\nPR(\\clMake).autoAssignVoicer(VC(%)); VC(%)".format(
+							id[1].asCompileString, id[1].asCompileString
 						);
 					};
 				};
@@ -1772,7 +1772,7 @@ Proto({
 					"VC(%) => VP(%)\n".postf(vc.collIndex.asCompileString, index);
 				};
 			};
-			if(vc.env.target.notNil) {
+			if(vc.env.target.notNil and: { MCG.all.notEmpty }) {
 				index = ~getIndex.(MCG.all, \assignedMCGs, { |mcg| mcg.mixer.isNil });
 				if(index.notNil) {
 					vc.env.target => MCG(index);
