@@ -616,6 +616,9 @@ protect {
 	// quant is minimum duration to divide
 	// divisor is how many to split into
 	// divisible allows e.g. 1.5 times units
+	// (divisible == quant means durations quant, quant * 2, quant * 3 etc. can be divided)
+	// (divisible == 2*quant means durations quant, quant * 3, quant * 5 etc. can be divided)
+	// (divisible == 0 means *only* quant can be divided)
 	PR(\clGenIns).clone {
 		~superprep = ~prep;
 		~prep = {
@@ -674,8 +677,12 @@ protect {
 			while { numToAdd > 0 and: { blockDur < ~dur } } {
 				i = durs.collectIndices { |dur, i| avail[i] and: { dur == blockDur } };
 				if(i.isEmpty) {
-					testUnit = testUnit + 1;
-					blockDur = quant + (~divisible * testUnit);
+					if(~divisible == 0) {
+						blockDur = ~dur + 1;  // force stop: avoid infinite loop
+					} {
+						testUnit = testUnit + 1;
+						blockDur = quant + (~divisible * testUnit);
+					};
 				} {
 					i = i.choose;
 					avail[i] = false;
@@ -938,16 +945,34 @@ protect {
 			if(~quant.isNumber.not) {
 				Error("\rot() quant must be a number").throw;
 			};
+			~pool = ~args[2].collect(_.item);  // also handles nil
 			currentEnvironment
 		};
 		~process = {
-			var firstI, endTime = ~time + ~dur;
+			var firstI, endTime = ~time + ~dur,
+			testFunc = if(~pool.size > 0) {
+				{ |item|
+					~pool.includesEqual(item[\item]) or: {
+						~pool.includesEqual(item[\wildcard])
+					}
+				}
+			} {
+				true  // if no pool, rotate everything
+			};
 			~items = ~getUpstreamItems.();
 			~items = ~items.collect { |item|
-				item.copy.put(\time, (item[\time] + ~quant).wrap(~time, endTime));
+				var newTime;
+				if(testFunc.value(item) and: {
+					newTime = (item[\time] + ~quant).wrap(~time, endTime);
+					~items.every { |x| x[\time] != newTime }
+				}) {
+					item.copy.put(\time, newTime);
+				} {
+					item
+				};
 			}.sort { |a, b| a[\time] < b[\time] };
 		};
-		~snippet.("rot", "\\rot(##src, quant##)");
+		~snippet.("rot", "\\rot(##src, quant, pool##)");
 	} => PR(\clGenRot);
 
 	PR(\clGen).clone {
