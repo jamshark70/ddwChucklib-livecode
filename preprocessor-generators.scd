@@ -743,7 +743,7 @@ protect {
 		~defaultNames = #[baseItems, pool, numToAdd, quant, prob, insPool];
 		~defaults = [nil, Error("Must specify pool"), 1, 0.25, 0.75, nil];
 		~canStutter = { |item, index|
-			item[\initialRest] != true and: {
+			BP(~bpKey).valueIsRest(item.item, ~parm).not and: {
 				~getIndexDur.(index) >= (2 * ~quant) and: {
 					~poolItems.isEmpty or: { ~poolItems.includesEqual(item.item) }
 				}
@@ -751,12 +751,16 @@ protect {
 		};
 		~modifySource = {
 			var nextTime, time, new;
+			// later, we check index vs ~items.size
+			// but ~items.size changes as we add new items
+			// so, save the original input size
+			var inputSize = ~items.size;
 			// get source indices
 			~items.collectIndices { |item, index| ~canStutter.(item, index) }
-			.scramble.keep(~numToAdd).scramble.do { |index|
+			.scramble.keep(~numToAdd).do { |index|
 				var didAdd = false;
 				time = ~items[index].time;
-				nextTime = if(index < (~items.size - 1)) {
+				nextTime = if(index < (inputSize - 1)) {
 					~items[index + 1].time
 				} {
 					~time + ~dur  // this generator's ending time
