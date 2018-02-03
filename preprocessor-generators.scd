@@ -486,6 +486,40 @@ protect {
 		~snippet.("pitch2", "\\pitch2(##src, replaceItems, intervalPool, fallbackMin, fallbackMax, articPool, connect##)");
 	} => PR(\clGenPitch2);
 
+	// transposition: choose interval from pool.
+	// 1 = no transposition. 1' = octave up, 1, = octave down
+	// can limit to wildcards
+	PR(\clGen).clone {
+		~defaults = [[], [(item: SequenceNote(0, nil, 0.9))], [(item: $*)]];
+		~argNames = #[baseItems, intervalPool, wildcards];
+		~prep = {
+			~argNames.do { |key, i|
+				key.envirPut(~args[i] ?? { ~defaults[i] });
+			};
+			~checkArticPool.(~articPool);  // throws error on failure
+			~intervalPool = ~intervalPool.collect { |item| item.item.asFloat };
+			~wildcards = ~wildcards.collect { |item| item.item };
+			currentEnvironment
+		};
+		~process = {
+			var endTime = ~time + ~dur;
+			~items = ~getUpstreamItems.();
+			~items.do { |item, i|
+				var interval = ~intervalPool.choose;
+				if(item.time >= ~time and: {
+					item.time < endTime and: {
+						~wildcards.isNil or: { ~wildcards.includesEqual(item.wildcard) }
+					}
+				}) {
+					~items[i] = item.copy
+					.put(\item, item.item.copy.freq_(item.item.asFloat + interval));
+				};
+			};
+			~items
+		};
+		~snippet.("xpose", "\\xpose(##src, intervalPool, wildcards##)");
+	} => PR(\clGenXpose);
+
 	PR(\clGenSeq).clone {
 		~snippet.("prev", "\\prev(##src, pool, replaceItems, staccDur##)");
 		~prep = {
