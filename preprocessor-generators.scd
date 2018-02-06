@@ -126,6 +126,13 @@ protect {
 					};
 				};
 			};
+			case
+			{ BP.exists(~bpKey) and: { BP(~bpKey)[\swing].notNil } } {
+				~deltas = BP(~bpKey)[\swing].mapDeltaArray(~deltas);
+			}
+			{ Library.at(\globalSwing).notNil } {
+				~deltas = Library.at(\globalSwing).mapDeltaArray(~deltas);
+			};
 			~items = ~items.collect { |item, i| item.copy.put(\dur, ~deltas[i]) };
 			// ~items.do { |item, i| item[\dur] = ~deltas[i] };
 		};

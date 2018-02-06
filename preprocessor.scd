@@ -2131,6 +2131,65 @@ defaultParent.copy.put(\play, {
 }.value;
 
 (
+// swing support: 'array' is a set of durations for (part of) a beat
+// e.g. 8th-note 1/3 swing, use [2/3, 1/3].
+// 16th-note swing, use [1/3, 1/6] (1/3 + 1/6 = 1/2 beat)
+// this object will stretch/compress durations according to which part of the beat it's in
+Proto {
+	~prep = { |array|
+		if(array.isNil) {
+			// this is unique for a constructor method
+			// but this way, it's easier to clear the swing variable
+			nil
+		} {
+			~map_.(array ?? { #[1] });
+			currentEnvironment
+		};
+	};
+	~map_ = { |array|
+		var i = array.integrate;
+		~map = array;
+		~mapDur = i.last;
+		~mapEnv = Env(#[0] ++ i, Array.fill(array.size, ~mapDur / array.size));
+	};
+	// no single 'mapDelta' method... why?
+	// because it depends on position within the bar
+	// mapping deltas is meaningful only if you have a series of them,
+	// anchored to the barline.
+	~mapDeltaArray = { |deltas|
+		var accum = 0, times = Array(deltas.size);
+		deltas.do { |delta|
+			times.add(~mapBeat.(accum));
+			accum = accum + delta;
+		};
+		// return new deltas:
+		// must add up to input array sum, so append the sum
+		// differentiate, and drop the initial 0
+		(times ++ accum).differentiate.drop(1)
+	};
+	// but you can map an individual beat position
+	~mapBeat = { |beat|
+		~mapEnv.at(beat % ~mapDur) + (trunc(beat / ~mapDur) * ~mapDur)
+	};
+} => PR(\clSwingMap);
+
+{ |array|
+	Library.put(\globalSwing, PR(\clSwingMap).copy.prep(array));
+	// return user-friendly message
+	array = array.collect { |item|
+		var frac = item.asFraction;
+		if(frac[1] <= 20) {  // if denominator is too big, don't print a silly fraction
+			"%/%".format(*frac)
+		} {
+			item
+		}
+	};
+	"Set global swing to %".format(array)
+} => Func(\globalSwing);
+);
+
+(
+// abstractLiveCode process prototype
 Proto {
 	~event = (eventKey: \singleSynthPlayer);
 
@@ -2142,7 +2201,11 @@ Proto {
 		if(~clock.isNil) { ~clock = TempoClock.default };
 		~clock.beatsPerBar
 	};
-	~division = 0.25;
+	~swing = nil;  // default, no swing
+	~swing_ = { |array|
+		~swing = PR(\clSwingMap).copy.prep(array);
+		currentEnvironment
+	};
 	// see end for default phraseSeq
 	~lastPhrase = \main;
 
