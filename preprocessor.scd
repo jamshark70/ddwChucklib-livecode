@@ -1763,7 +1763,7 @@ Proto({
 	~autoAssignVoicer = { |vc|
 		var index;
 		if(vc.notNil) {
-			if(VP.all.notEmpty) {
+			if(VP.all.notEmpty and: { vc.globalControls.notEmpty }) {
 				index = ~getIndex.(VP.all, \assignedVPs, { |vp|
 					vp.notNil and: { vp.voicer.isKindOf(NullVoicer) } }
 				);
