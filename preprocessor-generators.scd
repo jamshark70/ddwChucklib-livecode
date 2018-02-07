@@ -33,6 +33,7 @@ protect {
 		~addRestToEmpty = true;
 		~protoID = \clGen;
 		~isClGen = true;
+		~canBePool = false;
 
 		// responsible for parsing any time-sequence strings
 		// each generator may have different ones
@@ -338,6 +339,7 @@ protect {
 		~makeStream = {
 			~seqStream = Pseq(~pool, inf).collect(_.item).asStream;
 		};
+		~canBePool = true;
 		~helpString = "\\seq(\"items\")";
 		~snippet.("seq", "\\seq(##src, items, wildcards, reset##)");
 	} => PR(\clGenSeq);
@@ -454,6 +456,7 @@ protect {
 	} => PR(\clGenShuf);
 
 	PR(\clGenSeq).clone {
+		~canBePool = false;  // inheritance here is messy...
 		~defaults = [[], [(item: $*)], #[-2, -1, 1, 2].collect({ |int| (item: int) }), 0, 7, "_"];
 		~argNames = #[baseItems, replaceItems, intervalPool, fallbackMin, fallbackMax, articPool];
 		~artic = ($~: inf /*1.01*/, $_: 0.9, $.: 0.4,
@@ -570,6 +573,7 @@ protect {
 	} => PR(\clGenXpose);
 
 	PR(\clGenSeq).clone {
+		~canBePool = false;
 		~snippet.("prev", "\\prev(##src, pool, replaceItems, staccDur##)");
 		~prep = {
 			~baseItems = ~args[0];
@@ -652,6 +656,7 @@ protect {
 
 	PR(\clGenSeq).clone {
 		~doReset = 0;
+		~canBePool = false;
 		~prep = {
 			~baseItems = ~args[0];
 			~pool = ~args[1];
