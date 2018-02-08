@@ -74,10 +74,24 @@ this.preProcessor = { |code|
 			case
 			{ ch2 == $/ } {
 				while { (ch = code.next).notNil and: { ch != $\n } };
-				code.pos = code.pos - 1;
+				// rewind a character, but only if there's still work to do
+				if(code.peek.notNil) {
+					code.pos = code.pos - 1;
+				} {
+					// the while condition will terminate after this...
+					// this will prevent adding a spurious line to 'statements'
+					// note, this is only at end of input
+					start = code.pos;
+				};
 			}
 			// a separate function allows recursion for nesting
-			{ ch2 == $* } { \clParseDelimComment.eval(code) }
+			{ ch2 == $* } {
+				\clParseDelimComment.eval(code);
+				// skip over comment, but not mid-statement
+				if(betweenStmts) {
+					start = code.pos;
+				};
+			}
 			{ ch2.notNil } {
 				if(betweenStmts) {
 					// if we are starting a statement
@@ -134,7 +148,10 @@ this.preProcessor = { |code|
 			\clParseBracketed.eval(code, ch, false)
 		}
 	};
-	statements = statements.add(code.collection[start .. code.pos]);
+	if(start <= code.pos and: { start < code.collection.size }) {
+		statements = statements.add(code.collection[start .. code.pos]);
+	};
+	statements
 } => Func(\clParseIntoStatements);
 
 // assumes "open" already read
