@@ -2177,16 +2177,23 @@ Proto {
 		var accum = 0, times = Array(deltas.size);
 		deltas.do { |delta|
 			times.add(~mapBeat.(accum));
-			accum = accum + delta;
+			accum = accum + delta.value;
 		};
 		// return new deltas:
 		// must add up to input array sum, so append the sum
 		// differentiate, and drop the initial 0
-		(times ++ accum).differentiate.drop(1)
+		times = (times ++ accum).differentiate.drop(1);
+		deltas.do { |delta, i|
+			if(delta.isRest) {
+				times[i] = Rest(times[i]);
+			};
+		};
+		times
 	};
 	// but you can map an individual beat position
 	~mapBeat = { |beat|
-		~mapEnv.at(beat % ~mapDur) + (trunc(beat / ~mapDur) * ~mapDur)
+		// must unwrap Rest for mapEnv.at (next term will keep rest status)
+		~mapEnv.at(beat.value % ~mapDur) + (trunc(beat / ~mapDur) * ~mapDur)
 	};
 } => PR(\clSwingMap);
 
