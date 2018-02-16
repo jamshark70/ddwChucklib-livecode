@@ -235,6 +235,13 @@ PR(\clStringNode).clone {
 
 PR(\abstractClParseNode).clone {
 	~types = [
+		// fraction: integer/integer
+		{ |str|
+			var slash = str.indexOf($/),  // regexp guarantees "/" is there
+			numerator = str[ .. slash-1].asInteger,
+			denominator = str[slash+1 .. ].asInteger;
+			Rational(numerator / denominator)
+		} -> "[\\-+]?[0-9]+/[0-9]+",
 		// tuplet: float:divisor
 		{ |str|
 			var colon = str.indexOf($:),  // regexp guarantees ":" is there
