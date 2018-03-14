@@ -497,7 +497,7 @@ protect {
 	// 1 = no transposition. 1' = octave up, 1, = octave down
 	// can limit to wildcards
 	PR(\clGen).clone {
-		~defaults = [[], [(item: SequenceNote(0, nil, 0.9))], [(item: $*)]];
+		~defaults = [[], [(item: SequenceNote(0, nil, 0.9))], nil];
 		~argNames = #[baseItems, intervalPool, wildcards];
 		~prep = {
 			~argNames.do { |key, i|
