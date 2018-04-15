@@ -1,6 +1,27 @@
 var current;
 
 Proto {
+	~prep = { |value|  // anything that .asStream's and .next's to a number
+		~val = value;
+		~reset.();
+		currentEnvironment
+	};
+	~reset = {
+		~valStream = ~val.asStream;
+		currentEnvironment
+	};
+	~next = { |inval|
+		var out = ~valStream.next(inval);
+		if(out.notNil) {
+			out
+		} {
+			~reset.();
+			~valStream.next(inval)
+		};
+	};
+} => PR(\clGenNumberProxy);
+
+Proto {
 	~begin = nil;
 	~end = nil;
 	~selectionStart = { ~begin };
