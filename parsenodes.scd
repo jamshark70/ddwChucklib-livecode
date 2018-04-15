@@ -292,11 +292,13 @@ PR(\abstractClParseNode).clone {
 		};  // else leave state variables nil
 	};
 	~streamCode = { |stream|
+		stream << "PR(\\clNumProxy).copy.prep(";
 		if(~value.isKindOf(Rational)) {
 			stream <<< ~value.numerator << "/" <<< ~value.denominator;
 		} {
 			stream <<< ~value;
 		};
+		stream << ")";
 		currentEnvironment
 	};
 } => PR(\clNumberNode);
