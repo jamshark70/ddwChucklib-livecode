@@ -19,7 +19,8 @@ Proto {
 			~valStream.next(inval)
 		};
 	};
-} => PR(\clGenNumberProxy);
+	~isNumProxy = true;
+} => PR(\clNumProxy);
 
 Proto {
 	~begin = nil;
