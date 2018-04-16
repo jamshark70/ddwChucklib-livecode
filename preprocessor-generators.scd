@@ -255,6 +255,9 @@ protect {
 			};
 			note
 		};
+		~isNumProxy = { |object|
+			object.tryPerform(\isNumProxy) == true
+		};
 	}, parentKeys: #[canEmbed, protoID, isClGen, patternStringKeys, patternStringFuncs])
 	.import((clPatternSet: #[decodePitch])) => PR(\clGen);
 
@@ -270,16 +273,17 @@ protect {
 			} {
 				~replaceItems = [$*];
 			};
-			if(~args[3].isNumber) {
-				~doReset = ~args[3] > 0;
-			} {
-				~doReset = false;
-			};
+			// if(~args[3].isNumber) {
+			// 	~doReset = ~args[3] > 0;
+			// } {
+			// 	~doReset = false;
+			// };
+			~doReset = ~args[3];
 			currentEnvironment
 		};
 
 		~process = {
-			if(~doReset or: { ~seqStream.isNil }) {
+			if(~doReset.next > 0 or: { ~seqStream.isNil }) {
 				~makeStream.();
 			};
 			~items = ~getUpstreamItems.();
@@ -397,9 +401,12 @@ protect {
 			var firstNum = ~args.detectIndex { |item| item.isNumber },
 			weights;
 			if(firstNum.isNil) {
+				// optimization: constant weights, don't need a stream
 				weights = Array.fill(~pool.size, ~pool.size.reciprocal);
 			} {
-				weights = ~args[firstNum..].extend(~pool.size, 1).normalizeSum;
+				// these are number proxies, should respond to asStream
+				weights = Ptuple(~args[firstNum..].extend(~pool.size, 1))
+				.asStream.collect(_.normalizeSum);
 			};
 			~seqStream = Pwrand(~pool, weights, inf).collect(_.item).asStream;
 		};
@@ -446,7 +453,7 @@ protect {
 				};
 				prev = ~items[i];
 				if(prev.isNil) {
-					pitch = rrand(~fallbackMin, ~fallbackMax);
+					pitch = rrand(~fallbackMin.next, ~fallbackMax.next);
 				} {
 					pitch = prev.item.asFloat + ~intervalPool.choose;
 				};
@@ -477,7 +484,7 @@ protect {
 					prev = ~items[i];
 				};
 				if(prev.isNil) {
-					prev = rrand(~fallbackMin, ~fallbackMax);
+					prev = rrand(~fallbackMin.next, ~fallbackMax.next);
 				} {
 					prev = prev.item;
 				};
@@ -540,7 +547,7 @@ protect {
 			// rhythmic values <= ~staccDur will be made staccato, otherwise _
 			// ~staccDur = 0 disables this feature
 			// ignored for non-pitch parameters (because, no concept of articulation)
-			if(~args[3].isNumber) {
+			if(~isNumProxy.(~args[3])) {
 				~staccDur = ~args[3];
 			} {
 				~staccDur = 0;
@@ -574,7 +581,7 @@ protect {
 					new = ~items[prevIndex].item.copy
 				};
 				if(~isPitch ?? { false }) {
-					if(~getIndexDur.(~currentIndex) <= ~staccDur) {
+					if(~getIndexDur.(~currentIndex) <= ~staccDur.next) {
 						new = ~applyArtic.($., new);
 					} {
 						if(new.length.isNil) {
@@ -601,8 +608,8 @@ protect {
 			currentEnvironment
 		};
 		~modifySource = {
-			var avail = ~getAvail.(~items, ~quant).scramble;
-			min(~numToAdd, avail.size).do { |i|
+			var avail = ~getAvail.(~items, ~quant.next).scramble;
+			min(~numToAdd.next, avail.size).do { |i|
 				var newTime = avail[i],
 				new;
 				// should be guaranteed but, protect against mistakes
@@ -660,6 +667,7 @@ protect {
 	// (divisible == quant means durations quant, quant * 2, quant * 3 etc. can be divided)
 	// (divisible == 2*quant means durations quant, quant * 3, quant * 5 etc. can be divided)
 	// (divisible == 0 means *only* quant can be divided)
+	// divisor may randomize once per bar (I might change this later but it's a bigger rewrite)
 	PR(\clGenIns).clone {
 		~superprep = ~prep;
 		~prep = {
@@ -675,7 +683,7 @@ protect {
 			if(~divisor <= 1) {
 				Error("\\clGenDiv divisor must be >= 1.0").throw;
 			};
-			~divisible = ~args[6] ?? { ~quant };
+			~divisible = ~args[6] ?? { Pfunc({ |quant| quant }) };
 			~replaceItems = ~replaceItems.collect(_.item);
 			~poolItems = ~pool.collect(_.item);
 			if(~poolItems.size > 0) {
@@ -690,7 +698,7 @@ protect {
 			~items
 		};
 		~modifySource = {
-			var avail = ~getAvail.(~items, ~quant).scramble;
+			var avail = ~getAvail.(~items, ~quant.next).scramble;
 			avail.size.do { |i|
 				var newTime = avail[i],
 				new;
@@ -708,21 +716,22 @@ protect {
 		~getAvail = { |items, quant, tolerance = 0.001|
 			var durs = (items.collect(_.time) ++ ~dur).differentiate.drop(1),
 			avail, numToAdd,
-			blocks, testUnit = 0, blockDur, i;
+			blocks, testUnit = 0, blockDur, i, div;
 			avail = ~items.collect { |item|
 				~replaceItems.isEmpty or: { ~replaceItems.includesEqual(item.item) }
 			};
-			numToAdd = min(~numToAdd, avail.count { |bool| bool });
-			blocks = Array(~numToAdd);
+			numToAdd = min(~numToAdd.next, avail.count { |bool| bool });
+			blocks = Array(numToAdd);
 			blockDur = quant;
+			div = ~divisible.next(quant);
 			while { numToAdd > 0 and: { blockDur < ~dur } } {
 				i = durs.collectIndices { |dur, i| avail[i] and: { dur == blockDur } };
 				if(i.isEmpty) {
-					if(~divisible == 0) {
+					if(div == 0) {
 						blockDur = ~dur + 1;  // force stop: avoid infinite loop
 					} {
 						testUnit = testUnit + 1;
-						blockDur = quant + (~divisible * testUnit);
+						blockDur = quant + (div * testUnit);
 					};
 				} {
 					i = i.choose;
@@ -732,7 +741,12 @@ protect {
 				};
 			};
 			// now get times for these indices
-			blockDur = (1 .. ~divisor - 1) / ~divisor;
+			div = ~divisor.next;
+			if(div <= 1) {
+				"In BP(%), \\clGenDiv divisor must be >= 1.0, substituting 2.0"
+				.format(~bpKey.asCompileString).warn;
+			};
+			blockDur = (1 .. div - 1) / div;
 			blocks.collect { |i|
 				~items[i].time + (~getIndexDur.(i) * blockDur)
 			}.flat;
@@ -783,22 +797,24 @@ protect {
 		};
 		~defaultNames = #[baseItems, pool, numToAdd, quant, prob, insPool];
 		~defaults = [nil, Error("Must specify pool"), 1, 0.25, 0.75, nil];
-		~canStutter = { |item, index|
+		~canStutter = { |item, index, quant|
 			BP(~bpKey).valueIsRest(item.item, ~parm).not and: {
-				~getIndexDur.(index) >= (2 * ~quant) and: {
+				~getIndexDur.(index) >= (2 * quant) and: {
 					~poolItems.isEmpty or: { ~poolItems.includesEqual(item.item) }
 				}
 			}
 		};
 		~modifySource = {
-			var nextTime, time, new;
+			var nextTime, time, new, quant, prob;
 			// later, we check index vs ~items.size
 			// but ~items.size changes as we add new items
 			// so, save the original input size
 			var inputSize = ~items.size;
+			quant = ~quant.next;
+			prob = ~prob.next;
 			// get source indices
-			~items.collectIndices { |item, index| ~canStutter.(item, index) }
-			.scramble.keep(~numToAdd).do { |index|
+			~items.collectIndices { |item, index| ~canStutter.(item, index, quant) }
+			.scramble.keep(~numToAdd.next).do { |index|
 				var didAdd = false;
 				time = ~items[index].time;
 				nextTime = if(index < (inputSize - 1)) {
@@ -807,10 +823,10 @@ protect {
 					~time + ~dur  // this generator's ending time
 				};
 				while {
-					time = time + ~quant;
+					time = time + quant;
 					time < nextTime
 				} {
-					if(~prob.coin) {
+					if(prob.coin) {
 						new = ~insStream.value(index);
 						~items = ~items.add((item: new, wildcard: new, src: \stutt, time: time));
 						didAdd = true;
@@ -830,15 +846,16 @@ protect {
 		~defaultNames = #[baseItems, maxDur, insPool];
 		~defaults = [nil, 0.5, [(item: $x, time: 0)]];
 		~process = {
-			var lastEvent, localItems, new;
+			var lastEvent, localItems, new, maxDur;
 			~items = ~getUpstreamItems.();
 			localItems = ~items.copy;
 			(localItems.collect(_.time) ++ [~time + ~dur]).do { |time, i|
+				maxDur = ~maxDur.next;
 				if(lastEvent.notNil and: {
-					lastEvent[\initialRest] != true and: { time - lastEvent.time > ~maxDur }
+					lastEvent[\initialRest] != true and: { time - lastEvent.time > maxDur }
 				}) {
 					new = ~insStream.next;
-					~insertItem.((item: new, wildcard: new, src: \choke, time: lastEvent.time + ~maxDur));
+					~insertItem.((item: new, wildcard: new, src: \choke, time: lastEvent.time + maxDur));
 				};
 				lastEvent = localItems[i];
 			};
@@ -860,17 +877,18 @@ protect {
 			} {
 				~initRest = false;
 			};
-			~weights = ~weights.normalizeSum;
+			~weights = Ptuple(~weights, inf).asStream.collect(_.normalizeSum);
 			~poolStream = Prand(~pool.collect(_.item), inf).asStream;
-			~availPat = Pseries(
-				~time,
-				Pconst(~dur, Pwrand(Array.series(~weights.size, ~quant, ~quant), ~weights, inf)),
-				inf
-			);
 			currentEnvironment
 		};
 		~modifySource = {
-			var avail = ~getAvail.(~items, ~quant), didInsertFirst = false;
+			var avail, quant = ~quant.next, didInsertFirst = false;
+			~availPat = Pseries(
+				~time,
+				Pconst(~dur, Pwrand(Array.series(~weights.size, quant, quant), ~weights, inf)),
+				inf
+			);
+			avail = ~getAvail.(~items, quant);
 			avail.size.do { |i|
 				var newTime = avail[i],
 				new;
@@ -922,8 +940,9 @@ protect {
 			currentEnvironment
 		};
 		~modifySource = {
-			var possShifts = (~quant ?? { 0.25 }) * [-1, 1],
-			numToShift = ~args[2] ?? { 1 };
+			var quant = ~quant.next,
+			possShifts = (quant ?? { 0.25 }) * [-1, 1],
+			numToShift = (~args[2] ?? { 1 }).next;
 			// check number of source items present in the pool (but only if pool was explicitly given)
 			// it's possible to ask for 4 shifts but the source has only two shiftable items
 			// reduce to 2 in that case
@@ -987,14 +1006,15 @@ protect {
 		~prep = {
 			~baseItems = ~args[0];
 			~quant = ~args[1];
-			if(~quant.isNumber.not) {
+			if(~isNumProxy.(~quant).not) {
 				Error("\rot() quant must be a number").throw;
 			};
 			~pool = ~args[2].collect(_.item);  // also handles nil
 			currentEnvironment
 		};
 		~process = {
-			var firstI, endTime = ~time + ~dur,
+			var quant = ~quant.next,
+			firstI, endTime = ~time + ~dur,
 			testFunc = if(~pool.size > 0) {
 				{ |item|
 					~pool.includesEqual(item[\item]) or: {
@@ -1008,7 +1028,7 @@ protect {
 			~items = ~items.collect { |item|
 				var newTime;
 				if(testFunc.value(item) and: {
-					newTime = (item[\time] + ~quant).wrap(~time, endTime);
+					newTime = (item[\time] + quant).wrap(~time, endTime);
 					~items.every { |x| x[\time] != newTime }
 				}) {
 					item.copy.put(\time, newTime);
