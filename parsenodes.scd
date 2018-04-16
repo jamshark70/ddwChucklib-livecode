@@ -19,6 +19,10 @@ Proto {
 			~valStream.next(inval)
 		};
 	};
+	// acts as its own stream
+	// it's not a pattern, so it doesn't need stream independence
+	// users shouldn't use this object directly as a pattern
+	~asStream = { currentEnvironment };
 	~isNumProxy = true;
 } => PR(\clNumProxy);
 
