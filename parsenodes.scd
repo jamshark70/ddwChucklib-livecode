@@ -305,7 +305,42 @@ PR(\abstractClParseNode).clone {
 		stream << ")";
 		currentEnvironment
 	};
+	// Proto:value redirects here
+	~next = { ~value };
 } => PR(\clNumberNode);
+
+PR(\clNumberNode).clone {
+	~parse = { |stream|
+		var low, hi;
+		low = PR(\clNumberNode).copy.prep(stream);
+		if(low.value.notNil) {
+			~skipSpaces.(stream);
+			2.do {
+				if(stream.next != $.) {
+					Error("Invalid range separator").throw;
+				}
+			};
+			~skipSpaces.(stream);
+			hi = PR(\clNumberNode).copy.prep(stream);
+			if(hi.value.isNil) {
+				Error("No upper bound found in range").throw;
+			};
+		} {
+			Error("Invalid lower bound in range").throw;
+		};
+		if(low.value <= hi.value) {
+			~children = [low, hi];
+		} {
+			~children = [hi, low];
+		};
+		currentEnvironment
+	};
+	~streamCode = { |stream|
+		stream << "PR(\\clNumProxy).copy.prep(Pwhite("
+		<<< ~children[0].value << ", " <<< ~children[1].value << ", inf))";
+		currentEnvironment
+	};
+} => PR(\clRangeNode);
 
 PR(\abstractClParseNode).clone {
 	~isPitch = false;
@@ -443,6 +478,7 @@ PR(\abstractClParseNode).clone {
 			pre: { |stream| stream.next }  // stringnodes assume you've already dropped the opening quote
 		),
 		(type: \clPatStringNode, regexp: "^\".*\""),
+		(type: \clRangeNode, regexp: "^-?[0-9.]+ *\\.\\. *-?[0-9]"),
 		(type: \clNumberNode, regexp: "^-?[0-9]"),
 		(type: \clStringNode, regexp: "^`[A-Za-z0-9_]+",
 			endTest: { |ch| not(ch.isAlphaNum or: { "_`".includes(ch) }) },
