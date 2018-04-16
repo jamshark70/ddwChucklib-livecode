@@ -268,7 +268,7 @@ protect {
 		~prep = {
 			~baseItems = ~args[0];
 			~pool = ~args[1];
-			if(~args[2].notNil) {
+			if(~args[2].isSequenceableCollection) {
 				~replaceItems = ~args[2].collect { |item| item.item };
 			} {
 				~replaceItems = [$*];
@@ -278,7 +278,7 @@ protect {
 			// } {
 			// 	~doReset = false;
 			// };
-			~doReset = ~args[3];
+			~doReset = ~args[3] ?? { 0 };
 			currentEnvironment
 		};
 
@@ -394,11 +394,11 @@ protect {
 		~superprep = ~prep;
 		~prep = {
 			~superprep.();
-			~doReset = false;  // reset is meaningless for wrand anyway
+			~doReset = 0;  // reset is meaningless for wrand anyway
 			currentEnvironment
 		};
 		~makeStream = {
-			var firstNum = ~args.detectIndex { |item| item.isNumber },
+			var firstNum = ~args.detectIndex { |item| ~isNumProxy.(item) },
 			weights;
 			if(firstNum.isNil) {
 				// optimization: constant weights, don't need a stream
@@ -428,7 +428,7 @@ protect {
 		~artic = ($~: inf /*1.01*/, $_: 0.9, $.: 0.4,
 			$>: { |note| note.args = \accent; nil }  // don't change length
 		);
-		~doReset = false;
+		~doReset = 0;
 		~prep = {
 			~argNames.do { |key, i|
 				key.envirPut(~args[i] ?? { ~defaults[i] });
@@ -468,12 +468,12 @@ protect {
 	PR(\clGenPitch).clone {
 		~defaults = [[], [(item: $*)], #[-2, -1, 1, 2].collect({ |int| (item: int) }), 0, 7, "_", 1];
 		~argNames = #[baseItems, replaceItems, intervalPool, fallbackMin, fallbackMax, articPool, connect];
-		~doReset = true;
+		~doReset = 1;
 		~makeStream = {
 			~seqStream = Routine {
 				// first init only is from previous item
 				var pitch, prev, i, new, newLen;
-				if(~connect > 0) {
+				if(~connect.next > 0) {
 					// prev item might be a rest, if it's a placeholder from \ins
 					// so, scan backward through rests; normally this won't loop
 					i = ~currentIndex;
@@ -552,7 +552,7 @@ protect {
 			} {
 				~staccDur = 0;
 			};
-			~doReset = false;  // required by superclass
+			~doReset = 0;  // required by superclass
 			currentEnvironment
 		};
 		~makeStream = {
@@ -595,12 +595,12 @@ protect {
 	}.import((clGenPitch: #[artic])) => PR(\clGenPrev);
 
 	PR(\clGenSeq).clone {
-		~doReset = false;
+		~doReset = 0;
 		~prep = {
 			~baseItems = ~args[0];
 			~pool = ~args[1];
 			~numToAdd = ~args[2] ?? { 1 };
-			if(~numToAdd.isNumber.not) {
+			if(~isNumProxy.(~numToAdd).not) {
 				Error("numToAdd '%' is not a number".format(~numToAdd)).throw;
 			};
 			~quant = ~args[3] ?? { 0.25 };
@@ -675,14 +675,14 @@ protect {
 			~pool = ~args[1];
 			~replaceItems = ~args[2] ?? { ~pool };
 			~numToAdd = ~args[3] ?? { 1 };
-			if(~numToAdd.isNumber.not) {
+			if(~isNumProxy.(~numToAdd).not) {
 				Error("numToAdd '%' is not a number".format(~numToAdd)).throw;
 			};
 			~quant = ~args[4] ?? { 0.25 };
 			~divisor = ~args[5] ?? { 2 };
-			if(~divisor <= 1) {
-				Error("\\clGenDiv divisor must be >= 1.0").throw;
-			};
+			// if(~divisor <= 1) {
+			// 	Error("\\clGenDiv divisor must be >= 1.0").throw;
+			// };
 			~divisible = ~args[6] ?? { Pfunc({ |quant| quant }) };
 			~replaceItems = ~replaceItems.collect(_.item);
 			~poolItems = ~pool.collect(_.item);
@@ -882,10 +882,11 @@ protect {
 			currentEnvironment
 		};
 		~modifySource = {
-			var avail, quant = ~quant.next, didInsertFirst = false;
+			var avail, didInsertFirst = false,
+			quant = ~quant.next, weights = ~weights.next;
 			~availPat = Pseries(
 				~time,
-				Pconst(~dur, Pwrand(Array.series(~weights.size, quant, quant), ~weights, inf)),
+				Pconst(~dur, Pwrand(Array.series(weights.size, quant, quant), weights, inf)),
 				inf
 			);
 			avail = ~getAvail.(~items, quant);
@@ -1186,7 +1187,7 @@ protect {
 				if(thing.isSequenceableCollection) {
 					~list = ~list.add(thing);
 					thing = stream.next;
-					if(thing.isNumber) {
+					if(~isNumProxy.(thing)) {
 						~weights = ~weights.add(thing);
 						thing = stream.next;  // always leave 'thing' at the next item
 					} {
