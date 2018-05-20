@@ -962,43 +962,47 @@ protect {
 		~traverseShifts = { |numToShift, items, pool, shiftArray, shiftedIndices(List.new)|
 			var shiftItem, shiftIndex, shift, newTime, oldItem, tries;
 
-			shiftIndex = nil;
-			tries = ~poolItems.size * 2;
-			while { shiftIndex.isNil and: { tries > 0 } } {
-				shiftItem = ~poolStream.next;
-				shiftIndex = ~items.collectIndices { |item, i|
-					item.item == shiftItem and: { shiftedIndices.includes(i).not }
-				};
-				shiftIndex = shiftIndex.choose;  // nil if array is empty
-				tries = tries - 1;
-			};
-			shiftArray = shiftArray.rotate(2.rand);
-			shift = block { |break|
-				shiftArray.do { |sh|
-					newTime = ~items[shiftIndex][\time] + sh;
-					if(newTime.inclusivelyBetween(~time, ~endTime - 0.001) and: {
-						newTime != ~items[shiftIndex + sh.sign].tryPerform(\at, \time)
-					}) {
-						oldItem = ~items[shiftIndex];
-						~items[shiftIndex] = ~items[shiftIndex].copy.put(\time, newTime);
-						pool.remove(shiftItem);
-						shiftedIndices.add(shiftIndex);
-						if(numToShift > 1) {
-							if(~traverseShifts.(numToShift - 1, ~items, pool, shiftArray, shiftedIndices)) {
-								break.(newTime);
-							}
-						} {
-							break.(newTime);
-						};
-						// if we didn't break for success, undo for next iteration
-						pool = pool.add(shiftItem);
-						shiftedIndices.remove(shiftIndex);
-						~items[shiftIndex] = oldItem;
+			if(numToShift > 0) {
+				shiftIndex = nil;
+				tries = ~poolItems.size * 2;
+				while { shiftIndex.isNil and: { tries > 0 } } {
+					shiftItem = ~poolStream.next;
+					shiftIndex = ~items.collectIndices { |item, i|
+						item.item == shiftItem and: { shiftedIndices.includes(i).not }
 					};
+					shiftIndex = shiftIndex.choose;  // nil if array is empty
+					tries = tries - 1;
 				};
-				nil
-			};
-			shift.notNil  // true if successful
+				shiftArray = shiftArray.rotate(2.rand);
+				shift = block { |break|
+					shiftArray.do { |sh|
+						newTime = ~items[shiftIndex][\time] + sh;
+						if(newTime.inclusivelyBetween(~time, ~endTime - 0.001) and: {
+							newTime != ~items[shiftIndex + sh.sign].tryPerform(\at, \time)
+						}) {
+							oldItem = ~items[shiftIndex];
+							~items[shiftIndex] = ~items[shiftIndex].copy.put(\time, newTime);
+							pool.remove(shiftItem);
+							shiftedIndices.add(shiftIndex);
+							if(numToShift > 1) {
+								if(~traverseShifts.(numToShift - 1, ~items, pool, shiftArray, shiftedIndices)) {
+									break.(newTime);
+								}
+							} {
+								break.(newTime);
+							};
+							// if we didn't break for success, undo for next iteration
+							pool = pool.add(shiftItem);
+							shiftedIndices.remove(shiftIndex);
+							~items[shiftIndex] = oldItem;
+						};
+					};
+					nil
+				};
+				shift.notNil  // true if successful
+			} {
+				true  // calling this with numToShift == 0 --> do nothing, success
+			}
 		};
 		~snippet.("shift", "\\shift(##src, pool, numToShift, quant##)");
 	} => PR(\clGenShift);
