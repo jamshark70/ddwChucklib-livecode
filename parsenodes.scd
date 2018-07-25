@@ -342,6 +342,43 @@ PR(\clNumberNode).clone {
 	};
 } => PR(\clRangeNode);
 
+// \ins(, ".", {#[1, 4].choose}, 0.25)
+// inside curly braces, brackets and quotes are allowed; SC comments aren't
+PR(\clStringNode).clone {
+	~parse = { |stream|
+		var start, ch;
+		if(stream.next != ${) {
+			Error("Tried to parse pass-through expression not starting with a brace, should never happen")
+			.throw;
+		};
+		start = stream.pos;  // bad interface in the \clParse helper functions
+		while {
+			ch = stream.next;
+			ch.notNil and: { ch != $} }
+		} {
+			case
+			{ "([{".includes(ch) } {
+				ch = \clParseBracketed.eval(stream, ch, false);
+			}
+			{ "\'\"".includes(ch) } {
+				ch = \clParseQuote.eval(stream, ch);
+			};
+			// else keep going by single chars
+		};
+		if(ch.isNil) {
+			Error("Unterminated pass-through expression: %".format(
+				stream.collection[start .. start + 10]
+			)).throw;
+		};
+		~value = stream.collection[start .. stream.pos - 2];
+	};
+	~next = { ~value };
+	~streamCode = { |stream|
+		stream << "PR(\\clNumProxy).copy.prep(Pfunc { " << ~value << " })";
+		currentEnvironment
+	};
+} => PR(\clPassthruNumberNode);
+
 PR(\abstractClParseNode).clone {
 	~isPitch = false;
 	~endChars = "|\"";
@@ -472,6 +509,7 @@ PR(\abstractClParseNode).clone {
 	~types = [
 		(type: \clRhythmGenNode, regexp: "^:[a-zA-Z0-9_]+\\(.*\\)"),
 		(type: \clGeneratorNode, regexp: "^\\\\[a-zA-Z0-9_]+\\(.*\\)"),
+		(type: \clPassthruNumberNode, regexp: "^\{.*\}"),
 		// more specific "" test must come first
 		(type: \clArticPoolNode, regexp: "^\"[._~>]+\"",
 			match: { ~isPitch ?? { false } },
