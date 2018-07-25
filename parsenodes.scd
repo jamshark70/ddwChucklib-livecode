@@ -374,7 +374,12 @@ PR(\clStringNode).clone {
 	};
 	~next = { ~value };
 	~streamCode = { |stream|
-		stream << "PR(\\clNumProxy).copy.prep(Pfunc { " << ~value << " })";
+		// trickier than you think.
+		// non-patterns --> Pfunc({ expr }); patterns --> no Pfunc.
+		// we have to evaluate the expression to know which is which.
+		// avoid code duplication in the generated string by using a function.
+		stream << "PR(\\clNumProxy).copy.prep(Plazy { var func = { " << ~value
+		<< " }, thing = func.value; if(thing.isPattern) { PnNilSafe(thing, inf, 10) } { Pfunc(func) } })";
 		currentEnvironment
 	};
 } => PR(\clPassthruNumberNode);
