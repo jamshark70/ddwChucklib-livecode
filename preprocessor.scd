@@ -2,7 +2,19 @@
 
 this.preProcessor = { |code|
 	if("/+(".includes(code.first)) {
-		\chucklibLiveCode.eval(code)
+		try {
+			\chucklibLiveCode.eval(code)
+		} { |error|
+			// Error is not typically used in the SC class library.
+			// If you get an Error here, it's probably an error parsing a cll statement.
+			// You don't need the call stack of parser internals.
+			if(error.class == Error) {
+				error.errorString.postln;
+				""
+			} {
+				error.throw;  // all other errors should halt
+			}
+		};
 	} {
 		code
 	}
