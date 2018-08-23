@@ -146,25 +146,32 @@ protect {
 		~xyExtent = Point(140, 145);
 		~gap = Point(5, 5);
 
-		~sliders = { |n = 1, prefix = "/1", oneBound(Rect(0, 0, 400, 50)), buttonExtent(Point(50, 50)), gap = 10, bcolor, bltColor, scolor, sltColor, startI = 1|
+		~sliders = { |n = 1, prefix = "/1", oneBound(Rect(0, 0, 400, 50)), buttonExtent(Point(50, 50)), gap = 10, bcolor, bltColor, scolor, sltColor, startI = 0, nameStartI = 1|
 			var out = Array(n * 4),
 			togStr = prefix ++ "/toggle",
 			slStr = prefix ++ "/fader",
 			origin = Point(gap, gap + oneBound.top);
 			oneBound = oneBound.copy.top_(0);
 			n.do { |i|
-				out.add((togStr ++ (i+startI)).asSymbol)
+				out.add((togStr ++ (i+nameStartI)).asSymbol)
 				.add((
 					bounds: Rect.fromPoints(origin, origin + buttonExtent),
 					class: Button,
 					init: { |view|
-						view.states = [[" ", nil, bltColor], ["", nil, bcolor]];
+						// init func runs in the touchGui environment
+						view.states_([[" ", nil, bltColor], ["", nil, bcolor]])
+						.receiveDragHandler_(e { |view|
+							// we don't have access to the 't' touch object
+							// notification assumes there's just one (untested with multiple)
+							NotificationCenter.notify(~model, \receiveDrag, [View.currentDrag, i+startI]);
+						})
 					},
 				))
-				.add((slStr ++ (i+startI)).asSymbol)
+				.add((slStr ++ (i+nameStartI)).asSymbol)
 				.add((
 					bounds: Rect.fromPoints(origin + Point(buttonExtent.x + gap, 0), origin + oneBound.extent),
 					class: Slider,
+					// I considered implementing receive-drag on the slider too but it didn't work
 					init: { |view| view.knobColor_(scolor) },
 					spec: [0, 1]
 				));
@@ -175,9 +182,9 @@ protect {
 
 		~tabSpecs = [
 			"Tab1", {
-				var out = ~sliders.(1, "/1", oneBound: Rect(0, 0, ~sliderWidth, ~buttonExtent.y), buttonExtent: ~buttonExtent, gap: ~gap.x, bcolor: ~yellow, bltColor: ~ltYellow, scolor: ~yellow, sltColor: ~ltYellow),
+				var out = ~sliders.(1, "/1", oneBound: Rect(0, 0, ~sliderWidth, ~buttonExtent.y), buttonExtent: ~buttonExtent, gap: ~gap.x, bcolor: ~yellow, bltColor: ~ltYellow, scolor: ~yellow, sltColor: ~ltYellow, startI: 0),
 				last = out.last;
-				out = out ++ ~sliders.(2, "/1", oneBound: Rect(0, last.bounds.bottom, ~sliderWidth, ~buttonExtent.y), buttonExtent: ~buttonExtent, gap: ~gap.x, bcolor: ~aqua, bltColor: ~ltAqua, scolor: ~aqua, sltColor: ~ltAqua, startI: 2);
+				out = out ++ ~sliders.(2, "/1", oneBound: Rect(0, last.bounds.bottom, ~sliderWidth, ~buttonExtent.y), buttonExtent: ~buttonExtent, gap: ~gap.x, bcolor: ~aqua, bltColor: ~ltAqua, scolor: ~aqua, sltColor: ~ltAqua, nameStartI: 2, startI: 1);
 				last = out.last;
 				out = out.grow(out.size + (7*2));
 				5.do { |i|
@@ -207,8 +214,18 @@ protect {
 				));
 				out
 			}.value,
-			"Tab2", ~sliders.(8, "/2", oneBound: Rect(0, 0, ~sliderWidth, ~buttonExtent.y), buttonExtent: ~buttonExtent, gap: ~gap.y, bcolor: ~aqua, bltColor: ~ltAqua, scolor: ~green, sltColor: ~ltGreen),
-			"Tab3", ~sliders.(8, "/3", oneBound: Rect(0, 0, ~sliderWidth, ~buttonExtent.y), buttonExtent: ~buttonExtent, gap: ~gap.y, bcolor: ~aqua, bltColor: ~ltAqua, scolor: ~red, sltColor: ~ltRed),
+			"Tab2", ~sliders.(
+				8, "/2", oneBound: Rect(0, 0, ~sliderWidth, ~buttonExtent.y),
+				buttonExtent: ~buttonExtent, gap: ~gap.y,
+				bcolor: ~aqua, bltColor: ~ltAqua, scolor: ~green, sltColor: ~ltGreen,
+				startI: 0
+			),
+			"Tab3", ~sliders.(
+				8, "/3", oneBound: Rect(0, 0, ~sliderWidth, ~buttonExtent.y),
+				buttonExtent: ~buttonExtent, gap: ~gap.y,
+				bcolor: ~aqua, bltColor: ~ltAqua, scolor: ~red, sltColor: ~ltRed,
+				startI: 8
+			),
 		];
 
 	} => PR(\mix16Touch);
@@ -613,13 +630,27 @@ protect {
 			~faderKeys = ~keys.select { |key| key[3] == $f }.collectAs(_.asSymbol, Array).sort;
 			~toggleKeys = ~keys.select { |key| key[3] == $t }.collectAs(_.asSymbol, Array).sort;
 			~maps = IdentityDictionary.new;
+
+			// drag-n-drop: the 'model' is BP(~oscKey)
+			// the model doesn't know directly about me, but it sends notifications
+			NotificationCenter.register(BP(~oscKey).v, \receiveDrag, ~collIndex, e(~receiveDrag));
 		};
 		~freeCleanup = {
+			NotificationCenter.unregister(BP(~oscKey).v, \receiveDrag, ~collIndex);
 			~maps.do(_.free);
 		};
 		~empty = { |indices|
 			if(indices.isNil) { indices = 16 };
 			indices.do { |i| ~bindNil.(nil, i) };
+		};
+		~receiveDrag = { |drag, i|
+			var method = ("bind" ++ drag.bindClassName).asSymbol;
+			if(method.envirGet.isFunction) {
+				method.envirGet.value(drag, i.asString);  // adverb should be a string
+			} {
+				"Dragging % is not allowed here".format(drag).warn;
+			};
+			currentEnvironment
 		};
 		// don't do mixers this way
 		~bindGenericGlobalControl = { |thing, adverb, parms|
@@ -763,6 +794,96 @@ protect {
 		};
 	} => PR(\chuckOSC);
 
+	// not really "mobile" but helps you locate and guify controls
+	Proto {
+		~classes = [BP, VC];
+		~bounds = Rect(800, 200, 260, 175);
+		~prep = {
+			if(~viewParent.isNil) {
+				// if user puts the BP into a layout
+				~view = ListView.new;
+			} {
+				~view = ListView(~viewParent, ~bounds)
+			};
+			~view.beginDragAction_(e { |view|
+				if(~items.size > 0) {
+					~items[~view.value].tryPerform(\at, \object)
+				} { nil };
+			})
+			.onClose_(e { BP(~collIndex).free });
+			~updateView.();
+			if(~viewParent.isNil) { ~view.front };
+			~updateView = e(~updateView);
+			~updateHook = e {
+				~updateView.defer(0.05);  // updateView is already linked to this envir
+			};
+			~classes.do { |class|
+				class.addHook(\put, ~updateHook)
+				.addHook(\free, ~updateHook);
+			};
+			currentEnvironment
+		};
+		~freeCleanup = {
+			~classes.do { |class|
+				class.removeHook(\put, ~updateHook)
+				.removeHook(\free, ~updateHook);
+			};
+			~view.close;
+		};
+		~asView = { ~view };
+		~updateView = {
+			// tryPerform: ~items may be nil or empty
+			// also (FML) ~view.value may be nil
+			var currentID, i;
+			if(~items.notNil and: { ~view.value.notNil }) {
+				// and even if you have an items array, you might pull nil out of it
+				currentID = ~items[~view.value].tryPerform(\at, \id);
+			};
+			~items = ~makeList.();
+			~view.items = ~items.collect(_.string);
+			i = ~items.detectIndex { |item| item[\id] == currentID };
+			if(i.notNil) { ~view.value = i };
+		};
+		~makeList = {
+			// oopsy, need drags and strings
+			// gc drags need to point back to the parent -- data structure
+			// (uniqueID [for restoring view pos], string, object, parent [only for VoicerGlobalControls])
+			~makeBPList.() ++ ~makeVCList.()
+		};
+		~makeBPList = {
+			var items = Array.new, mixer;
+			BP.keys.as(Array).sort.do { |key|
+				// asMixer throws an error on failure; don't care, just ignore this one
+				mixer = try { BP(key).asMixer } { nil };
+				if(mixer.notNil) {
+					items = items.add((
+						id: "BP" ++ key,
+						string: "BP(%)".format(key.asCompileString),
+						object: BP(key)  // mixer
+					));
+				};
+			};
+			items
+		};
+		~makeVCList = {
+			var items = Array.new, mixer;
+			VC.keys.as(Array).sort.do { |key|
+				items = items.add((
+					id: "VC" ++ key,
+					string: "VC(%)".format(key.asCompileString),
+					object: VC(key).asMixer  // maybe nil but shouldn't be
+				));
+				VC(key).v.tryPerform(\globalControlsByCreation).do { |gc, i|
+					items = items.add((
+						id: "VC%:%-%".format(key, i.asPaddedString(2, "0"), gc.name),
+						string: "    - % (% .. %)".format(gc.name, gc.spec.minval, gc.spec.maxval),
+						object: gc
+					))
+				};
+			};
+			items
+		};
+	} => PR(\controlList);
 } {
 	AbstractChuckArray.defaultSubType = saveSubtype;
 };
