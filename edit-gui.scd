@@ -131,7 +131,8 @@ Proto {
 		.keyDownAction_(e { |... args| ~prKeyDownAction.(*args) })
 		.mouseUpAction_(e { |... args| ~prMouseUpAction.(*args) })
 		.focusGainedAction_({ currentEnv.changed(\focused, true) })
-		.focusLostAction_({ currentEnv.changed(\focused, false) });
+		.focusLostAction_({ currentEnv.changed(\focused, false) })
+		.onClose_({ currentEnv.changed(\didFree) });
 		~textProperties.().do { |key|
 			~view.tryPerform(key.asSetter, key.envirGet);
 		};
