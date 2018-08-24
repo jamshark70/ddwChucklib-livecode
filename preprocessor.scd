@@ -1835,8 +1835,12 @@ Proto({
 
 Proto {
 	~clClass = BP;
+	~currentDoc = {
+		~activeView ?? { 'Document'.asClass.current };
+	};
+	~activeView = nil;
 	~process = { |code|
-		var pos;
+		var doc, pos, method;
 
 		if(~versionOK.isNil) {
 			~versionOK = Main.versionAtLeast(3, 7) and: { Platform.ideName == "scqt" };
@@ -1866,15 +1870,17 @@ Proto {
 					~checkStepForward.();
 				};
 
-				pos = 'Document'.asClass.current.selectionStart + 'Document'.asClass.current.selectionSize;
+				doc = ~currentDoc.();
+				pos = doc.selectionStart + doc.selectionSize;
+				method = if(doc.isKindOfByName('Document')) { 'string_' } { 'setString' };
 				if(~numToApply.isNil) {
-					if(~stepForward and: {
-						'Document'.asClass.current.string(pos - 1, 1) == "\n"
-					}) { pos = pos - 1 };
-					'Document'.asClass.current.string_(" = %;".format(~strings[0]), pos, 0);
+					if(~stepForward and: { doc.isKindOfByName('Document') and: {
+						doc.string(pos - 1, 1) == "\n"
+					} }) { pos = pos - 1 };
+					doc.perform(method, " = %;".format(~strings[0]), pos, 0);
 				} {
 					if(~parm == ~clClass.new(~objKey).defaultParm) { ~parm =nil };
-					'Document'.asClass.current.string_(
+					doc.perform(method,
 						~strings.collect { |string, i|
 							"/%.%% = %;\n".format(~objKey, ~phrases[i],
 								if(~parm.notNil) { "." ++ ~parm } { "" },

@@ -5,15 +5,16 @@ Library.put(\clLivecode, \setupbars, \addToDoc, Main.versionAtLeast(3, 7) and: {
 Library.put(\clLivecode, \setupbars, \guiIsFront, false);
 
 {
-	Library.at(\clLivecode, \setupbars, \addToDoc) ?? { false }
-	and: {
-		not(Library.at(\clLivecode, \setupbars, \guiIsFront) ?? { false })
-	}
+	// Library.at(\clLivecode, \setupbars, \addToDoc) ?? { false }
+	// and: {
+	// 	not(Library.at(\clLivecode, \setupbars, \guiIsFront) ?? { false })
+	// }
+	true
 } => Func(\clBarFuncMayAddToDoc);
 
 { |key, n(4), prefix("m"), meters|
 	var phrases = [[prefix], (0 .. n-1)].flop.collect(_.join),
-	stepForward, pos;
+	stepForward, doc, pos, method;
 	meters = meters.asArray;
 	phrases.do { |phrase, i|
 		\chucklibLiveCode.eval("/%.% = %\"\";".format(key, phrase, meters.wrapAt(i) ?? { "" })).interpret;
@@ -24,9 +25,11 @@ Library.put(\clLivecode, \setupbars, \guiIsFront, false);
 			stepForward = PR(\clPatternToDoc).checkStepForward;
 		};
 
-		pos = 'Document'.asClass.current.selectionStart + 'Document'.asClass.current.selectionSize;
-		if(stepForward.not) { pos = pos + 1 };
-		'Document'.asClass.current.string_(
+		doc = PR(\clPatternToDoc).currentDoc;
+		pos = doc.selectionStart + doc.selectionSize;
+		method = if(doc.isKindOfByName('Document')) { 'string_' } { 'setString' };
+		if(stepForward.not and: { doc.isKindOfByName('Document') }) { pos = pos + 1 };
+		doc.perform(method,
 			"\n" ++ (phrases.collect { |phr| "/%.% = \"\";\n".format(key, phr) }.join),
 			pos, 0
 		);
