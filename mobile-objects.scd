@@ -866,14 +866,20 @@ protect {
 			items
 		};
 		~makeVCList = {
-			var items = Array.new, mixer;
+			var items = Array.new, ctls;
 			VC.keys.as(Array).sort.do { |key|
 				items = items.add((
 					id: "VC" ++ key,
 					string: "VC(%)".format(key.asCompileString),
 					object: VC(key).asMixer  // maybe nil but shouldn't be
 				));
-				VC(key).v.tryPerform(\globalControlsByCreation).do { |gc, i|
+				// 'globalControlsByCreation' keeps only 'allowGUI' controls
+				ctls = VC(key).v.tryPerform(\globalControls);
+				if(ctls.isKindOf(Dictionary)) {
+					ctls = ctls.values.as(Array);
+				};
+				ctls.sort { |a, b| a.voicerIndex < b.voicerIndex }
+				.do { |gc, i|
 					items = items.add((
 						id: "VC%:%-%".format(key, i.asPaddedString(2, "0"), gc.name),
 						string: "    - % (% .. %)".format(gc.name, gc.spec.minval, gc.spec.maxval),
