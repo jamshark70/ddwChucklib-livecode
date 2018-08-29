@@ -799,6 +799,7 @@ protect {
 		~classes = [BP, VC];
 		~bounds = Rect(800, 200, 260, 175);
 		~prep = {
+			~vcSimpleCtls = IdentityDictionary.new;
 			if(~viewParent.isNil) {
 				// if user puts the BP into a layout
 				~view = ListView.new;
@@ -814,12 +815,29 @@ protect {
 			~updateView.();
 			if(~viewParent.isNil) { ~view.front };
 			~updateView = e(~updateView);
-			~updateHook = e {
+			~putHook = e { |key, obj|
+				if(obj.isKindOf(VC)) {
+					// defer b/c Fact=>VC does VC new first, then putHook, *then* populate
+					// so 'obj.value' is not available Right Now
+					defer(e {
+						~vcSimpleCtls.put(key, SimpleController(obj.value)
+							.put(\addedGlobalControl, ~updateView)
+							.put(\removedGlobalControl, ~updateView)
+						);
+					}, 0.1);
+				};
+				~updateView.defer(0.05);  // updateView is already linked to this envir
+			};
+			~freeHook = e { |key, obj|
+				if(obj.isKindOf(VC)) {
+					~vcSimpleCtls[key].remove;
+					~vcSimpleCtls.removeAt(key);
+				};
 				~updateView.defer(0.05);  // updateView is already linked to this envir
 			};
 			~classes.do { |class|
-				class.addHook(\put, ~updateHook)
-				.addHook(\free, ~updateHook);
+				class.addHook(\put, ~putHook)
+				.addHook(\free, ~freeHook);
 			};
 			currentEnvironment
 		};
