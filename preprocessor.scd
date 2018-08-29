@@ -2577,7 +2577,8 @@ Proto {
 	};
 
 	~postParmMap = {
-		"BP(%)'s parameter map:\n".postf(~collIndex.asCompileString);
+		// leading \n because Buffer:readAndQuery may push the first line to a weird place
+		"\nBP(%)'s parameter map:\n".postf(~collIndex.asCompileString);
 		~parmMap.asSortedArray.do { |pair|
 			if(pair[0] == ~defaultParm) { "** ".post } { "   ".post };
 			"%: %\n".postf(*pair);
