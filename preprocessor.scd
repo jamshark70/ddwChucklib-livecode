@@ -2345,7 +2345,13 @@ Proto {
 	~valueIsRest = { |event, parm, inEvent|
 		var dict, result;
 		if(~parmIsPitch.(parm)) {
-			event.freq.isRest
+			if(event.respondsTo(\freq)) {
+				event.freq.isRest
+			} {
+				// if we get here -- not a SequenceNote -- then it should be a Char
+				// if not a Char, assume rest
+				event.tryPerform(\isAlpha) ?? { true }
+			}
 		} {
 			dict = ~parmMap[parm];
 			if(dict.notNil) {

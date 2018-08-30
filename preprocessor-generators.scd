@@ -580,7 +580,7 @@ protect {
 					// else repeat previous
 					new = ~items[prevIndex].item.copy
 				};
-				if(~isPitch ?? { false }) {
+				if(new.isKindOf(SequenceNote)) {
 					if(~getIndexDur.(~currentIndex) <= ~staccDur.next) {
 						new = ~applyArtic.($., new);
 					} {
@@ -786,7 +786,7 @@ protect {
 			} {
 				{ |srcIndex| // will only be called internally
 					var new = ~items[srcIndex].item;
-					if(~isPitch ?? { false }) {
+					if(new.isKindOf(SequenceNote)) {
 						new = ~applyArtic.($., new);  // all stuttered notes should be staccato
 					};
 					new
@@ -833,7 +833,9 @@ protect {
 					};
 				};
 				if(didAdd and: { ~isPitch ?? { false } }) {
-					~items[index].item = ~applyArtic.($., ~items[index].item);
+					if(~items[index].item.isKindOf(SequenceNote)) {
+						~items[index].item = ~applyArtic.($., ~items[index].item);
+					};
 				};
 			};
 			~items.sort { |a, b| a.time < b.time }
