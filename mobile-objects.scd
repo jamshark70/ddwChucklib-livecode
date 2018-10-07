@@ -869,11 +869,12 @@ protect {
 			~makeBPList.() ++ ~makeVCList.()
 		};
 		~makeBPList = {
-			var items = Array.new, mixer;
+			var items = Array.new, event;
 			BP.keys.as(Array).sort.do { |key|
-				// asMixer throws an error on failure; don't care, just ignore this one
-				mixer = try { BP(key).asMixer } { nil };
-				if(mixer.notNil) {
+				event = BP(key)[\event];
+				// if you have an eventKey, you're a playable process
+				// cll interface BPs do not have this
+				if(event.notNil and: { event[\eventKey].notNil }) {
 					items = items.add((
 						id: "BP" ++ key,
 						string: "BP(%)".format(key.asCompileString),
