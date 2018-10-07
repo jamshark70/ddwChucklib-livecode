@@ -59,6 +59,27 @@ Library.put(\clLivecode, \setupbars, \guiIsFront, false);
 	\setupbars.eval(key, n, prefix);
 } => Func(\bars);
 
+// setMeterAtBeat is unnecessarily hard to use
+// if last 2 are omitted, it will wait until the next barline to switch the meter
+{ |beatsPerBar, clock(TempoClock.default), barBeat(clock.nextBar), newBaseBarBeat(barBeat)|
+	clock.schedAbs(barBeat, {
+		clock.setMeterAtBeat(beatsPerBar, newBaseBarBeat);
+		nil
+	});
+} => Func(\changeMeter);
+
+{ |tempo, clock(TempoClock.default), barBeat(clock.nextBar)|
+	clock.schedAbs(barBeat, {
+		if(clock.isKindOfByName('BeaconClock')) {
+			clock.setGlobalTempo(tempo, barBeat);
+		} {
+			clock.tempo = tempo;
+		};
+		nil
+	});
+} => Func(\changeTempo);
+
+// assign-voicer functions
 { |vcKey, bpKey|
 	if(bpKey.notNil) {
 		if(BP.exists(bpKey)) {
@@ -73,7 +94,6 @@ Library.put(\clLivecode, \setupbars, \guiIsFront, false);
 		};
 	};
 } => Func(\vcToDefaultBP);
-
 
 // apply a voicer to the default event prototype
 { |ev|
