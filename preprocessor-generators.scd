@@ -299,7 +299,9 @@ protect {
 					~currentItem = item;
 					~currentIndex = i;
 					// copy is critical here!
-					~items[i] = item.copy.put(\item, ~seqStream.next(item));
+					// 18-1014: wildcard-replacers update the wildcard
+					~items[i] = item.copy.put(\wildcard, item[\item])
+					.put(\item, ~seqStream.next(item));
 				};
 			};
 		};
@@ -793,14 +795,21 @@ protect {
 				}
 			};
 			~poolItems = ~pool.collect(_.item);
+			if(~wildcards.isNil) {
+				~wildcardCheck = true;
+			} {
+				~wildcards = ~wildcards.collect(_.item);
+				~wildcardCheck = { |item| ~wildcards.includesEqual(item) };
+			};
 			currentEnvironment
 		};
-		~defaultNames = #[baseItems, pool, numToAdd, quant, prob, insPool];
-		~defaults = [nil, Error("Must specify pool"), 1, 0.25, 0.75, nil];
+		~defaultNames = #[baseItems, pool, numToAdd, quant, prob, insPool, wildcards];
+		~defaults = [nil, Error("Must specify pool"), 1, 0.25, 0.75, nil, nil];
 		~canStutter = { |item, index, quant|
 			BP(~bpKey).valueIsRest(item.item, ~parm).not and: {
 				~getIndexDur.(index) >= (2 * quant) and: {
 					~poolItems.isEmpty or: { ~poolItems.includesEqual(item.item) }
+					and: { ~wildcardCheck.(item[\wildcard]) }
 				}
 			}
 		};
@@ -841,12 +850,12 @@ protect {
 			~items.sort { |a, b| a.time < b.time }
 		};
 		~makeStream = 0;  // ~seqStream is not used here
-		~snippet.("stutt", "\\stutt(##src, pool, numToAdd, quant, prob, insItem \"-\"##)");
+		~snippet.("stutt", "\\stutt(##src, pool, numToAdd, quant, prob, insItem \"-\", wildcards##)");
 	}.import((clGenPitch: #[artic])) => PR(\clGenStutt);
 
 	PR(\clGenStutt).clone {
-		~defaultNames = #[baseItems, maxDur, insPool];
-		~defaults = [nil, 0.5, [(item: $x, time: 0)]];
+		~defaultNames = #[baseItems, maxDur, insPool, wildcards];
+		~defaults = [nil, 0.5, [(item: $x, time: 0)], nil];
 		~process = {
 			var lastEvent, localItems, new, maxDur;
 			~items = ~getUpstreamItems.();
@@ -854,7 +863,10 @@ protect {
 			(localItems.collect(_.time) ++ [~time + ~dur]).do { |time, i|
 				maxDur = ~maxDur.next;
 				if(lastEvent.notNil and: {
-					lastEvent[\initialRest] != true and: { time - lastEvent.time > maxDur }
+					lastEvent[\initialRest] != true
+					and: { ~wildcardCheck.(lastEvent[\wildcard])
+						and: { time - lastEvent.time > maxDur }
+					}
 				}) {
 					new = ~insStream.next;
 					~insertItem.((item: new, wildcard: new, src: \choke, time: lastEvent.time + maxDur));
@@ -864,7 +876,7 @@ protect {
 			~items
 		};
 		~protoID = \clGenChoke;
-		~snippet.("choke", "\\choke(##src, maxDur, pool##)");
+		~snippet.("choke", "\\choke(##src, maxDur, pool, wildcards##)");
 	}.import((clGenIns: #[insertItem])) => PR(\clGenChoke);
 
 	PR(\clGenIns).clone {
