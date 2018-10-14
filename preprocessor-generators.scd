@@ -235,7 +235,11 @@ protect {
 			};
 			true
 		};
-		~applyArtic = { |artic, note|
+		// quite confusing interface.
+		// 'artic' may be a char (. _ ~) *or* an association (accent -> char or nil)
+		// but also, stutt may need to clear the accent flag, so...
+		// accent: if nil, no change; otherwise, should be boolean
+		~applyArtic = { |artic, note, accent|
 			var didCopy = false, item;
 			if(note.isKindOf(SequenceNote)) {
 				item = artic.tryPerform(\key);
@@ -249,6 +253,13 @@ protect {
 					note.length = item;
 				};
 				if(note.length.isNil) { note.length = 0.9 };
+				if(accent.notNil) {
+					if(accent) {
+						note.args = \accent
+					} {
+						note.args = nil
+					}
+				};
 			} {
 				"Generator tried to apply articulation '%' to '%'"
 				.format(artic, note).warn;
@@ -789,7 +800,8 @@ protect {
 				{ |srcIndex| // will only be called internally
 					var new = ~items[srcIndex].item;
 					if(new.isKindOf(SequenceNote)) {
-						new = ~applyArtic.($., new);  // all stuttered notes should be staccato
+						// all stuttered notes should be staccato and non-accented
+						new = ~applyArtic.($., new, false);
 					};
 					new
 				}
