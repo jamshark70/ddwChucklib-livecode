@@ -1,8 +1,27 @@
 
-// common helper funcs
 Library.put(\clLivecode, \setupbars, \addToDoc, Main.versionAtLeast(3, 7) and: { Platform.ideName == "scqt" });
+// common helper funcs
 // when GUI window is front, /bars.(...) should NOT affect current document
 Library.put(\clLivecode, \setupbars, \guiIsFront, false);
+
+/**
+    Chucklib-livecode: A framework for live-coding improvisation of electronic music
+    Copyright (C) 2018  Henry James Harkins
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+**/
+
 
 {
 	// Library.at(\clLivecode, \setupbars, \addToDoc) ?? { false }

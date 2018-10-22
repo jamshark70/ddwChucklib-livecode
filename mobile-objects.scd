@@ -2,6 +2,24 @@
 
 var saveSubtype = AbstractChuckArray.defaultSubType;
 
+/**
+    Chucklib-livecode: A framework for live-coding improvisation of electronic music
+    Copyright (C) 2018  Henry James Harkins
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+**/
+
 protect {
 	AbstractChuckArray.defaultSubType = \mobile;
 
@@ -309,6 +327,21 @@ protect {
 			~tabSpecs.pairsDo { |name, viewSpecs, i|
 				~fillTab.(i div: 2, viewSpecs);
 			};
+
+			// I found it's too easy to drag-focus tab 1
+			// but maybe useful to drag-select other tabs
+			~tabs.tabViews[0].canReceiveDragHandler = nil;
+
+			// if you switch tab onscreen, it should switch on the phone too
+			// where to get the address? no time now
+			~tabFocusActive = true;
+			// ~tabs.focusActions = Array.fill(~tabs.views.size, { |i|
+			// 	{
+			// 		if(~tabFocusActive and: { addr...??.notNil }) {
+			// 			xx.sendMsg(~tabSwitch[i])
+			// 		};
+			// 	}
+			// });
 		};
 
 		~fillTab = { |index, specs|
@@ -350,7 +383,11 @@ protect {
 			var what = msg[0], view;
 			// reserved: switch tabs
 			case { (view = ~tabSwitch.indexOf(what)).notNil } {
-				(e { ~tabs.focus(view) }).defer;
+				(e {
+					~tabFocusActive = false;  // suppress focusAction
+					~tabs.focus(view);
+					~tabFocusActive = true;
+				}).defer;
 			}
 			{ msg[0] == \label } {
 				e { ~labels[msg[1]].string = msg[2] }.defer;
