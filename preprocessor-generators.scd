@@ -2,6 +2,24 @@ var saveType = AbstractChuckArray.defaultSubType;
 
 // cl-livecode generator objects
 
+/**
+    Chucklib-livecode: A framework for live-coding improvisation of electronic music
+    Copyright (C) 2018  Henry James Harkins
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+**/
+
 AbstractChuckArray.defaultSubType = \clGenerator;
 
 protect {
@@ -790,8 +808,14 @@ protect {
 	PR(\clGenIns).clone {
 		~prep = {
 			~defaultNames.do { |key, i|
-				var value = ~args[i] ?? { ~defaults[i].value };
+				var value = ~args[i] ?? { ~defaults[i].value },
+				error;
 				if(value.isKindOf(Exception)) { value.throw };
+				error = ~validation[i];
+				// validation key
+				if(error.notNil) { error = error.envirGet.value(value, key) };
+				// validation result
+				if(error.notNil) { Error(error).throw };
 				key.envirPut(value);
 			};
 			~insStream = if(~insPool.notNil) {
@@ -817,6 +841,14 @@ protect {
 		};
 		~defaultNames = #[baseItems, pool, numToAdd, quant, prob, insPool, wildcards];
 		~defaults = [nil, Error("Must specify pool"), 1, 0.25, 0.75, nil, nil];
+		// expand this later
+		~validation = [nil, nil, \isNumProxy, \isNumProxy, \isNumProxy, nil, nil];
+		~isNumProxy = { |thing, key|
+			if(thing.tryPerform(\isNumProxy) != true) {
+				"BP(%): %'s % input expected number"
+				.format(~bpKey.asCompileString, ~protoID, key.asCompileString)
+			} { nil };  // else no error
+		};
 		~canStutter = { |item, index, quant|
 			BP(~bpKey).valueIsRest(item.item, ~parm).not and: {
 				~getIndexDur.(index) >= (2 * quant) and: {
@@ -868,6 +900,7 @@ protect {
 	PR(\clGenStutt).clone {
 		~defaultNames = #[baseItems, maxDur, insPool, wildcards];
 		~defaults = [nil, 0.5, [(item: $x, time: 0)], nil];
+		~validation = [nil, \isNumProxy, nil, nil];
 		~process = {
 			var lastEvent, localItems, new, maxDur;
 			~items = ~getUpstreamItems.();
