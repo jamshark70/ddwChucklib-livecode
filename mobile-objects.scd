@@ -998,19 +998,28 @@ protect {
 		};
 		~deleteCancelTime = 1.0;
 		~doFree = { |item|
+			var index;
 			if(~canFree.(item)) {
-				if(~deleteTimes[item[\id]] /*item[\deleteTime]*/.isNil) {
-					~deleteTimes[item[\id]] /*item[\deleteTime]*/ = SystemClock.seconds;
+				if(~deleteTimes[item[\id]].isNil) {
+					~deleteTimes[item[\id]] = SystemClock.seconds;
 					~updateColors.();
 					AppClock.sched(~deleteCancelTime, e {
-						// item[\deleteTime] is cleared if the user hit del a second time to cancel
-						if(~deleteTimes[item[\id]] /*item[\deleteTime]*/.notNil) {
+						// ~deleteTimes[item[\id]] is cleared if the user hit del a second time to cancel
+						if(~deleteTimes[item[\id]].notNil) {
+							index = ~view.value;
 							item[\object].free;  // should delete from items too
+							defer(e {
+								if(index >= ~items.size) {
+									~view.value = max(0, ~items.size - 1);
+								} {
+									~view.value = index;
+								};
+							}, 0.06);
 						};
 					});
 				} {
-					if(SystemClock.seconds - ~deleteTimes[item[\id]] /*item[\deleteTime]*/ <= ~deleteCancelTime) {
-						~deleteTimes[item[\id]] /*item[\deleteTime]*/ = nil;
+					if(SystemClock.seconds - ~deleteTimes[item[\id]] <= ~deleteCancelTime) {
+						~deleteTimes[item[\id]] = nil;
 					};
 				};
 			} {
