@@ -338,7 +338,6 @@ protect {
 			~tabs.focusActions = Array.fill(~tabs.views.size, { |i|
 				e {
 					if(~tabFocusActive and: { ~model.addr.notNil }) {
-						// ~tabFocusActive = false;
 						~model.sendAddr.sendMsg(~tabSwitch[i]);
 					};
 				}
@@ -916,7 +915,7 @@ protect {
 		~updateView = {
 			// tryPerform: ~items may be nil or empty
 			// also (FML) ~view.value may be nil
-			var currentID, i, colors;
+			var currentID, i;
 			if(~items.notNil and: { ~view.value.notNil }) {
 				// and even if you have an items array, you might pull nil out of it
 				currentID = ~items[~view.value].tryPerform(\at, \id);
