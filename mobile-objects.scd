@@ -837,6 +837,7 @@ protect {
 		~classes = [BP, VC];
 		~bounds = Rect(800, 200, 260, 175);
 		~prep = {
+			~bpSimpleCtls = IdentityDictionary.new;
 			~vcSimpleCtls = IdentityDictionary.new;
 			if(~viewParent.isNil) {
 				// if user puts the BP into a layout
@@ -846,8 +847,17 @@ protect {
 			};
 			~view.beginDragAction_(e { |view|
 				if(~items.size > 0) {
-					~items[~view.value].tryPerform(\at, \object)
+					~items[~view.value].tryPerform(\at, \dragObject)
 				} { nil };
+			})
+			.keyDownAction_(e { |view, char|
+				var item;
+				if(#[8, 127].includes(char.ascii)) {
+					item = ~items[view.value];
+					if(item.notNil) {
+						~doFree.(item);
+					};
+				};
 			})
 			.onClose_(e { BP(~collIndex).free });
 			~updateView.();
@@ -864,12 +874,26 @@ protect {
 						);
 					}, 0.1);
 				};
+				if(obj.isKindOf(BP)) {
+					defer(e {
+						~bpSimpleCtls.put(key, SimpleController(obj)
+							.put(\play, e { defer(~updateView) })
+							.put(\stop, e { |obj, what, value|
+								if(value == \stopped) { defer(~updateView) };
+							})
+						);
+					}, 0.1);
+				};
 				~updateView.defer(0.05);  // updateView is already linked to this envir
 			};
 			~freeHook = e { |key, obj|
 				if(obj.isKindOf(VC)) {
 					~vcSimpleCtls[key].remove;
 					~vcSimpleCtls.removeAt(key);
+				};
+				if(obj.isKindOf(BP)) {
+					~bpSimpleCtls[key].remove;
+					~bpSimpleCtls.removeAt(key);
 				};
 				~updateView.defer(0.05);  // updateView is already linked to this envir
 			};
@@ -884,13 +908,15 @@ protect {
 				class.removeHook(\put, ~updateHook)
 				.removeHook(\free, ~updateHook);
 			};
+			~bpSimpleCtls.do(_.remove);
+			~vcSimpleCtls.do(_.remove);
 			~view.close;
 		};
 		~asView = { ~view };
 		~updateView = {
 			// tryPerform: ~items may be nil or empty
 			// also (FML) ~view.value may be nil
-			var currentID, i;
+			var currentID, i, colors;
 			if(~items.notNil and: { ~view.value.notNil }) {
 				// and even if you have an items array, you might pull nil out of it
 				currentID = ~items[~view.value].tryPerform(\at, \id);
@@ -899,15 +925,19 @@ protect {
 			~view.items = ~items.collect(_.string);
 			i = ~items.detectIndex { |item| item[\id] == currentID };
 			if(i.notNil) { ~view.value = i };
+			~updateColors.();
+		};
+		~updateColors = {
+			~view.colors = ~getColors.();
 		};
 		~makeList = {
 			// oopsy, need drags and strings
 			// gc drags need to point back to the parent -- data structure
-			// (uniqueID [for restoring view pos], string, object, parent [only for VoicerGlobalControls])
+			// (uniqueID [for restoring view pos], string, dragObject, parent [only for VoicerGlobalControls])
 			~makeBPList.() ++ ~makeVCList.()
 		};
 		~makeBPList = {
-			var items = Array.new, event;
+			var items = Array.new, event, ctls;
 			BP.keys.as(Array).sort.do { |key|
 				event = BP(key)[\event];
 				// if you have an eventKey, you're a playable process
@@ -916,8 +946,34 @@ protect {
 					items = items.add((
 						id: "BP" ++ key,
 						string: "BP(%)".format(key.asCompileString),
-						object: BP(key)  // mixer
+						object: BP(key),
+						dragObject: BP(key)  // mixer
 					));
+					if(event[\voicer].notNil) {
+						ctls = ~getVoicerCtls.(event[\voicer]);
+						if(ctls.size > 0) { items = items ++ ctls };
+					};
+				};
+			};
+			items
+		};
+		~getVoicerCtls = { |voicer|
+			var items, ctls, key;
+			// 'globalControlsByCreation' keeps only 'allowGUI' controls
+			ctls = voicer.tryPerform(\globalControls);
+			if(ctls.size > 0) {
+				if(ctls.isKindOf(Dictionary)) {
+					ctls = ctls.values.as(Array);
+				};
+				key = VC.collection.detect { |vc| vc.v === voicer } ?? { "unknown" };
+				ctls.sort { |a, b| a.voicerIndex < b.voicerIndex }
+				.do { |gc, i|
+					items = items.add((
+						id: "VC%:%-%".format(key, i.asPaddedString(2, "0"), gc.name),
+						string: "    - % (% .. %)".format(gc.name, gc.spec.minval, gc.spec.maxval),
+						object: gc,
+						dragObject: gc
+					))
 				};
 			};
 			items
@@ -928,23 +984,69 @@ protect {
 				items = items.add((
 					id: "VC" ++ key,
 					string: "VC(%)".format(key.asCompileString),
-					object: VC(key).asMixer  // maybe nil but shouldn't be
+					object: VC(key),
+					dragObject: VC(key).asMixer  // maybe nil but shouldn't be
 				));
-				// 'globalControlsByCreation' keeps only 'allowGUI' controls
-				ctls = VC(key).v.tryPerform(\globalControls);
-				if(ctls.isKindOf(Dictionary)) {
-					ctls = ctls.values.as(Array);
-				};
-				ctls.sort { |a, b| a.voicerIndex < b.voicerIndex }
-				.do { |gc, i|
-					items = items.add((
-						id: "VC%:%-%".format(key, i.asPaddedString(2, "0"), gc.name),
-						string: "    - % (% .. %)".format(gc.name, gc.spec.minval, gc.spec.maxval),
-						object: gc
-					))
-				};
+				// ctls will be shown with BPs instead
+				// ctls = ~getVoicerCtls.(VC(key).v);
+				// if(ctls.size > 0) { items = items ++ ctls };
 			};
 			items
+		};
+		~deleteCancelTime = 1.0;
+		~doFree = { |item|
+			if(~canFree.(item)) {
+				if(item[\deleteTime].isNil) {
+					item[\deleteTime] = SystemClock.seconds;
+					~updateColors.();
+					AppClock.sched(~deleteCancelTime, e {
+						// item[\deleteTime] is cleared if the user hit del a second time to cancel
+						if(item[\deleteTime].notNil) {
+							item[\object].free;  // should delete from items too
+						};
+					});
+				} {
+					if(SystemClock.seconds - item[\deleteTime] <= ~deleteCancelTime) {
+						item[\deleteTime] = nil;
+					};
+				};
+			} {
+				"Can't delete %".format(item[\object].asString).warn;
+			};
+		};
+		~canFree = { |item|
+			var obj = item[\object];
+			switch(obj.class)
+			{ BP } {
+				// free-able only if stopped (don't accidentally delete something that's playing)
+				obj.isPlaying.not
+			}
+			{ VC } {
+				BP.collection.every { |bp|
+					var event = bp[\event];
+					event.isNil or: { event[\voicer] !== obj.v }
+				}
+			}
+			{ false }  // GenericGlobalControl, can't free this way
+		};
+		if(QPalette.new.color(\window).red < 0.5) {
+			// dark theme
+			~deletePendingColor = Color.new255(116, 46, 0);
+			~playingColor = Color.new255(5, 66, 0);
+			~idleColor = Color.clear;
+		} {
+			~deletePendingColor = Color.new255(255, 178, 78);
+			~playingColor = Color.new255(140, 255, 131);
+			~idleColor = Color.clear;
+		};
+		~getColors = {
+			~items.collect { |item|
+				case
+				{ item[\deleteTime].notNil } { ~deletePendingColor }
+				// OK for VCs because it falls back to Object's implementation --> false
+				{ item[\object].isPlaying } { ~playingColor }
+				{ ~idleColor };
+			};
 		};
 	} => PR(\controlList);
 } {
