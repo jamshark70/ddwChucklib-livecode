@@ -881,6 +881,7 @@ protect {
 							.put(\stop, e { |obj, what, value|
 								if(value == \stopped) { defer(~updateView) };
 							})
+							.put(\voicer_, ~updateView)
 						);
 					}, 0.1);
 				};
@@ -996,7 +997,7 @@ protect {
 			};
 			items
 		};
-		~deleteCancelTime = 1.0;
+		~deleteCancelTime = 0.7;
 		~doFree = { |item|
 			var index;
 			if(~canFree.(item)) {
