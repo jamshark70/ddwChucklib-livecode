@@ -2,6 +2,24 @@ var saveType = AbstractChuckArray.defaultSubType;
 
 // cl-livecode generator objects
 
+/**
+    Chucklib-livecode: A framework for live-coding improvisation of electronic music
+    Copyright (C) 2018  Henry James Harkins
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+**/
+
 AbstractChuckArray.defaultSubType = \clGenerator;
 
 protect {
@@ -235,7 +253,11 @@ protect {
 			};
 			true
 		};
-		~applyArtic = { |artic, note|
+		// quite confusing interface.
+		// 'artic' may be a char (. _ ~) *or* an association (accent -> char or nil)
+		// but also, stutt may need to clear the accent flag, so...
+		// accent: if nil, no change; otherwise, should be boolean
+		~applyArtic = { |artic, note, accent|
 			var didCopy = false, item;
 			if(note.isKindOf(SequenceNote)) {
 				item = artic.tryPerform(\key);
@@ -249,6 +271,13 @@ protect {
 					note.length = item;
 				};
 				if(note.length.isNil) { note.length = 0.9 };
+				if(accent.notNil) {
+					if(accent) {
+						note.args = \accent
+					} {
+						note.args = nil
+					}
+				};
 			} {
 				"Generator tried to apply articulation '%' to '%'"
 				.format(artic, note).warn;
@@ -299,7 +328,9 @@ protect {
 					~currentItem = item;
 					~currentIndex = i;
 					// copy is critical here!
-					~items[i] = item.copy.put(\item, ~seqStream.next(item));
+					// 18-1014: wildcard-replacers update the wildcard
+					~items[i] = item.copy.put(\wildcard, item[\item])
+					.put(\item, ~seqStream.next(item));
 				};
 			};
 		};
@@ -777,8 +808,14 @@ protect {
 	PR(\clGenIns).clone {
 		~prep = {
 			~defaultNames.do { |key, i|
-				var value = ~args[i] ?? { ~defaults[i].value };
+				var value = ~args[i] ?? { ~defaults[i].value },
+				error;
 				if(value.isKindOf(Exception)) { value.throw };
+				error = ~validation[i];
+				// validation key
+				if(error.notNil) { error = error.envirGet.value(value, key) };
+				// validation result
+				if(error.notNil) { Error(error).throw };
 				key.envirPut(value);
 			};
 			~insStream = if(~insPool.notNil) {
@@ -787,20 +824,36 @@ protect {
 				{ |srcIndex| // will only be called internally
 					var new = ~items[srcIndex].item;
 					if(new.isKindOf(SequenceNote)) {
-						new = ~applyArtic.($., new);  // all stuttered notes should be staccato
+						// all stuttered notes should be staccato and non-accented
+						new = ~applyArtic.($., new, false);
 					};
 					new
 				}
 			};
 			~poolItems = ~pool.collect(_.item);
+			if(~wildcards.isNil) {
+				~wildcardCheck = true;
+			} {
+				~wildcards = ~wildcards.collect(_.item);
+				~wildcardCheck = { |item| ~wildcards.includesEqual(item) };
+			};
 			currentEnvironment
 		};
-		~defaultNames = #[baseItems, pool, numToAdd, quant, prob, insPool];
-		~defaults = [nil, Error("Must specify pool"), 1, 0.25, 0.75, nil];
+		~defaultNames = #[baseItems, pool, numToAdd, quant, prob, insPool, wildcards];
+		~defaults = [nil, Error("Must specify pool"), 1, 0.25, 0.75, nil, nil];
+		// expand this later
+		~validation = [nil, nil, \isNumProxy, \isNumProxy, \isNumProxy, nil, nil];
+		~isNumProxy = { |thing, key|
+			if(thing.tryPerform(\isNumProxy) != true) {
+				"BP(%): %'s % input expected number"
+				.format(~bpKey.asCompileString, ~protoID, key.asCompileString)
+			} { nil };  // else no error
+		};
 		~canStutter = { |item, index, quant|
 			BP(~bpKey).valueIsRest(item.item, ~parm).not and: {
 				~getIndexDur.(index) >= (2 * quant) and: {
 					~poolItems.isEmpty or: { ~poolItems.includesEqual(item.item) }
+					and: { ~wildcardCheck.(item[\wildcard]) }
 				}
 			}
 		};
@@ -841,12 +894,13 @@ protect {
 			~items.sort { |a, b| a.time < b.time }
 		};
 		~makeStream = 0;  // ~seqStream is not used here
-		~snippet.("stutt", "\\stutt(##src, pool, numToAdd, quant, prob, insItem \"-\"##)");
+		~snippet.("stutt", "\\stutt(##src, pool, numToAdd, quant, prob, insItem \"-\", wildcards##)");
 	}.import((clGenPitch: #[artic])) => PR(\clGenStutt);
 
 	PR(\clGenStutt).clone {
-		~defaultNames = #[baseItems, maxDur, insPool];
-		~defaults = [nil, 0.5, [(item: $x, time: 0)]];
+		~defaultNames = #[baseItems, maxDur, insPool, wildcards];
+		~defaults = [nil, 0.5, [(item: $x, time: 0)], nil];
+		~validation = [nil, \isNumProxy, nil, nil];
 		~process = {
 			var lastEvent, localItems, new, maxDur;
 			~items = ~getUpstreamItems.();
@@ -854,7 +908,10 @@ protect {
 			(localItems.collect(_.time) ++ [~time + ~dur]).do { |time, i|
 				maxDur = ~maxDur.next;
 				if(lastEvent.notNil and: {
-					lastEvent[\initialRest] != true and: { time - lastEvent.time > maxDur }
+					lastEvent[\initialRest] != true
+					and: { ~wildcardCheck.(lastEvent[\wildcard])
+						and: { time - lastEvent.time > maxDur }
+					}
 				}) {
 					new = ~insStream.next;
 					~insertItem.((item: new, wildcard: new, src: \choke, time: lastEvent.time + maxDur));
@@ -864,7 +921,7 @@ protect {
 			~items
 		};
 		~protoID = \clGenChoke;
-		~snippet.("choke", "\\choke(##src, maxDur, pool##)");
+		~snippet.("choke", "\\choke(##src, maxDur, pool, wildcards##)");
 	}.import((clGenIns: #[insertItem])) => PR(\clGenChoke);
 
 	PR(\clGenIns).clone {
