@@ -838,6 +838,7 @@ protect {
 		~prep = {
 			~bpSimpleCtls = IdentityDictionary.new;
 			~vcSimpleCtls = IdentityDictionary.new;
+			~deleteTimes = Dictionary.new;
 			if(~viewParent.isNil) {
 				// if user puts the BP into a layout
 				~view = ListView.new;
@@ -886,6 +887,8 @@ protect {
 				~updateView.defer(0.05);  // updateView is already linked to this envir
 			};
 			~freeHook = e { |key, obj|
+				var item = ~items.detect { |it| it[\object] === obj };
+				if(item.notNil) { ~deleteTimes.removeAt(item[\id]) };
 				if(obj.isKindOf(VC)) {
 					~vcSimpleCtls[key].remove;
 					~vcSimpleCtls.removeAt(key);
@@ -964,7 +967,8 @@ protect {
 				if(ctls.isKindOf(Dictionary)) {
 					ctls = ctls.values.as(Array);
 				};
-				key = VC.collection.detect { |vc| vc.v === voicer } ?? { "unknown" };
+				key = VC.collection.detect { |vc| vc.v === voicer }
+				.tryPerform(\collIndex) ?? { "unknown" };
 				ctls.sort { |a, b| a.voicerIndex < b.voicerIndex }
 				.do { |gc, i|
 					items = items.add((
@@ -995,18 +999,18 @@ protect {
 		~deleteCancelTime = 1.0;
 		~doFree = { |item|
 			if(~canFree.(item)) {
-				if(item[\deleteTime].isNil) {
-					item[\deleteTime] = SystemClock.seconds;
+				if(~deleteTimes[item[\id]] /*item[\deleteTime]*/.isNil) {
+					~deleteTimes[item[\id]] /*item[\deleteTime]*/ = SystemClock.seconds;
 					~updateColors.();
 					AppClock.sched(~deleteCancelTime, e {
 						// item[\deleteTime] is cleared if the user hit del a second time to cancel
-						if(item[\deleteTime].notNil) {
+						if(~deleteTimes[item[\id]] /*item[\deleteTime]*/.notNil) {
 							item[\object].free;  // should delete from items too
 						};
 					});
 				} {
-					if(SystemClock.seconds - item[\deleteTime] <= ~deleteCancelTime) {
-						item[\deleteTime] = nil;
+					if(SystemClock.seconds - ~deleteTimes[item[\id]] /*item[\deleteTime]*/ <= ~deleteCancelTime) {
+						~deleteTimes[item[\id]] /*item[\deleteTime]*/ = nil;
 					};
 				};
 			} {
