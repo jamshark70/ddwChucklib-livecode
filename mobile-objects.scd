@@ -839,6 +839,7 @@ protect {
 			~bpSimpleCtls = IdentityDictionary.new;
 			~vcSimpleCtls = IdentityDictionary.new;
 			~deleteTimes = Dictionary.new;
+			~expanded = Dictionary.new;
 			if(~viewParent.isNil) {
 				// if user puts the BP into a layout
 				~view = ListView.new;
@@ -850,13 +851,40 @@ protect {
 					~items[~view.value].tryPerform(\at, \dragObject)
 				} { nil };
 			})
-			.keyDownAction_(e { |view, char|
-				var item;
-				if(#[8, 127].includes(char.ascii)) {
+			.keyDownAction_(e { |view, char, mod, unicode, keycode, key|
+				var item, i;
+				case { #[8, 127].includes(char.ascii) } {
 					item = ~items[view.value];
 					if(item.notNil) {
 						~doFree.(item);
 					};
+				}
+				{ keycode == 65363 } {
+					item = ~items[view.value];
+					if(item.notNil and: { item[\object].isKindOf(BP) }) {
+						~expanded[item[\id]] = true;
+					};
+					~updateView.();
+				}
+				{ keycode == 65361 } {
+					i = view.value;
+					item = ~items[i];
+					if(item[\object].isKindOf(GenericGlobalControl)) {
+						while {
+							i = i - 1;
+							i >= 0 and: { ~items[i][\object].isKindOf(BP).not }
+						};
+						if(i >= 0) {
+							~view.value = i;
+							item = ~items[i];
+						} {
+							item = nil
+						};
+					};
+					if(item.notNil) {
+						~expanded[item[\id]] = nil;
+					};
+					~updateView.();
 				};
 			})
 			.onClose_(e { BP(~collIndex).free });
@@ -889,7 +917,10 @@ protect {
 			};
 			~freeHook = e { |key, obj|
 				var item = ~items.detect { |it| it[\object] === obj };
-				if(item.notNil) { ~deleteTimes.removeAt(item[\id]) };
+				if(item.notNil) {
+					~deleteTimes.removeAt(item[\id]);
+					~expanded.removeAt(item[\id]);
+				};
 				if(obj.isKindOf(VC)) {
 					~vcSimpleCtls[key].remove;
 					~vcSimpleCtls.removeAt(key);
@@ -940,21 +971,27 @@ protect {
 			~makeBPList.() ++ ~makeVCList.()
 		};
 		~makeBPList = {
-			var items = Array.new, event, ctls;
+			var items = Array.new, item, event, ctls;
 			BP.keys.as(Array).sort.do { |key|
 				event = BP(key)[\event];
 				// if you have an eventKey, you're a playable process
 				// cll interface BPs do not have this
 				if(event.notNil and: { event[\eventKey].notNil }) {
-					items = items.add((
+					item = (
 						id: "BP" ++ key,
 						string: "BP(%)".format(key.asCompileString),
 						object: BP(key),
 						dragObject: BP(key)  // mixer
-					));
+					);
+					items = items.add(item);
 					if(event[\voicer].notNil) {
 						ctls = ~getVoicerCtls.(event[\voicer]);
-						if(ctls.size > 0) { items = items ++ ctls };
+						if(~expanded[items.last[\id]] == true and: { ctls.size > 0 }) {
+							item[\string] = "-- " ++ item[\string];
+							items = items ++ ctls;
+						} {
+							item[\string] = "+ " ++ item[\string];
+						};
 					};
 				};
 			};
