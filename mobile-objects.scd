@@ -840,6 +840,8 @@ protect {
 			~vcSimpleCtls = IdentityDictionary.new;
 			~deleteTimes = Dictionary.new;
 			~expanded = Dictionary.new;
+			~chucking = false;
+			~chuckTargetChars = "0123456789ABCDEF";
 			if(~viewParent.isNil) {
 				// if user puts the BP into a layout
 				~view = ListView.new;
@@ -853,7 +855,21 @@ protect {
 			})
 			.keyDownAction_(e { |view, char, mod, unicode, keycode, key|
 				var item, i;
-				case { #[8, 127].includes(char.ascii) } {
+				if(~chucking) {
+					item = ~items[view.value];
+					char = char.toUpper;
+					if(item.notNil and: { ~chuckTargetChars.includes(char) }) {
+						i = ~chuckTargetChars.indexOf(char);
+						// must chuck into the proto, not the BP
+						item[\dragObject].chuck(BP(\chuckOSC).v, i);
+					};
+					~chucking = false;
+				};
+				case
+				{ char == $^ } {
+					~chucking = true;
+				}
+				{ #[8, 127].includes(char.ascii) } {
 					item = ~items[view.value];
 					if(item.notNil) {
 						~doFree.(item);
