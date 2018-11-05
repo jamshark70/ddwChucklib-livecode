@@ -1002,11 +1002,13 @@ protect {
 					items = items.add(item);
 					if(event[\voicer].notNil) {
 						ctls = ~getVoicerCtls.(event[\voicer]);
-						if(~expanded[items.last[\id]] == true and: { ctls.size > 0 }) {
-							item[\string] = "-- " ++ item[\string];
-							items = items ++ ctls;
-						} {
-							item[\string] = "+ " ++ item[\string];
+						if(ctls.size > 0) {
+							if(~expanded[items.last[\id]] == true) {
+								item[\string] = "-- " ++ item[\string];
+								items = items ++ ctls;
+							} {
+								item[\string] = "+ " ++ item[\string];
+							};
 						};
 					};
 				};
