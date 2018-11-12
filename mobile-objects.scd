@@ -855,7 +855,9 @@ protect {
 			})
 			.keyDownAction_(e { |view, char, mod, unicode, keycode, key|
 				var item, i;
-				if(~chucking) {
+				// if you hit a mod key, the function fires and char.ascii is 0
+				// don't want to clear $^ status in that case
+				if(~chucking and: { char.ascii > 0 }) {
 					item = ~items[view.value];
 					char = char.toUpper;
 					if(item.notNil and: { ~chuckTargetChars.includes(char) }) {
