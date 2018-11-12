@@ -1000,22 +1000,38 @@ protect {
 						dragObject: BP(key)  // mixer
 					);
 					items = items.add(item);
+					ctls = ~getBPCtls.(BP(key), 0);  // maybe nil, but nil ++ array is ok
 					if(event[\voicer].notNil) {
-						ctls = ~getVoicerCtls.(event[\voicer]);
-						if(ctls.size > 0) {
-							if(~expanded[items.last[\id]] == true) {
-								item[\string] = "-- " ++ item[\string];
-								items = items ++ ctls;
-							} {
-								item[\string] = "+ " ++ item[\string];
-							};
+						ctls = ctls ++ ~getVoicerCtls.(event[\voicer], ctls.size);
+					};
+					if(ctls.size > 0) {
+						if(~expanded[items.last[\id]] == true) {
+							item[\string] = "-- " ++ item[\string];
+							items = items ++ ctls;
+						} {
+							item[\string] = "+ " ++ item[\string];
 						};
 					};
 				};
 			};
 			items
 		};
-		~getVoicerCtls = { |voicer|
+		~getBPCtls = { |bp, startI|
+			if(bp.v[\globalControls].notNil) {
+				bp.globalControls.collect { |ctl, i|
+					~itemForCtl.(ctl, bp.collIndex, startI + i)
+				};
+			};
+		};
+		~itemForCtl = { |gc, key, i|  // 'key' and 'i' are for the id field
+			(
+				id: "VC%:%-%".format(key, i.asPaddedString(2, "0"), gc.name),
+				string: "    - % (% .. %)".format(gc.name, gc.spec.minval, gc.spec.maxval),
+				object: gc,
+				dragObject: gc
+			)
+		};
+		~getVoicerCtls = { |voicer, startI|
 			var items, ctls, key;
 			// 'globalControlsByCreation' keeps only 'allowGUI' controls
 			ctls = voicer.tryPerform(\globalControls);
@@ -1027,12 +1043,7 @@ protect {
 				.tryPerform(\collIndex) ?? { "unknown" };
 				ctls.sort { |a, b| a.voicerIndex < b.voicerIndex }
 				.do { |gc, i|
-					items = items.add((
-						id: "VC%:%-%".format(key, i.asPaddedString(2, "0"), gc.name),
-						string: "    - % (% .. %)".format(gc.name, gc.spec.minval, gc.spec.maxval),
-						object: gc,
-						dragObject: gc
-					))
+					items = items.add(~itemForCtl.(gc, key, startI + i))
 				};
 			};
 			items
