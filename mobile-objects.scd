@@ -990,7 +990,9 @@ protect {
 		};
 		~makeBPList = {
 			var items = Array.new, item, event, ctls;
-			BP.keys.as(Array).sort.do { |key|
+			// it seems to be possible to have a symbol in 'keys' whose BP doesn't actually exist
+			// probably should prevent that but for now, filter such items out
+			BP.keys.select { |key| BP.exists(key) }.as(Array).sort.do { |key|
 				event = BP(key)[\event];
 				// if you have an eventKey, you're a playable process
 				// cll interface BPs do not have this
@@ -1052,7 +1054,7 @@ protect {
 		};
 		~makeVCList = {
 			var items = Array.new, ctls;
-			VC.keys.as(Array).sort.do { |key|
+			VC.keys.select { |key| VC.exists(key) }.as(Array).sort.do { |key|
 				items = items.add((
 					id: "VC" ++ key,
 					string: "VC(%)".format(key.asCompileString),
