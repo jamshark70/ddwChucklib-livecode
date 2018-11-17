@@ -569,7 +569,7 @@ protect {
 		~snippet.("prev", "\\prev(##src, pool, replaceItems, staccDur##)");
 		~prep = {
 			~baseItems = ~args[0];
-			~pool = ~args[1];
+			~pool = ~args[1] ?? { [] };
 			if(~args[2].notNil) {
 				~replaceItems = ~args[2].collect { |item| item.item };
 			} {
@@ -589,7 +589,7 @@ protect {
 		~makeStream = {
 			// currentIndex is set here -- that's important
 			~seqStream = Pfunc { |item|
-				var new;
+				var new, temp;
 				// find previous item
 				var prevIndex = ~currentIndex - 1;
 				while { prevIndex >= 0 and: {
@@ -606,9 +606,30 @@ protect {
 				};
 				if(prevIndex < 0) {
 					// if none, choose from pool
-					new = ~pool.choose.item.copy
+					new = ~pool.choose;
+					if(new.notNil) {
+						new = new.item.copy;
+					} {
+						// no previous item, pool is empty:
+						// look up last played item
+						if(BP.exists(~bpKey)) {
+							temp = BP(~bpKey)[\genRepository];
+							if(temp.notNil) {  // ~repository might be nil
+								temp = temp[~parm];
+								if(temp.notNil) {
+									new = temp.item.copy;
+								};
+							};
+						};
+					};
+					if(new.isNil) {
+						new = Rest(0);
+						"BP(%): \\prev(): No previous item could be found, substituting rest"
+						.format(~bpKey.asCompileString)
+						.warn;
+					};
 				} {
-					// else repeat previous
+					// else repeat previous (this should be the normal case)
 					new = ~items[prevIndex].item.copy
 				};
 				if(new.isKindOf(SequenceNote)) {
