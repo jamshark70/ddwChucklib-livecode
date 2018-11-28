@@ -854,7 +854,7 @@ protect {
 				} { nil };
 			})
 			.keyDownAction_(e { |view, char, mod, unicode, keycode, key|
-				var item, i;
+				var item, i, return;
 				// if you hit a mod key, the function fires and char.ascii is 0
 				// don't want to clear $^ status in that case
 				if(~chucking and: { char.ascii > 0 }) {
@@ -866,10 +866,11 @@ protect {
 						item[\dragObject].chuck(BP(\chuckOSC).v, i);
 					};
 					~chucking = false;
+					return = true;  // do not do default key action!
 				};
 				case
 				{ char == $^ } {
-					~chucking = true;
+					~chucking = return = true;
 				}
 				{ #[8, 127].includes(char.ascii) } {
 					item = ~items[view.value];
@@ -904,6 +905,7 @@ protect {
 					};
 					~updateView.();
 				};
+				return
 			})
 			.onClose_(e { BP(~collIndex).free });
 			~updateView.();
