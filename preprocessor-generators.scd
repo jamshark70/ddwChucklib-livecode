@@ -1100,6 +1100,7 @@ protect {
 		~process = {
 			var quant = ~quant.next,
 			firstI, endTime = ~time + ~dur,
+			newItems,
 			testFunc = if(~pool.size > 0) {
 				{ |item|
 					~pool.includesEqual(item[\item]) or: {
@@ -1108,19 +1109,27 @@ protect {
 				}
 			} {
 				true  // if no pool, rotate everything
-			};
-			~items = ~getUpstreamItems.();
-			~items = ~items.collect { |item|
+			},
+			rotFunc = { |item|
 				var newTime;
 				if(testFunc.value(item) and: {
 					newTime = (item[\time] + quant).wrap(~time, endTime);
-					~items.every { |x| x[\time] != newTime }
+					// note that do vs reverseDo below means we need to check only items already done
+					newItems.every { |x| x[\time] != newTime }
 				}) {
-					item.copy.put(\time, newTime);
+					newItems.add(item.copy.put(\time, newTime));
 				} {
-					item
+					newItems.add(item)
 				};
-			}.sort { |a, b| a[\time] < b[\time] };
+			};
+			~items = ~getUpstreamItems.();
+			newItems = Array(~items.size);
+			if(quant > 0) {
+				~items.reverseDo(rotFunc);
+			} {
+				~items.do(rotFunc);
+			};
+			~items = newItems.sort { |a, b| a[\time] < b[\time] };
 		};
 		~snippet.("rot", "\\rot(##src, quant, pool##)");
 	} => PR(\clGenRot);
