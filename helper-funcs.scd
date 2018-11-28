@@ -33,10 +33,13 @@ Library.put(\clLivecode, \setupbars, \guiIsFront, false);
 
 { |key, n(4), prefix("m"), meters|
 	var phrases = [[prefix], (0 .. n-1)].flop.collect(_.join),
-	stepForward, doc, pos, method;
+	strings, stepForward, doc, pos, method;
 	meters = meters.asArray;
+	strings = phrases.collect { |phrase, i|
+		"/%.% = %\"\";".format(key, phrase, meters.wrapAt(i) ?? { "" })
+	};
 	phrases.do { |phrase, i|
-		\chucklibLiveCode.eval("/%.% = %\"\";".format(key, phrase, meters.wrapAt(i) ?? { "" })).interpret;
+		\chucklibLiveCode.eval(strings[i]).interpret;
 	};
 	if(\clBarFuncMayAddToDoc.eval) {
 		stepForward = PR(\clPatternToDoc)[\stepForward];
@@ -49,7 +52,7 @@ Library.put(\clLivecode, \setupbars, \guiIsFront, false);
 		method = if(doc.isKindOfByName('Document')) { 'string_' } { 'setString' };
 		if(stepForward.not and: { doc.isKindOfByName('Document') }) { pos = pos + 1 };
 		doc.perform(method,
-			"\n" ++ (phrases.collect { |phr| "/%.% = \"\";\n".format(key, phr) }.join),
+			"\n" ++ strings.join("\n"),
 			pos, 0
 		);
 	} {
