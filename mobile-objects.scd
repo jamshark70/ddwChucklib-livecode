@@ -165,15 +165,28 @@ protect {
 		~gap = Point(5, 5);
 
 		~sliders = { |n = 1, prefix = "/1", oneBound(Rect(0, 0, 400, 50)), buttonExtent(Point(50, 50)), gap = 10, bcolor, bltColor, scolor, sltColor, startI = 0, nameStartI = 1|
-			var out = Array(n * 4),
+			var out = Array(n * 5),
 			togStr = prefix ++ "/toggle",
 			slStr = prefix ++ "/fader",
+			labelStr = prefix ++ "/letter",  // no OSC message for this
 			origin = Point(gap, gap + oneBound.top);
 			oneBound = oneBound.copy.top_(0);
 			n.do { |i|
-				out.add((togStr ++ (i+nameStartI)).asSymbol)
+				out
+				.add((labelStr ++ (i+nameStartI)).asSymbol)
 				.add((
-					bounds: Rect.fromPoints(origin, origin + buttonExtent),
+					bounds: Rect.fromPoints(origin, origin + buttonExtent - Point(gap, 0)),
+					class: StaticText,
+					init: { |view|
+						view.string_((i + startI).asDigit.asString);
+					}
+				))
+				.add((togStr ++ (i+nameStartI)).asSymbol)
+				.add((
+					bounds: Rect.fromPoints(
+						origin + Point(buttonExtent.x - gap, 0),
+						origin + Point(buttonExtent.x * 2 - gap, buttonExtent.y)
+					),
 					class: Button,
 					init: { |view|
 						// init func runs in the touchGui environment
@@ -187,7 +200,10 @@ protect {
 				))
 				.add((slStr ++ (i+nameStartI)).asSymbol)
 				.add((
-					bounds: Rect.fromPoints(origin + Point(buttonExtent.x + gap, 0), origin + oneBound.extent),
+					bounds: Rect.fromPoints(
+						origin + Point(buttonExtent.x * 2, 0),
+						origin + oneBound.extent
+					),
 					class: Slider,
 					// I considered implementing receive-drag on the slider too but it didn't work
 					init: { |view| view.knobColor_(scolor) },
@@ -218,14 +234,14 @@ protect {
 				};
 				// last = out.last;
 				out.add('/1/fader4').add((
-					bounds: Rect(last.bounds.right + ~gap.x, out[11].bounds.bottom + ~gap.y, ~buttonExtent.x, ~xyExtent.y),
+					bounds: Rect(last.bounds.right + ~gap.x, out[17].bounds.bottom + ~gap.y, ~buttonExtent.x, ~xyExtent.y),
 					class: Slider,
 					init: e { |view| view.knobColor_(~purple) },
 					spec: [1, 0]
 				));
 				last = out.last;
 				out.add('/1/xy').add((
-					bounds: Rect(last.bounds.right + ~gap.x, out[11].bounds.bottom + ~gap.y, ~xyExtent.x, ~xyExtent.y),
+					bounds: Rect(last.bounds.right + ~gap.x, out[17].bounds.bottom + ~gap.y, ~xyExtent.x, ~xyExtent.y),
 					class: Slider2D,
 					init: e { |view| view.background_(~yellowFor2D).knobColor_(~yellow) },
 					updater: { |view, x, y| view.setXY(x, 1.0 - y) }
