@@ -80,7 +80,11 @@ this.preProcessor = { |code|
 				code[i] = BP(\clRegister).process(stmt.drop(1));
 			};
 		};
-		code.join(";\n");
+		code = code.join(";\n");
+		if(Library.at(\cllDebug) == true) {
+			code.debug("cll preprocessor result");
+		};
+		code
 	} {
 		code
 	}
