@@ -30,7 +30,7 @@ protect {
 		~pingDebug = true;
 		~keepAlive = true;
 		~prep = {
-			~respFunc = e { |msg, time, replyAddr, recvPort|
+			~respFunc = inEnvir { |msg, time, replyAddr, recvPort|
 				if(replyAddr.matches(~addr) or: { msg[0] == '/ping' }) {
 					// if(msg[0] != '/accxyz') { msg.debug("raw") };
 					~respond.(msg, time, replyAddr, recvPort)
@@ -191,7 +191,7 @@ protect {
 					init: { |view|
 						// init func runs in the touchGui environment
 						view.states_([[" ", nil, bltColor], ["", nil, bcolor]])
-						.receiveDragHandler_(e { |view|
+						.receiveDragHandler_(inEnvir { |view|
 							// we don't have access to the 't' touch object
 							// notification assumes there's just one (untested with multiple)
 							NotificationCenter.notify(~model, \receiveDrag, [View.currentDrag, i+startI]);
@@ -216,9 +216,9 @@ protect {
 
 		~tabSpecs = [
 			"Tab1", {
-				var out = ~sliders.(1, "/1", oneBound: Rect(0, 0, ~sliderWidth, ~buttonExtent.y), buttonExtent: ~buttonExtent, gap: ~gap.x, bcolor: ~yellow, bltColor: ~ltYellow, scolor: ~yellow, sltColor: ~ltYellow, startI: 0),
+				var out = ~sliders.(1, "/1", oneBound: Rect(0, 0, ~sliderWidth, ~buttonExtent.y), buttonExtent: ~buttonExtent, gap: ~gap.x, bcolor: ~yellow, bltColor: ~ltYellow, scolor: ~yellow, sltColor: ~ltYellow, startI: 16),
 				last = out.last;
-				out = out ++ ~sliders.(2, "/1", oneBound: Rect(0, last.bounds.bottom, ~sliderWidth, ~buttonExtent.y), buttonExtent: ~buttonExtent, gap: ~gap.x, bcolor: ~aqua, bltColor: ~ltAqua, scolor: ~aqua, sltColor: ~ltAqua, nameStartI: 2, startI: 1);
+				out = out ++ ~sliders.(2, "/1", oneBound: Rect(0, last.bounds.bottom, ~sliderWidth, ~buttonExtent.y), buttonExtent: ~buttonExtent, gap: ~gap.x, bcolor: ~aqua, bltColor: ~ltAqua, scolor: ~aqua, sltColor: ~ltAqua, nameStartI: 2, startI: 17);
 				last = out.last;
 				out = out.grow(out.size + (7*2));
 				5.do { |i|
@@ -226,7 +226,7 @@ protect {
 					.add((
 						bounds: Rect(~gap.x, last.bounds.bottom + ~gap.y, ~buttonExtent.x, ~buttonExtent.y),
 						class: Button,
-						init: e { |view|
+						init: inEnvir { |view|
 							view.states = [[" ", nil, ~ltPurple], ["", nil, ~purple]];
 						},
 					));
@@ -236,14 +236,14 @@ protect {
 				out.add('/1/fader4').add((
 					bounds: Rect(last.bounds.right + ~gap.x, out[17].bounds.bottom + ~gap.y, ~buttonExtent.x, ~xyExtent.y),
 					class: Slider,
-					init: e { |view| view.knobColor_(~purple) },
+					init: inEnvir { |view| view.knobColor_(~purple) },
 					spec: [1, 0]
 				));
 				last = out.last;
 				out.add('/1/xy').add((
 					bounds: Rect(last.bounds.right + ~gap.x, out[17].bounds.bottom + ~gap.y, ~xyExtent.x, ~xyExtent.y),
 					class: Slider2D,
-					init: e { |view| view.background_(~yellowFor2D).knobColor_(~yellow) },
+					init: inEnvir { |view| view.background_(~yellowFor2D).knobColor_(~yellow) },
 					updater: { |view, x, y| view.setXY(x, 1.0 - y) }
 				));
 				out
@@ -273,10 +273,10 @@ protect {
 			if(model.notNil) { ~model = model };
 			// ~parentView = parentView;
 			~font = ~font.value;
-			~notification = NotificationCenter.register(~model, \any, Environment.current, e { |msg|
+			~notification = NotificationCenter.register(~model, \any, Environment.current, inEnvir { |msg|
 				~respond.(~model, msg);  // args[0] == msg
 			});
-			~freeNotify = NotificationCenter.register(~model, \modelWasFreed, Environment.current, e {
+			~freeNotify = NotificationCenter.register(~model, \modelWasFreed, Environment.current, inEnvir {
 				~free.();
 			});
 			~tabSpecs = ~model.tabSpecs.deepCopy;
@@ -310,7 +310,7 @@ protect {
 				~window = temp.findWindow;
 				~iMadeWindow = false;
 			};
-			~parentView.onClose = e {
+			~parentView.onClose = inEnvir {
 				if(~window.notNil) { ~window.onClose = nil };
 				~free.();
 			};
@@ -352,7 +352,7 @@ protect {
 			// where to get the address? no time now
 			~tabFocusActive = true;
 			~tabs.focusActions = Array.fill(~tabs.views.size, { |i|
-				e {
+				inEnvir {
 					if(~tabFocusActive and: { ~model.addr.notNil }) {
 						~model.sendAddr.sendMsg(~tabSwitch[i]);
 					};
@@ -368,12 +368,12 @@ protect {
 				view[\init].value(view.view);
 				view[\spec] = view[\spec].asSpec;
 				if(view[\class] == Slider2D) {
-					view.view.action = e { |vw|
+					view.view.action = inEnvir { |vw|
 						// this is not exactly right
 						~model.tryPerform(\viewChanged, oscpath, view[\spec].map([vw.x, vw.y]));
 					};
 				} {
-					view.view.action = e { |vw|
+					view.view.action = inEnvir { |vw|
 						~model.tryPerform(\viewChanged, oscpath, view[\spec].map(vw.value));
 					};
 				};
@@ -399,14 +399,14 @@ protect {
 			var what = msg[0], view;
 			// reserved: switch tabs
 			case { (view = ~tabSwitch.indexOf(what)).notNil } {
-				(e {
+				(inEnvir {
 					~tabFocusActive = false;  // suppress focusAction
 					~tabs.focus(view);
 					~tabFocusActive = true;
 				}).defer;
 			}
 			{ msg[0] == \label } {
-				e { ~labels[msg[1]].string = msg[2] }.defer;
+				inEnvir { ~labels[msg[1]].string = msg[2] }.defer;
 			}
 			// { what == \modelWasFreed } { ~free.() }
 			// default: locate and update the view onscreen
@@ -429,10 +429,10 @@ protect {
 		~sourceBP = \touch;
 		~prep = {
 			// why this? take advantage of address filtering in the BP
-			~resp = NotificationCenter.register(BP(~sourceBP).v, '/accxyz', Environment.current, e { |msg|
+			~resp = NotificationCenter.register(BP(~sourceBP).v, '/accxyz', Environment.current, inEnvir { |msg|
 				~smooth.(msg);
 			});
-			// ~resp = OSCFunc(e { |msg| ~smooth.(msg) }, '/accxyz');
+			// ~resp = OSCFunc(inEnvir { |msg| ~smooth.(msg) }, '/accxyz');
 			~movingBuf = Array.fill(~windowSize, #[0, 0, 0]);
 			~sum = [0, 0, 0];
 			~avg = [0, 0, 0];
@@ -469,7 +469,7 @@ protect {
 			~specs = specs;
 			~rdepth = 0;
 			~resp = ~path.collect { |path|
-				NotificationCenter.register(oscin, path, Environment.current, e {
+				NotificationCenter.register(oscin, path, Environment.current, inEnvir {
 					|msg, time, addr, recvPort|
 					if(~rdepth < 50) {
 						~rdepth = ~rdepth + 1;
@@ -593,7 +593,7 @@ protect {
 				BP(~oscInKey).setGUIValue(path[0], ~cspec.unmap(~gc.value));
 				~gc.addDependant(Environment.current);
 				~gc.bus.addDependant(Environment.current);  // to sync with 'watch'... grr, bad hacks
-				NotificationCenter.register(~gc, \setMixerGui, currentEnvironment, e { |mcgui|
+				NotificationCenter.register(~gc, \setMixerGui, currentEnvironment, inEnvir { |mcgui|
 					if(mcgui.notNil) {
 						~gc.register(~specs[\ctl], mcgui);
 						~gcDidRegister = true;
@@ -679,9 +679,15 @@ protect {
 		~event = ();  // dummy, to prevent bindVC from breaking
 
 		~prep = {
-			~keys = BP(~oscKey).saveKeys.collect(_.asString).select { |key| "23".includes(key[1]) };
-			~faderKeys = ~keys.select { |key| key[3] == $f }.collectAs(_.asSymbol, Array).sort;
-			~toggleKeys = ~keys.select { |key| key[3] == $t }.collectAs(_.asSymbol, Array).sort;
+			var allKeys = BP(~oscKey).saveKeys.collect(_.asString);
+			~keys = allKeys.select { |key| "23".includes(key[1]) }.as(Array).sort;  // looking for /2... or /3...
+			~keys = ~keys ++ sort(allKeys.select({ |key|
+				key[1] == $1 and: {
+					"ft".includes(key[3]) and: { key.last != $4 }
+				}
+			}).as(Array));
+			~faderKeys = ~keys.select { |key| key[3] == $f }.collect(_.asSymbol);
+			~toggleKeys = ~keys.select { |key| key[3] == $t }.collect(_.asSymbol);
 			~maps = IdentityDictionary.new;
 
 			// drag-n-drop: the 'model' is BP(~oscKey)
@@ -840,7 +846,7 @@ protect {
 			};
 		};
 		~setNotification = { |mapObj, key|
-			NotificationCenter.register(mapObj, \didFree, currentEnvironment, e {
+			NotificationCenter.register(mapObj, \didFree, currentEnvironment, inEnvir {
 				NotificationCenter.unregister(mapObj, \didFree, currentEnvironment);
 				~maps[key] = nil;
 			});
@@ -864,12 +870,12 @@ protect {
 			} {
 				~view = ListView(~viewParent, ~bounds)
 			};
-			~view.beginDragAction_(e { |view|
+			~view.beginDragAction_(inEnvir { |view|
 				if(~items.size > 0) {
 					~items[~view.value].tryPerform(\at, \dragObject)
 				} { nil };
 			})
-			.keyDownAction_(e { |view, char, mod, unicode, keycode, key|
+			.keyDownAction_(inEnvir { |view, char, mod, unicode, keycode, key|
 				var item, i, return;
 				// if you hit a mod key, the function fires and char.ascii is 0
 				// don't want to clear $^ status in that case
@@ -923,15 +929,15 @@ protect {
 				};
 				return
 			})
-			.onClose_(e { BP(~collIndex).free });
+			.onClose_(inEnvir { BP(~collIndex).free });
 			~updateView.();
 			if(~viewParent.isNil) { ~view.front };
 			~updateView = e(~updateView);
-			~putHook = e { |key, obj|
+			~putHook = inEnvir { |key, obj|
 				if(obj.isKindOf(VC)) {
 					// defer b/c Fact=>VC does VC new first, then putHook, *then* populate
 					// so 'obj.value' is not available Right Now
-					defer(e {
+					defer(inEnvir {
 						~vcSimpleCtls.put(key, SimpleController(obj.value)
 							.put(\addedGlobalControl, ~updateView)
 							.put(\removedGlobalControl, ~updateView)
@@ -939,10 +945,10 @@ protect {
 					}, 0.1);
 				};
 				if(obj.isKindOf(BP)) {
-					defer(e {
+					defer(inEnvir {
 						~bpSimpleCtls.put(key, SimpleController(obj)
-							.put(\play, e { defer(~updateView) })
-							.put(\stop, e { |obj, what, value|
+							.put(\play, inEnvir { defer(~updateView) })
+							.put(\stop, inEnvir { |obj, what, value|
 								if(value == \stopped) { defer(~updateView) };
 							})
 							.put(\voicer_, ~updateView)
@@ -951,7 +957,7 @@ protect {
 				};
 				~updateView.defer(0.05);  // updateView is already linked to this envir
 			};
-			~freeHook = e { |key, obj|
+			~freeHook = inEnvir { |key, obj|
 				var item = ~items.detect { |it| it[\object] === obj };
 				if(item.notNil) {
 					~deleteTimes.removeAt(item[\id]);
@@ -1092,12 +1098,12 @@ protect {
 				if(~deleteTimes[item[\id]].isNil) {
 					~deleteTimes[item[\id]] = SystemClock.seconds;
 					~updateColors.();
-					AppClock.sched(~deleteCancelTime, e {
+					AppClock.sched(~deleteCancelTime, inEnvir {
 						// ~deleteTimes[item[\id]] is cleared if the user hit del a second time to cancel
 						if(~deleteTimes[item[\id]].notNil) {
 							index = ~view.value;
 							item[\object].free;  // should delete from items too
-							defer(e {
+							defer(inEnvir {
 								if(index >= ~items.size) {
 									~view.value = max(0, ~items.size - 1);
 								} {

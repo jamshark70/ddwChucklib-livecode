@@ -145,9 +145,9 @@ Proto {
 		~bounds = bounds;
 		~view = TextView(parentView, bounds)
 		.string_(~str)
-		.keyUpAction_(e { |... args| ~prKeyUpAction.(*args) })
-		.keyDownAction_(e { |... args| ~prKeyDownAction.(*args) })
-		.mouseUpAction_(e { |... args| ~prMouseUpAction.(*args) })
+		.keyUpAction_(inEnvir { |... args| ~prKeyUpAction.(*args) })
+		.keyDownAction_(inEnvir { |... args| ~prKeyDownAction.(*args) })
+		.mouseUpAction_(inEnvir { |... args| ~prMouseUpAction.(*args) })
 		.focusGainedAction_({ currentEnv.changed(\focused, true) })
 		.focusLostAction_({ currentEnv.changed(\focused, false) })
 		.onClose_({ currentEnv.changed(\didFree) });
@@ -199,7 +199,7 @@ Proto {
 	~focus = { |bool| ~view.focus(bool) };
 
 	~highlight = { |highlightOn(false), start, size|
-		defer(e {
+		defer(inEnvir {
 			~view.setStringColor(
 				if(highlightOn) { ~markColor } { ~stringColor },
 				start, size
@@ -315,7 +315,7 @@ Proto {
 		if(~doHighlighting and: { ~objKey.notNil and: { ~phrase.notNil } }) {
 			NotificationCenter.register(
 				~objKey.asSymbol, ~phrase.asSymbol, currentEnvironment,
-				e { |highlight(false)|
+				inEnvir { |highlight(false)|
 					currentEnvironment.changed(\highlight, highlight)
 				}
 			)
@@ -365,7 +365,7 @@ Proto {
 			if(~statement.notNil) {
 				~selectUnit.();
 				~view.background = ~bgColors[1];
-				~keyFunc = e { |view, char, mods, unicode, keycode|
+				~keyFunc = inEnvir { |view, char, mods, unicode, keycode|
 					~doKey.(view, char, mods, unicode, keycode);
 					true  // while this is active, stop key event propagation (and no c++ response)
 				};
@@ -639,12 +639,12 @@ Proto {
 		};
 		model.addDependant(currentEnvironment);
 		~view.addDependant(currentEnvironment);
-		~view.keyUpAction = e { |view, char, mods, unicode, keycode|
+		~view.keyUpAction = inEnvir { |view, char, mods, unicode, keycode|
 			if(char.notNil and: { char.ascii == 27 }) {
 				~model.changed(\escKey);
 			};
 		};
-		~view.keyDownAction = ~view[\keyDownAction].addFunc(e { |view, char, mods, unicode, keycode|
+		~view.keyDownAction = ~view[\keyDownAction].addFunc(inEnvir { |view, char, mods, unicode, keycode|
 			case
 			{ mods == 524288 and: { #[65361, 65363].includes(keycode) } } {
 				PR(\clNavJumpBrackets).jumpInTextView(view, keycode - 65362);
@@ -654,7 +654,7 @@ Proto {
 				if(~madSelector.isNil) {
 					~madSelector = PR(\clGuiStringNav).copy.prep(~view);
 					~madSelectorUpd = SimpleController(~madSelector)
-					.put(\didFree, e {
+					.put(\didFree, inEnvir {
 						~madSelectorUpd.remove;
 						~madSelectorUpd = nil;
 						~madSelector = nil;
@@ -777,7 +777,7 @@ Proto {
 		~oldPage = model.currentPage;
 		~oldVisible = model.pageVisibleOrigin(~oldPage);
 		~view = TextField().maxWidth_(~maxWidth)
-		.keyUpAction_(e { |view, char|
+		.keyUpAction_(inEnvir { |view, char|
 			if(char.notNil) {
 				case
 				{ char.isPrint } {
@@ -789,7 +789,7 @@ Proto {
 				};
 			};
 		})
-		.action_(e { |view|
+		.action_(inEnvir { |view|
 			currentEnvironment.changed(\setVisible, view.string, \done);
 			~remove.();
 		});
@@ -831,10 +831,10 @@ Proto {
 	~prep = {
 		~makeGui.();
 		~scanBPs.();
-		~notifier = NotificationCenter.register(\clLiveCode, \phraseString, ~collIndex, e {
+		~notifier = NotificationCenter.register(\clLiveCode, \phraseString, ~collIndex, inEnvir {
 			|objKey, phrase, parm, string|
 			if(parm != \dur and: { string.size > 0 }) {
-				(e { ~updatePatString.(objKey, phrase, parm, string) }).defer;
+				(inEnvir { ~updatePatString.(objKey, phrase, parm, string) }).defer;
 			};
 		});
 	};
@@ -851,7 +851,7 @@ Proto {
 		~pages = Array.new;
 		~pageMenu = PopUpMenu()
 		.background_(~backColor).stringColor_(~stringColor)
-		.action_(e { |view| ~setPage.(view.value) });
+		.action_(inEnvir { |view| ~setPage.(view.value) });
 		~win.layout = VLayout(
 			~menuLayout = HLayout(~pageMenu),
 			~stackLayout = StackLayout()
@@ -860,7 +860,7 @@ Proto {
 		~pages[0].sections[0][0].dependants;
 		~pages[0].sections[0][0].changed(\focus, true);
 		~setPage.(0);
-		~win.onClose_(e {
+		~win.onClose_(inEnvir {
 			~win.onClose = nil;
 			BP(~collIndex).free;
 		})

@@ -2423,7 +2423,7 @@ Proto {
 				.format(~collIndex.asCompileString).warn;
 				time = BP(~collIndex).eventSchedTime(BasicTimeSpec(-1, wrap: true));
 			};
-			~clock.schedAbs(time - 0.001, e {
+			~clock.schedAbs(time - 0.001, inEnvir {
 				case
 				// does this ever happen?
 				{ parm == \dur } {
@@ -2519,7 +2519,7 @@ Proto {
 					.format(~collIndex.asCompileString)).throw;
 				// time = BP(~collIndex).eventSchedTime(BasicTimeSpec(, wrap: true));
 			};
-			~clock.schedAbs(time - 0.001, e {
+			~clock.schedAbs(time - 0.001, inEnvir {
 				// composite pattern
 				~phraseSeq_.(pattern);
 				if(newQuant.notNil) { BP(~collIndex).quant = newQuant.asTimeSpec };
@@ -2590,7 +2590,7 @@ Proto {
 
 	~resetToQuant = { |quant|
 		if(quant.isNil) { quant = ~quant ?? { BasicTimeSpec(-1) } };
-		~clock.schedAbs(quant.asTimeSpec.bpSchedTime(BP(~collIndex)) - 0.01, e {
+		~clock.schedAbs(quant.asTimeSpec.bpSchedTime(BP(~collIndex)) - 0.01, inEnvir {
 			~reset.();
 			~reschedule.(quant);
 		});
