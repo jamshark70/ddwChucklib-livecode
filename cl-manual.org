@@ -875,6 +875,17 @@ manually =stop= and =reset= before trying again to play it.)
 # #+END_SRC
 
 * Process prototype
+/Cll/ is not limited to the preset instruments. In theory, /cll/ can
+play any =SynthDef= (or complex of synths!) by modifying a /process
+prototype/, =PR(\clAbstractLiveCode)=. This prototype is the interface
+between /cll/ patterns and your sounding material. We've seen how
+pattern strings use single-character identifiers to denote
+rhythm. =PR(\clAbstractLiveCode)= translates these identifiers into
+real parameter values, and provides hooks to supply other information
+necessary for playing.
+
+Before we get to the details, you should understand the data structure.
+
 ** Data structure
 /cll/ organizes musical behavior, and musical content, hierarchically:
 
