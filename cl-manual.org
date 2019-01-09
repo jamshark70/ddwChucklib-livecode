@@ -518,76 +518,60 @@ Available BP processes:
 - =chordBP=: Block-chord player.
 - =arpegBP=: Chord arpeggiator.
 
-*** Basses and leads
-#+begin_figure
-#+NAME: bass1
-#+caption: Bassline template.
-#+BEGIN_SRC {SuperCollider} -i
-Mode(\dmixo) => Mode(\default);
-/make(pbsVC:pbs/melBP:bs(octave:3));
+*** Pitch: Overview
 
-/bs = "1_| 1.|  7~4|x";
+Using pitch in /cll/ requires a little preparation.
 
-/bs+
-/bs-
-#+END_SRC
-#+end_figure
+1. Set the tempo. (You should do this in every performance, as already
+   demonstrated in Listing [[drums1]].)
+2. Set the /mode/. /ddwLivecodeInstruments/ defines a =Mode= object
+   for all seven classical Western modes, for all 12 chromatic
+   steps. Modes are identified by the root pitch (=c=, =cs= = c-sharp,
+   =db= = d-flat, and so on) plus a modal identifier (Table
+   [[modes]]). B-flat lydian is =Mode(\bblyd)=; F-sharp minor is
+   =Mode(\fsmin)=.
 
-First, make the instrument and player. Behind the scenes, this is a
-three-step process: 1. Create the Voicer instrument. 2. Create the
-playing process. 3. Connect the instrument to the player. /Cll/
-provides a shortcut: If you write a single =/make= command that
-creates the instrument first (1), followed by the player process (2),
-then =/make= will automatically assign the instrument to the player
-(3, implicitly). Listing [[bass1]] demonstrates with
-=/make(pbsVC:pbs/melBP:bs(octave:3));=:
+   #+Name: modes
+   #+caption: Modal identifiers.
+   #+ATTR_LATEX: :align |c|c|
+   |-----------------+--------|
+   | Mode            | ID     |
+   |-----------------+--------|
+   | Major (Ionian)  | =maj=  |
+   | Dorian          | =dor=  |
+   | Phrygian        | =phr=  |
+   | Lydian          | =lyd=  |
+   | Mixolydian      | =mixo= |
+   | Minor (Aeolian) | =min=  |
+   | Locrian         | =loc=  |
+   |-----------------+--------|
 
-- =/make=
-  - =pbsVC:pbs=: Make the =pbsVC= instrument under the name =pbs=.
-  - =melBP:bs=: Make the melody player =melBP= under the name =bs=.
-    - =(octave:3)=: A parameter to apply to the new =bs= process.
-  - (Here, /cll/ does =VC(\pbs) => BP(\bs)= for you, but you don't
-    have to write anything for this!)
+3. Create instruments and players. Internally, this is a three-step
+   process: 1. Create the Voicer instrument. 2. Create the playing
+   process. 3. Connect the instrument to the player. /Cll/ provides a
+   shortcut: If you write a single =/make= command that creates the
+   instrument first (1), followed by the player process (2), then
+   =/make= will automatically assign the instrument to the player (3,
+   implicitly). Listing [[bass1]] demonstrates with
+   =/make(pbsVC:pbs/melBP:bs(octave:3));=:
+   
+   - =/make=
+     - =pbsVC:pbs=: Make the =pbsVC= instrument under the name =pbs=.
+     - =melBP:bs=: Make the melody player =melBP= under the name =bs=.
+       - =(octave:3)=: A parameter to apply to the new =bs= process.
+     - (Here, /cll/ does =VC(\pbs) => BP(\bs)= for you, but you don't
+       have to write anything for this!)
+   
+   The general form is =/make(factoryID:instanceID(parameters...))= with
+   additional factory/instance pairs separated by slashes.
 
-The general form is =/make(factoryID:instanceID(parameters...))= with
-additional factory/instance pairs separated by slashes.
+*** Pattern string pitch specification
 
-For basses in particular, get in the habit of assigning the
-octave. This is the normal =octave= event parameter from the
-SuperCollider pattern system. Assuming C as the modal root, octave 5
-puts scale degree 0 at middle C. Octave 3 in the example pulls the
-bass two octaves lower. If you forget, you can correct it later by
-=/bs(setDefault(\octave, 4))= or whichever octave number you need.
-
-Then you can assign notes using /cll/'s pitch notation. Pitches are
-/modal/ (and currently assume seven degrees to the octave, like
-Western scales---a later enhancement may support more or fewer
-degrees). So, it's recommended to choose the mode before you play by
-"chucking" (~=>~) a specific mode into =Mode(\default)=. Modes are
-identified by the root pitch (=c=, =cs= = c-sharp, =db= = d-flat, and
-so on) plus a modal identifier (Table [[modes]]). B-flat lydian is
-=Mode(\bblyd)=.
-
-#+Name: modes
-#+caption: Modal identifiers.
-#+ATTR_LATEX: :align |c|c|
-|-----------------+--------|
-| Mode            | ID     |
-|-----------------+--------|
-| Major (Ionian)  | =maj=  |
-| Dorian          | =dor=  |
-| Phrygian        | =phr=  |
-| Lydian          | =lyd=  |
-| Mixolydian      | =mixo= |
-| Minor (Aeolian) | =min=  |
-| Locrian         | =loc=  |
-|-----------------+--------|
-
-The modal root is =1=. Each note begins with a single digit, going up
-from there: 8 is an octave higher, 9 is the 9th, and 0 is the 10th
-(octave above the third). This follows the arrangement of digits on
-the keyboard: the further right you go, the higher the pitch. You can
-also attach various modifiers:
+In pattern strings, the modal root is =1=. Each note begins with a
+single digit, going up from there: 8 is an octave higher, 9 is the
+9th, and 0 is the 10th (octave above the third). This follows the
+arrangement of digits on the keyboard: the further right you go, the
+higher the pitch. You can also attach various modifiers:
 
 - ='= or @@latex:\texttt{,}@@: Up or down one octave. =''= is up two
   octaves, and so on.
@@ -603,9 +587,34 @@ The digit plus its modifiers becomes a single event---so, in Listing
 [[bass1]], beat 3 contains five characters but four events (=7~= is
 just one event). Timing is based on events, not characters.
 
-Any event that does not begin with a digit---the =x=---is a rest,
-which cuts off the preceding note (in contrast to a space, which
+Any event that does not begin with a digit---I often use =x=---is a
+rest, which cuts off the preceding note (in contrast to a space, which
 affects timing only).
+
+*** Basses and leads
+#+begin_figure
+#+NAME: bass1
+#+caption: Bassline template.
+#+BEGIN_SRC {SuperCollider} -i
+Mode(\dmixo) => Mode(\default);
+/make(pbsVC:pbs/melBP:bs(octave:3));
+
+/bs = "1_| 1.|  7~4|x";
+
+/bs+
+/bs-
+#+END_SRC
+#+end_figure
+
+Basses and leads should use the =melBP= melody player: one written
+note produces one sounding note (Listing [[bass1]]).
+
+For basses in particular, get in the habit of assigning the
+octave. This is the normal =octave= event parameter from the
+SuperCollider pattern system. Assuming C as the modal root, octave 5
+puts scale degree 0 at middle C. Octave 3 in the example pulls the
+bass two octaves lower. If you forget, you can correct it later by
+=/bs(setDefault(\octave, 4))= or whichever octave number you need.
 
 Leads follow the same principles, except in a higher octave.
 
