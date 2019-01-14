@@ -692,7 +692,7 @@ protect {
 
 			// drag-n-drop: the 'model' is BP(~oscKey)
 			// the model doesn't know directly about me, but it sends notifications
-			NotificationCenter.register(BP(~oscKey).v, \receiveDrag, ~collIndex, e(~receiveDrag));
+			NotificationCenter.register(BP(~oscKey).v, \receiveDrag, ~collIndex, inEnvir(~receiveDrag));
 		};
 		~freeCleanup = {
 			NotificationCenter.unregister(BP(~oscKey).v, \receiveDrag, ~collIndex);
@@ -932,7 +932,7 @@ protect {
 			.onClose_(inEnvir { BP(~collIndex).free });
 			~updateView.();
 			if(~viewParent.isNil) { ~view.front };
-			~updateView = e(~updateView);
+			~updateView = inEnvir(~updateView);
 			~putHook = inEnvir { |key, obj|
 				if(obj.isKindOf(VC)) {
 					// defer b/c Fact=>VC does VC new first, then putHook, *then* populate
