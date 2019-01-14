@@ -567,11 +567,12 @@ Using pitch in /cll/ requires a little preparation.
 
 *** Pattern string pitch specification
 
-In pattern strings, the modal root is =1=. Each note begins with a
-single digit, going up from there: 8 is an octave higher, 9 is the
-9th, and 0 is the 10th (octave above the third). This follows the
-arrangement of digits on the keyboard: the further right you go, the
-higher the pitch. You can also attach various modifiers:
+In pattern strings, the modal root is =1=.[fn:84cfcfa1] Each note
+begins with a single digit, going up from there: 8 is an octave
+higher, 9 is the 9th, and 0 is the 10th (octave above the
+third).[fn:0fe09d88] This follows the arrangement of digits on the
+keyboard: the further right you go, the higher the pitch. You can also
+attach various modifiers:
 
 - ='= or @@latex:\texttt{,}@@: Up or down one octave. =''= is up two
   octaves, and so on.
@@ -1219,6 +1220,9 @@ phrase-selection pattern at once. +For this, Register commands can save sequence
 | Show pattern | Copies a phrase pattern's string into the document, for editing | \texttt{/proc.phrase.parm}               |
 |--------------+-----------------------------------------------------------------+------------------------------------------|
 
+/cll/ supports the statements shown in Table [[cllStatements]], listed in
+order of importance.
+
 /cll/ statements begin with a slash: =/=. Statements may be separated
 by semicolons and submitted as a batch.
 
@@ -1232,8 +1236,6 @@ by semicolons and submitted as a batch.
 // or as a batch
 /kick.fotf = "----"; /snare.bt24 = " - -";
 #+END_SRC
-
-/cll/ supports the statements shown in Table [[cllStatements]], in order of importance.
 
 *** types							   :noexport:
     - [X] \clMake -> "^ *make\\(.*\\)",
@@ -1341,16 +1343,16 @@ notes explicitly, then you should define an item in the parameter map
 whose value is a =Rest= object.
 #+END_boxnote
 
-#+begin_boxnote
-/Set pattern/ writes the character identifiers for the values into the
-pattern: for example, a pattern string @@latex:\texttt{"--"}@@ becomes
-=Pseq([$-, $-], 1)=. =PR(\abstractLiveCode)= post-processes each
-parameter, ensuring that the right event keys receive the right
-values. The conversion from identifier value occurs for each
-parameter; you should be able to rely on accessing the final values by
-Pkey. This supports /Generators/ (Section [[Generators]]), which
-should also return the value identifiers.
-#+end_boxnote
+# #+begin_boxnote
+# /Set pattern/ writes the character identifiers for the values into the
+# pattern: for example, a pattern string @@latex:\texttt{"--"}@@ becomes
+# =Pseq([$-, $-], 1)=. =PR(\abstractLiveCode)= post-processes each
+# parameter, ensuring that the right event keys receive the right
+# values. The conversion from identifier value occurs for each
+# parameter; you should be able to rely on accessing the final values by
+# Pkey. This supports /Generators/ (Section [[Generators]]), which
+# should also return the value identifiers.
+# #+end_boxnote
 
 **** TODO Set pattern examples					   :noexport:
 
@@ -1436,35 +1438,117 @@ bar, then it will pick up =c=, without any other change needed.
 /x = "-|-  -";  // now "c" is heard on beat 4.5
 #+END_SRC
 
-*** TODO Pitch notation [0/2]
-**** TODO Accents in list (also: no =PmonoArtic= support)
-**** TODO Fix bass example
+*** Pitch notation
 #+begin_figure
-#+name: pitchSet1
+#+name: bassMelBP
 #+caption: A retro acid-house bassline, demonstrating pitch notation.
 #+BEGIN_SRC {SuperCollider} -i
+// Initialization code
 (
 SynthDef(\sqrbass, { |out, freq = 110, gate = 1,
    freqMul = 1.006, amp = 0.1,
    filtMul = 3, filtDecay = 0.12, ffreq = 2000, rq = 0.1,
    lagTime = 0.1|
    var sig = Mix(
-      Pulse.ar(
-         Lag.kr(freq, lagTime) * [1, freqMul],
-         0.5
-      )
+      Pulse.ar(Lag.kr(freq, lagTime) * [1, freqMul], 0.5)
    ) * amp,
    filtEg = EnvGen.kr(
       Env([filtMul, filtMul, 1], [0.005, filtDecay], \exp),
       gate
    ),
-   ampEg = EnvGen.kr(
-      Env.adsr(0.01, 0.08, 0.5, 0.1),
-      gate, doneAction: 2
-   );
+   ampEg = EnvGen.kr(Env.adsr(0.01, 0.08, 0.5, 0.1),
+      gate, doneAction: 2);
    sig = RLPF.ar(sig, (ffreq * filtEg).clip(20, 20000), rq);
    Out.ar(out, (sig * ampEg).dup);
 }).add;
+
+(
+keys: #[master],  // ~master comes from \loadAllCl.eval
+defaultName: \sqrbs,
+initLevel: -12.dbamp,
+argPairs: #[amp, 0.5],
+make: { |name|
+   var out;
+   ~target = MixerChannel(name, s, 2, 2, ~initLevel, outbus: ~master);
+   out = Voicer(5, \sqrbass, target: ~target);
+   out.mapGlobal(\ffreq, nil, 300, \freq);
+   out.mapGlobal(\rq, nil, 0.2, \myrq);
+   out.mapGlobal(\filtMul, nil, 8, [1, 12]);
+   out
+},
+free: { ~target.free },
+type: \vc) => Fact(\sqrbsVC);
+)
+
+// Performance code:
+\loadAllCl.eval;
+TempoClock.tempo = 132/60;
+Mode(\fsloc) => Mode(\default);
+
+/make(sqrbsVC/melBP:bs(octave:3));
+/bs = "1_  1.|5~3_9.4.|7.2~4_5'.|5_8~2_4.";
+/bs+;
+
+/bs-;
+#+END_SRC
+#+end_figure
+
+If a parameter's map specifies =isPitch: true=, then it does not need
+to specify any other values and the rules described in Section [[Pattern
+string pitch specification]] apply.
+
+
+#+BEGIN_boxnote
+Items in pitch sequences may include more than one character: =3= is
+one note, as is =6+,~=. They are converted into =SequenceNote=
+objects in the pattern, because =SequenceNotes= can encode pitch and
+articulation information. Post-processing in =PR(\abstractLiveCode)=
+extracts the articulation value and assigns it to =\legato= (or
+=\sustain= for staccato notes).
+#+END_boxnote
+
+To use pitched notes, I strongly recommend installing the
+/ddwLivecodeInstruments/ quark, and using the =melBP= process (or the
+other pitched processes described in the tutorial), as demonstrated in
+Listing [[bassMelBP]]. The general procedure is:
+
+- In your initialization script, package your instrument as a Voicer
+  factory, following the template shown. Note the following keys in
+  the factory's dictionary:
+  - =keys=: Import items from the top environment. In particular,
+    =\loadAllCl.eval= creates mixer channels =~master=, =~rvbmc= and
+    =~shortrvbmc=. You can use these when creating the Voicer's
+    =~target= mixer.
+  - =defaultName=: The name of the =VC= object that =/make()= will
+    create.
+  - =initLevel=, =initRvb=: Not strictly necessary, but
+    /ddwLivecodeInstruments/ uses these as a convention to set the
+    levels of the mixer channel and reverb post-send.
+  - =argPairs=: Parameters and defaults specific to this instrument,
+    to inject into the note player when using the instrument. One
+    convention in /ddwLivecodeInstruments/ is a default amplitude of
+    0.5, overriding the default event prototype's 0.1.
+- In performance, =/make= the instrument and a =melBP= process together.
+- Specify the key: =Mode(\keyname) => Mode(\default)=. The "legacy
+  example" below uses F-sharp Locrian, hence =Mode(\fsloc)=. (This is
+  a global setting; you do not need to repeat this step for every
+  process.)
+
+The particular benefit of a Voicer + =melBP= is that slurred notes
+will tie across the bar line correctly. (/cll/ needs to evaluate
+processes on every bar line, whether a note sounds at that time or
+not. If a pitched note ties over the bar line, the last note in the
+bar does not know when the next note in the bar will occur. This is
+extremely difficult to handle using the default event
+prototype. /ddwLivecodeInstruments/ pitched processes use a custom
+event prototype, with features of Voicer, to make it transparent to
+the user.)
+
+#+begin_figure
+#+name: pitchSet1
+#+caption: Pitch notation in PR(\textbackslash abstractLiveCode); not generally recommended.
+#+BEGIN_SRC {SuperCollider} -i
+// Use the same SynthDef as in the previous example
 
 BP(\acid).free;
 PR(\abstractLiveCode).chuck(BP(\acid), nil, (
@@ -1493,50 +1577,13 @@ TempoClock.tempo = 132/60;
 #+END_SRC
 #+end_figure
 
-If a parameter's map specifies =isPitch: true=, then it does not need
-to specify any other values and the following rules apply:
-
-- Scale degrees are given by decimal digits, where 1 is the tonic and
-  0 is the interval of a tenth above that (following the number row on
-  the keyboard).[fn:84cfcfa1]
-
-- @@latex:\texttt{+}@@ and @@latex:\texttt{-}@@ raise and lower the pitch by a semitone.
-
-- @@latex:\texttt{'}@@ and @@latex:\texttt{,}@@ displace the pitch by
-  an octave up or down, respectively.[fn:0fe09d88] Multiple
-  apostrophes or commas displace by multiple octaves. (This syntax is
-  borrowed from LilyPond.)
-
-- @@latex:\texttt{.}@@ indicates a staccato note.
-
-- @@latex:\texttt{\textunderscore}@@ indicates legato (sustain
-  duration slightly shorter than note duration).
-
-- @@latex:\texttt{\textasciitilde}@@ slurs this note into the next note.
-
-#+BEGIN_boxnote
-You should use the default event prototype for this process. Include
-the following in the "chuck" parameter dictionary, as in
-@@latex:Listing \ref{pitchSet1}@@:
-
-=event: (eventKey: \default)=
-#+END_boxnote
-
-#+BEGIN_boxnote
-Items in pitch sequences may include more than one character: =3= is
- one note, as is =6+,~=. They are converted into =SequenceNote=
- objects in the pattern, because =SequenceNotes= can encode pitch and
- articulation information. Post-processing in =PR(\abstractLiveCode)=
- extracts the articulation value and assigns it to =\legato= (or
- =\sustain= for staccato notes).
-#+END_boxnote
-
-@@latex:Listing \ref{pitchSet1}@@ illustrates the kind of articulation
-that is possible with this notation, using a 90s-throwback acid-style
-bassline. Though the sound is not as cool as a real TB303, careful use
-of slurs and staccatos mimics the feel of the venerable old
-machine.[fn:be0c1420] A further refinement would be to add values for
-filter frequency and =filtMul= into the parameter map.
+If you must use only the basic features of /cll/ (=\loadCl.eval=), you
+can use =PR(\abstractLiveCode)= and place a dummy =PmonoArtic= into
+=postDefaults=, as in Listing [[pitchSet1]].[fn:be0c1420] If you do it
+this way, you lose support for accents, and notes will not
+automatically tie across the bar line. You can work around this by
+explicitly repeating the note in the next bar. This is very difficult
+to do with generators, however.[fn:1f8bf7e10eedb13b]
 
 *** Phrase selection
 Statements to set the phrase sequence follow a different syntax:
@@ -2414,6 +2461,10 @@ PR(\chucklibLiveCode).clMyNewStatement = { |code|
 #+LaTeX: \lstlistoflistings
 
 * Footnotes
+
+[fn:1f8bf7e10eedb13b] I present the =PmonoArtic= example only to
+demonstrate that it is possible. This way, however, is not as powerful
+as =melBP=, so I maintain the recommendation to use =melBP= instead.
 
 [fn:80657f61093a950] Drum samples, and the "sound effects" samples in
 section [[Sound effects]], are used with permission from
