@@ -918,56 +918,74 @@ Before we get to the details, you should understand the data structure.
    :END:
 #+begin_figure
 #+name: instance1
-#+caption: A simple cll process.
+#+caption: Defining a simple cll process as a factory.
 #+BEGIN_SRC {SuperCollider} -i
 (
-PR(\abstractLiveCode).chuck(BP(\beep), nil, (
-   userprep: {
-      ~buf = Buffer.read(
-         s, Platform.resourceDir +/+ "sounds/a11wlk01.wav",
-         4982, 10320
-      );
-      ~defaults[\bufnum] = ~buf;
-      SynthDef(\buf1, { |out, bufnum, pan, amp, time = 1|
-         var sig = PlayBuf.ar(1, bufnum),
-         eg = EnvGen.kr(
-            Env.linen(0.02,
-               min(time, BufDur.ir(bufnum) - 0.04), 0.02),
-            doneAction: 2
+(
+defaultName: \beep,
+make: { |name|
+   PR(\abstractLiveCode).chuck(BP(name), nil, (
+      userprep: {
+         ~buf = Buffer.read(
+            s, Platform.resourceDir +/+ "sounds/a11wlk01.wav",
+            4982, 10320
          );
-         Out.ar(out, Pan2.ar(sig, pan, amp * eg));
-      }).add;
-   },
-   userfree: {
-      ~buf.free;
-   },
-   defaultParm: \amp,
-   parmMap: (
-      amp: ($.: 0.1, $-: 0.4, $^: 0.8),
-      pan: (
-         $<: -0.9, $>: 0.9,
-         $(: -0.4, $): 0.4,
-         $-: 0
+         ~defaults[\bufnum] = ~buf;
+         SynthDef(\buf1, { |out, bufnum, pan, amp, time = 1|
+            var sig = PlayBuf.ar(1, bufnum),
+            eg = EnvGen.kr(
+               Env.linen(0.02,
+                  min(time, BufDur.ir(bufnum) - 0.04), 0.02),
+               doneAction: 2
+            );
+            Out.ar(out, Pan2.ar(sig, pan, amp * eg));
+         }).add;
+      },
+      userfree: {
+         ~buf.free;
+      },
+      defaultParm: \amp,
+      parmMap: (
+         amp: ($.: 0.1, $-: 0.4, $^: 0.8),
+         pan: (
+            $<: -0.9, $>: 0.9,
+            $(: -0.4, $): 0.4,
+            $-: 0
+         )
+      ),
+      defaults: (instrument: \buf1),
+      postDefaults: Pbind(
+         \time, (Pkey(\dur) * 0.6 / Pfunc { ~clock.tempo }).clip(0.04, 0.2)
       )
-   ),
-   defaults: (instrument: \buf1),
-   postDefaults: Pbind(
-      \time, (Pkey(\dur) * 0.6 / Pfunc { ~clock.tempo }).clip(0.04, 0.2)
-   )
-));
+   ));
+}, type: \bp) => Fact(\beepBP);
 )
+#+END_SRC
+#+end_figure
 
-// Use it, with cll statements:
+#+begin_figure
+#+name: instance2
+#+caption: Using the cll process factory in a performance.
+#+BEGIN_SRC {SuperCollider} -i
+\loadCl.eval;  // or \loadAllCl.eval;
 TempoClock.tempo = 2;
 
+/make(beepBP);  // defaultName is 'beep' so you get BP(\beep)
 /beep = "^|.. .| .- | .  ";  // "Set pattern"
 /beep+;  // start it
 
-/beep..pan = "<><><><>";
+/beep..pan = "<><><><>";  // change something
 
-/beep-;
+/make(beepBP:beep2);  // ':' overrides defaultName
+/beep2 = " ..-| .^ |. ..| .";
+/beep2+
 
-/beep(free);
+/beep..pan = "<";
+/beep2..pan = ">";
+
+/beep/beep2-;
+
+/beep(free); /beep2(free);
 #+END_SRC
 #+end_figure
 
@@ -1017,20 +1035,29 @@ because the buffer number is not known in advance. The only way to
 supply the buffer number as a default is to read the buffer first,
 and put it into the defaults dictionary only after that.
 
+After loading the definition, @@latex:Listing \ref{instance2}@@
+demonstrates how rapidly a performer can instantiate and use multiple
+copies of the prototype.
+
 #+begin_boxnote
-Clearly, the code to initialize the process in @@latex:Listing
-\ref{instance1}@@ is too long to be practical to type in the middle of
-a performance. For practical purposes, you should place all of the
-process definitions into a separate file, which you would load once at
-the beginning of a performance. See also the /Make/ statement (Section
-[[Make statement]]), which makes it easy to instantiate the processes
-as needed during the performance, reducing the overhead of initial
-loading. (In fact, Chucklib was designed from the beginning to
-"package" complex musical behaviors into objects that are simpler to
-use, once defined. /cll/ is an even more compact layer of control on
-top of this, following the same design principle: /definition/ and
-/performance usage/ are different, and call for different types of
-code.)
+Clearly, the code in @@latex:Listing \ref{instance1}@@ is too long to
+be practical to type in the middle of a performance. For practical
+purposes, you should place all of the process definitions into a
+separate file, which you would load once at the beginning of a
+performance. See also the /Make/ statement (Section [[Make statement]]),
+which makes it easy to instantiate the processes as needed during the
+performance, reducing the overhead of initial loading. (In fact,
+Chucklib was designed from the beginning to "package" complex musical
+behaviors into objects that are simpler to use, once defined. /cll/ is
+an even more compact layer of control on top of this, following the
+same design principle: /definition/ and /performance usage/ are
+different, and call for different types of code.)
+
+@@latex:Listing \ref{instance1}@@ illustrates how to wrap the
+=PR(\abstractLiveCode).chuck(...)= statement into a Chucklib /factory/
+object. I strongly recommend following this model; it "publishes" your
+process for use with =/make()= and avoids the need to manage large,
+complex code blocks in performance.
 #+end_boxnote
 
 ** Parameter map
@@ -1115,10 +1142,10 @@ level.
 |------------------------+-----------------------------+--------------------------------------------|
 #+END_boxnote
 
-One other use of parameter map array is used to set disparate Event
-keys using one /cll/ parameter. =Pbind= allows multiple keys to be set
-at once by providing an array for a key. /cll/ supports this by using
-an array for the alias!
+One other use of the parameter map array is used to set disparate
+Event keys using one /cll/ parameter. =Pbind= allows multiple keys to
+be set at once by providing an array for a key. /cll/ supports this by
+using an array for the alias!
 
 #+name: parmMapArray2
 #+caption: Arrays for multiple-parameter setting using one cll parameter.
