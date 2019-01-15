@@ -1898,18 +1898,12 @@ sequences, which always play exactly the same events. /Generators/
 create phrases whose contents can change on each iteration, adding
 another dimension of musical interest.
 
-** TODO Generator design [0/1]
-*** TODO Clarify location of chaining example
+** Generator design
 Generators manipulate lists of events, provided by "set pattern"
-strings, one bar at a time. (As such, they are not a precise analog to
-SuperCollider patterns.)
-
-Typically, the generator's first argument is the event source: a "set
-pattern" string or another generator. The generator requests the event
-list from the source, processes it and passes the modified list up to
-its parent. Chaining generators in this way allows complex behaviors
-from simple units. Generators should be written such that it's
-possible to use any generator at any point in a chain.
+strings, one bar at a time. By convention, the first argument to a
+generator should be a source event list, and the generator's result
+should be a modified event list (ready to pass into the first argument
+of another generator, if desired).
 
 At present, generators divide into these main categories:
 
@@ -1940,17 +1934,17 @@ PR(\abstractLiveCode).chuck(BP(\y), nil, (
 
 TempoClock.tempo = 140/60;
 
-/y = "12 4| 5 6| 12 |45";
+/y = "12 4| 5 6| 12 |45";  // A
 
 /y+;
 
-/y = "\seq("** *| * *| ** |**", "12456", "*")";
+/y = "\seq("** *| * *| ** |**", "12456", "*")";  // B
 
-/y = "\ins(\seq("** *| * *| ** |**", "12456", "*"), "*", 7, 0.25)";
+/y = "\ins(\seq("** *| * *| ** |**", "12456", "*"), "*", 7, 0.25)";  // C
 
-/y = "\seq(\ins(\seq("** *| * *| ** |**", "12456", "*"), "*", 7, 0.25), "6,214", "*")";
+/y = "\seq(\ins(\seq("** *| * *| ** |**", "12456", "*"), "*", 7, 0.25), "6,214", "*")";  // D
 
-/y = "\seq("** *| * *| ** |**", "12456", "*")::\ins(, "*", 7, 0.25)::\seq(, "6,214", "*")";
+/y = "\seq("** *| * *| ** |**", "12456", "*")::\ins(, "*", 7, 0.25)::\seq(, "6,214", "*")";  // E
 
 /y-;
 #+END_SRC
@@ -1958,20 +1952,18 @@ TempoClock.tempo = 140/60;
 Listing [[gencycle]] demonstrates one possibility. The initial idea is a
 cycle of five pitches laid over nine notes within a bar. Without
 generators, it's necessary to drop one pitch at the end of every bar
-(or, write the five possible distinct bars by hand---time moves
-quickly on stage, so this is painful). But, using the =\seq()=
-generator, we can specify the rhythm using a @@latex:\texttt{*}@@
-wildcard; =\seq()= replaces each wildcard with successive
-pitches. =\seq= also remembers its state from one bar to the next, so,
-in this example, the first bar will begin with =1= and the second,
-with =6=.
+(A). But, using the =\seq()= generator, we can specify the rhythm
+using a @@latex:\texttt{*}@@ wildcard; =\seq()= replaces each wildcard
+with successive pitches. =\seq= also remembers its state from one bar
+to the next, so, in this example, the first bar will begin with =1=
+and the second, with =6= (B).
 
 Generators are "composed" by wrapping another generator around the
 outside: =\ins(..., "*", 7, 0.25)= inserts seven wildcards at randomly
-chosen 1/4-beat positions. (There are 16 per bar, and 9 are already
-occupied, so this will fill all the empty rhythmic positions.)
+chosen 1/4-beat positions (C). (There are 16 per bar, and 9 are
+already occupied, so this will fill all the empty rhythmic positions.)
 @@latex:\texttt{*}@@ is not a valid pitch specifier, so these are
-performed as rests. Wrapping in one more layer, another =\seq()=,
+performed as rests. Wrapping in one more layer, another =\seq()= (D),
 overlays a new cycle, four notes this time. The result is a shifting
 arpeggiation that should repeat every 20 bars---but written as a
 single bar's pattern string.
@@ -1980,33 +1972,74 @@ The nested notation has the drawback that the parameters of
 outer-layer generators may be far away from the generator name. A
 double-colon "chaining" or "composition" operator,
 @@latex:\texttt{::}@@, makes it possible to write each generator as an
-isolated unit. The final variant sounds the same as the nested
+isolated unit. The final variant (E) sounds the same as the nested
 version, but is easier to read. The @@latex:\texttt{::}@@ operator
 takes the result of the first =\seq()= and replaces the first
 parameter of the subsequent =\ins()= with it, and on down the
 chain. The initial comma inside =\ins()= is required as a placeholder,
-but nothing need be supplied; empty commas become =nil=.
+but nothing need be supplied because the chain operator will fill the
+first slot.
 
 ** Generator usage
 *** Generators and pattern strings
+#+NAME: itemSpans
+#+CAPTION: Time spans of items in pattern strings.
+#+BEGIN_figure
+#+BEGIN_CENTER
+#+ATTR_LATEX: :width 1.0\textwidth
+[[./manual-supporting/item-spans.pdf]]
+#+END_CENTER
+#+END_figure
+
 Generators are invoked using the syntax =\name(arguments)= within a
 "set pattern" string.
 
-As noted earlier, every character in a pattern string corresponds to a
-metrical position within the bar.[fn:2bc61fa0] The entire generator string, from
-the opening backslash to the closing parenthesis, likewise occupies
-/one and only one/ metrical position. The generator remains active
-until the next event, which may be a literal item or another
-generator. Spaces in the pattern string are placeholders, and indicate
-how long the generator should be in force. Listing [[genRhythm]]
-illustrates. (Argument lists call for further discussion and are not
-relevant to generators' rhythmic position; so, the examples omit
-arguments.)
+As noted earlier, every item in a pattern string occupies a span of
+time within the bar, beginning at its metrical position and continuing
+until the metrical position of the next item (or the end of the
+bar). (Spaces in the pattern string are placeholders, not items.) In
+Figure [[itemSpans]], example A, the first =-= begins on beat 2 and
+extends until the next item, a =.= on beat 3.25, and so on until the
+end of the bar. The pattern string puts nothing at the beginning of
+the bar---remember, spaces and dividers are not items. During
+generator processing, literally nothing is in this space. When it's
+time to play the bar's contents, a rest event will be inserted, but
+this does not affect playback.
 
-In example 3 of Listing [[genRhythm]], beat 2 contains four items:
-@@latex:\texttt{6,}@@, =\rand(...)=, space and space. Thus beat 2 is
-subdivided into 16th-notes, and the generator begins on the second of
-those.
+A generator expression, from the opening backslash to the closing
+parenthesis, counts as one item, whose span is determined in the same
+way. The simplest case is Figure [[itemSpans]], example B, where a single
+generator occupies the entire bar (there are no spaces or dividers
+before it, and no items after it). In example C, the generator begins
+on the second eighth-note, and its span is terminated by an =x= on
+beat 4.
+
+Metrical position is especially important for the insert =\ins()=
+generator. =\ins()= chooses metrical positions randomly from a "grid"
+determined by the generator's starting position and the =quant=
+argument (fourth in the list). In example B, =\ins()= starts at the
+beginning of the bar, and the grid is in half-beats
+(eighth-notes). Example C's =\ins()= grid is in quarter-notes, but
+beginning off the beat---syncopation---and the generator ends at
+beat 4. Beat 4.5 matches the "syncopated quarter-note" specification,
+but it is outside the generator's bounds, so it is unavailable to this
+=\ins()= instance.
+
+This poses a problem for chaining generators. You can =::= chain a
+second generator only onto another generator, not normal items. But
+the generator occupies beats 1.5--4 only; therefore, a chained
+generator can apply only to this time span, not the entire
+bar. /Cll/'s solution is a filter generator, =\fork()=, which
+positions sub-generators within its own time span. In example D, the
+same =\ins()= generator occurs within a =\fork()=. The =\ins()= still
+applies only to beats 1.5--4, but the =\fork()= is the only item in
+the bar and covers the entire span. If you chain additional generators
+onto the =\fork()=, they will likewise cover the entire bar.
+
+Listing [[genRhythm]] provides some playable examples. In Example 3, beat
+2 contains four items: @@latex:\texttt{6,}@@, =\rand(...)=, space and
+space. Thus beat 2 is subdivided into 16th-notes, and the generator
+begins on the second of those.
 
 #+name: genRhythm
 #+caption: Interaction between generator syntax and "set pattern" rhythmic notation.
@@ -2065,10 +2098,14 @@ Arguments are separated by commas. Each argument should be one of the following:
 - A subordinate generator expression (which must begin with a
   backslash and end with a closing parenthesis).
 
-- A number.
+- A number. Integer ranges may be specified =low..high=, e.g., =1..3=
+  to insert 1, 2 or 3 notes. Numbers may also use SuperCollider
+  pass-through expressions, in braces. For example, to "choke" notes
+  either 0.25 or 0.5 beats later, you could write
+  =\someGenerator(...)::\choke(, {rrand(1,2)*0.25}, "x")=.
 
 - A Symbol, written in LISP-influenced style with an opening backtick:
-  =`name=. Currently this is used only in the =\pdefn()= generator.
+  =`name=.
 
 # See Listing [[genRhythm1]] for examples.
 
@@ -2169,7 +2206,13 @@ non-default parameters.
      /y/z-;
      #+END_SRC
 
-*** Content generators
+- =\delta()= ::
+- =\choke()= ::
+- =\stutt()= ::
+- =\div()= ::
+- =\unis()= :: 
+
+*** Wildcard-replacement generators
 
 - =\seq("source", "items", "wildcards", reset)= :: Replaces
      /wildcards/ in the source with /items/, one by one, preserving
@@ -2203,17 +2246,27 @@ non-default parameters.
      e.g. =SequenceNote(degree, nil, length)= where =length= is 0.4
      for staccato, 0.9 for legato (but rearticulating the next note)
      and 1.01 for slurred.
-     - =Pdefn= streams are shared globally across all instances of
-       this generator. This means you can create sequential patterns
-       spanning barlines.
-     - The behavior of =reset > 0= is undefined.
-     #+BEGIN_SRC SuperCollider
-     Pdefn(\y, Pn(Pseries(0, 1, 8), inf).collect { |d| SequenceNote(d, nil, 0.9) });
+  - =Pdefn= streams are shared globally across all instances of
+    this generator. This means you can create sequential patterns
+    spanning barlines.
+  - The behavior of =reset > 0= is undefined.
+  #+BEGIN_SRC SuperCollider
+  Pdefn(\y, Pn(Pseries(0, 1, 8), inf).collect { |d| SequenceNote(d, nil, 0.9) });
      
-     /y.a0 = "*\ins("*", "*", 2, 0.5)::\pdefn(, `y, "*")";
-     /y.a1 = "\ins("*", "*", 3, 0.5)::\pdefn(, `y, "*")";
-     /y = (a**2);
-     #+END_SRC
+  /y.a0 = "*\ins("*", "*", 2, 0.5)::\pdefn(, `y, "*")";
+  /y.a1 = "\ins("*", "*", 3, 0.5)::\pdefn(, `y, "*")";
+  /y = (a**2);
+  #+END_SRC
+
+- =\gdefn()= ::
+- =\prev()= ::
+- =\pitch()= ::
+- =\pitch2()= :: 
+
+*** Modifier generators
+
+- =\artic()= :: 
+- =\xpose()= :: 
 
 *** Filter generators
 
@@ -2231,6 +2284,8 @@ non-default parameters.
 
      /y = "\ins("", "1,", 10, 0.25)::\fork(, " \seq(, "13", "1,")x\seq(, "14", "1,")")";
      #+END_SRC
+
+- =\oneof()= :: 
 
 - =\chain("source", generator, generator...)= :: For internal use only.
 
