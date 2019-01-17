@@ -2152,6 +2152,21 @@ non-default parameters.
 # #+END_SRC
 
 ** TODO *Check for new* Built-in generators
+Many generators include a /wildcards/ argument. If omitted, the
+generator will apply to all items with its timespan. Otherwise, it
+will operate only on items that were produced by that generator. For
+example, if I want to choke off all open hi-hats after 0.25 beats, but
+leave closed hi-hats alone, I can specify ="-"= for /wildcards/.
+
+#+BEGIN_SRC SuperCollider -i
+TempoClock.tempo = 124/60;
+/hh.(\synthhh);
+/shh = "\ins(, "-", 2, 0.5)::\ins(, ".", 8, 0.5)::\choke(, 0.25, ".", "-")";
+/shh+
+
+/shh-
+#+END_SRC
+
 *** Rhythm generators
 
 - =\ins("source", "new items", numToAdd, quant)= :: Locates unoccupied
@@ -2206,11 +2221,71 @@ non-default parameters.
      /y/z-;
      #+END_SRC
 
-- =\delta()= ::
-- =\choke()= ::
-- =\stutt()= ::
-- =\div()= ::
-- =\unis()= :: 
+- =\delta("source", "new items", quant, weights...)= :: Add items into the source
+     based on random selection of event deltas, as multiples of
+     /quant/. If /quant/ is 0.25, then the first /weight/ is for 0.25,
+     the second for 0.5 and so on; =\delta(, "*", 0.25, 3, 1, 2)=
+     would choose deltas according to =Pwrand(0.25 * [1, 2, 3], [3, 1,
+     2].normalizeSum, inf)=. The next delta is added to the current
+     position to find the position for the next item, until reaching
+     the end of the timespan.
+
+- =\choke("source", maxDur, "new items", "wildcards")= :: For every
+     item within the time span, insert an item /maxDur/ beats later
+     (unless the next item comes at that time point or
+     earlier). =\choke("-||-.|", 1, ".")= will insert a =.= at beat 2,
+     because it is one beat later than the first item's position, and
+     there is no other item already "choking off" that note. Beat 4
+     does not receive an extra item, because the =-= on beat 3 is
+     already choked off a half beat later.
+
+- =\stutt("source", "new items", numToAdd, quant, prob, "insItem", "wildcards")= :: Choose
+     up to /numToAdd/ matching items and stutter them according to
+     /quant/. /New items/ determines the items to match (if omitted,
+     it matches any items, also taking /wildcards/ into account). At
+     /quant/ intervals, a new item is inserted if =prob.coin= is
+     true. /insItem/ specifies the item to insert; if omitted, it will
+     insert a copy of the existing item.
+
+- =\div("source", "new items", "replaceItems", numToAdd, quant, divisor, divisible)= :: Choose
+     up to /numToAdd/ matching items (taken from /replaceItems/, which
+     must be at least /quant/ beats long, and divide their duration by
+     /divisor/, inserting items from /new items/. /Divisible/ can
+     further prevent short notes from being divided; if /quant/ is 0.5
+     and /divisible/ is 2.5, notes of duration 2.0 will not be
+     divided.
+
+- =\unis(`srcParm, "new items", srcBP)= :: Copy items, or rhythm, from
+     another process ("unison"). The other process should have
+     =leadTime > 0= to guarantee that it evaluates first (you can set
+     =leadTime= while a process is playing). /SrcParm/ is the
+     parameter name from the other process, as a symbol =`name=;
+     /srcBP/ is the name of the other process. If you specify items in
+     /new items/, they will replace the values from the other
+     process. For a fairly complex example, let's play block chords in
+     a pad, and then have an arpeggiator follow the top note's
+     rhythm. The first use of =\unis()= here makes sure the
+     arpeggiator plays the highest note (=1=) at the same time the pad
+     moves to another chord. In =/arp..top=, the =\unis()= follows the
+     top note's rhythm and pitch, and in =/arp..acc=, it adds an
+     accent to the top notes only.
+#+name: unisGen
+#+caption: Using the unis() generator to coordinate two harmony processes.
+#+BEGIN_SRC SuperCollider -i
+TempoClock.tempo = 124/60;
+/make(anapadVC:pad/chordBP:ch(chords:\bigch));
+/ch(leadTime = 0.01);
+/ch = "\delta(, "*", 0.5, 0, 1, 2, 2)::\shuf(, "0976")";
+/ch+
+
+/make(pulseLeadVC:pl/arpegBP:arp(chords:\bigch));
+/arp = "\unis(`note, "1", `ch)::\ins(, "*", 16, 0.25)::\seq(, "23456")::\artic(, ".")";
+/arp..top = "\unis(`note, , `ch)";
+/arp..acc = "\unis(`top, ">", `arp)::\choke(, 0.25, "-")";
+/arp+
+
+VC(\pad).v.gui; VC(\pl).v.gui;  // adjust filters
+#+END_SRC
 
 *** Wildcard-replacement generators
 
