@@ -2455,8 +2455,51 @@ Mode(\cphr) => Mode(\default);
 
 *** Modifier generators
 
-- =\artic()= :: 
-- =\xpose()= :: 
+- =\artic("source", "articPool", "wildcards")= :: Replaces matching
+     notes' articulation with one of the items randomly chosen from
+     /articPool/. If no /wildcards/ are given, all notes
+     match. Otherwise, only those notes with an association to one of
+     the given /wildcards/ will match.
+
+#+BEGIN_SRC SuperCollider -i
+TempoClock.tempo = 140/60;
+Mode(\cphr) => Mode(\default);
+/make(pulseLeadVC:pl/melBP:pl);
+
+// No wildcards, all notes match: All are staccato
+/pl = "\artic("1574", ".")";
+/pl+
+
+// Wildcard, but none of the notes came from a
+// wildcard operation, so none of them match.
+/pl = "\artic("1574", ".", "*")";
+
+// Notes were inserted by \seq operating on "*";
+// all notes match.
+/pl = "\seq("****", "1574")::\artic(, ".", "*")";
+
+// Two layers of notes with different articulations
+/pl = "\seq("****", "1574")::\ins(, "@", 4..8, 0.25)::\shuf(, "1'2'3'4'5'6'", "@")::\artic(, ">.", "*")::\artic(, "~", "@")";
+
+/pl-
+#+END_SRC
+
+- =\xpose("source", "intervalPool", "wildcards")= :: Transposition. For
+     each /wildcard/-matching note, choose an interval from
+     /intervalPool/ and transpose the note accordingly.
+
+#+BEGIN_SRC SuperCollider -i
+TempoClock.tempo = 140/60;
+Mode(\cphr) => Mode(\default);
+/make(pulseLeadVC:pl/melBP:pl);
+
+/pl = "\ins(, "*", 16, 0.25)::\seq(, "12345432")";
+/pl+
+
+// Easy octave displacement.
+/pl = "\ins(, "*", 16, 0.25)::\seq(, "12345432")::\xpose(, "1111,1'1''")";
+/pl-
+#+END_SRC
 
 *** Filter generators
 
@@ -2475,9 +2518,11 @@ Mode(\cphr) => Mode(\default);
      /y = "\ins("", "1,", 10, 0.25)::\fork(, " \seq(, "13", "1,")x\seq(, "14", "1,")")";
      #+END_SRC
 
-- =\oneof()= :: 
-
 - =\chain("source", generator, generator...)= :: For internal use only.
+
+# - =\oneof()= :: Currently broken
+
+**** TODO Fix \oneof()						   :noexport:
 
 ** Writing new generators
 Generators inherit from =PR(\clGen)=.[fn:a395111b] They should implement:
