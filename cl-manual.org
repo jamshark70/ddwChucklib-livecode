@@ -2314,16 +2314,16 @@ VC(\pad).v.gui; VC(\pl).v.gui;  // adjust filters
      into random order, and returns each one before choosing a new
      order, like =Pn(Pshuf(items, 1), inf)=.
 
-- =\pdefn("source", `pdefnKey, "wildcards", reset)= :: Like =\seq()=,
+- =\pdefn("source", `pdefnKey, "wildcards")= :: Like =\seq()=,
      but obtaining replacement items from a =Pdefn=. For non-pitched
      parameters, the =Pdefn= should yield characters corresponding to
      =parmMap= items. For pitched parameters, it should yield
      e.g. =SequenceNote(degree, nil, length)= where =length= is 0.4
      for staccato, 0.9 for legato (but rearticulating the next note)
      and 1.01 for slurred.
-  - =Pdefn= streams are shared globally across all instances of
-    this generator. This means you can create sequential patterns
-    spanning barlines.
+  - =Pdefn= streams are shared globally across all instances of this
+    generator /for this process/. With care, you can create sequential
+    patterns spanning barlines.
   - The behavior of =reset > 0= is undefined.
   #+BEGIN_SRC SuperCollider
   Pdefn(\y, Pn(Pseries(0, 1, 8), inf).collect { |d| SequenceNote(d, nil, 0.9) });
@@ -2333,10 +2333,125 @@ VC(\pad).v.gui; VC(\pl).v.gui;  // adjust filters
   /y = (a**2);
   #+END_SRC
 
-- =\gdefn()= ::
-- =\prev()= ::
-- =\pitch()= ::
-- =\pitch2()= :: 
+- =\gdefn("source", `pdefnKey, "wildcards")= :: Like =\pdefn()=, with
+     a difference: =\pdefn()= keeps an independent repository of
+     streams for every BP, while =\gdefn()= keeps a global repository
+     shared among all BPs. /However/... be careful; this does not work
+     the way you think. /Cll/ generates /all/ of the events for one
+     phrase at one time. In the following example, you might expect
+     values to alternate between =/x= and =/y=. Instead, four values
+     are assigned to =/x= first, and then four to =/y=, and these are
+     streamed out over the course of one bar.
+   #+BEGIN_SRC SuperCollider -i
+   (
+   BP(\x).free;
+   PR(\abstractLiveCode).chuck(BP(\x), nil, (
+      event: (play: { ~x.debug(~collIndex) }),
+      defaultParm: \x,
+      parmMap: (
+         x: ($0: 0, $1: 1, $2: 2, $3: 3, $4: 4)
+      ),
+   ));
+   
+   BP(\y).free;
+   PR(\abstractLiveCode).chuck(BP(\y), nil, (
+      event: (play: { ~x.debug(~collIndex) }),
+      defaultParm: \x,
+      parmMap: (
+         x: ($0: 0, $1: 1, $2: 2, $3: 3, $4: 4)
+      ),
+   ));
+   
+   BP(\x).leadTime = 0.01;
+   Pdefn(\x, Pseq("01234", inf).trace(prefix: "pdefn: "));
+   )
+   
+   /x = "\gdefn("****", `x, "*", 1)";
+   /y = "\gdefn("****", `x, "*", 1)";
+   /x/y+
+   /x/y-  // when finished
+   #+END_SRC
+   
+   #+ATTR_LATEX: :align |c|c|c|c|
+   |------------+------------+----------+----------|
+   | Expected x | Expected y | Actual x | Actual y |
+   |------------+------------+----------+----------|
+   |          0 |          1 |        0 |        4 |
+   |          2 |          3 |        1 |        0 |
+   |          4 |          0 |        2 |        1 |
+   |          1 |          2 |        3 |        2 |
+   |------------+------------+----------+----------|
+
+- =\prev("source", "items", "wildcards", staccDur)= :: Replaces any
+     /wildcards/ with either: one of the /items/ (which is equivalent
+     to =\rand()=; generally, you should leave /items/ empty), or the
+     previous item found in the bar. Useful for repeating notes. For
+     pitched parameters, if the repeated note's eventual duration
+     @@latex:\texttt{<= staccDur}@@, its articulation will be made
+     staccato. NOTE: If a wildcard is the first item in the bar, then
+     there is no previous item. In this case, =\prev()= will try to
+     determine the last item from the previous bar. If this fails, a
+     warning will be posted and the wildcard will become a rest
+     (silent).
+
+- =\pitch(src, "wildcards", "intervalPool", fallbackMin, fallbackMax, "articPool")= :: Valid
+     for pitched parameters only. Replaces /wildcards/ with "Brownian
+     motion" melody. Each wildcard will search backward for the
+     previous note. Then, one of the intervals will be chosen from
+     /intervalPool/ and added to the previous note. Intervals are
+     written relative to the scale root: =1= is unison (no movement),
+     =2= is up a second, =8= is up an octave, and =6,= is a third down
+     (e.g., in C major, =6= is up a sixth = A, and =6,= lowers this by
+     an octave to be the A a third below the root). If there is no
+     previous note, a pitch will be chosen randomly between
+     /fallbackMin/ and /fallbackMax/ (given as integers, where 0 =
+     root). For each note, and articulation will be chosen randomly
+     from /articPool/; if omitted, new notes will use the default
+     "unslurred, legato" articulation.
+
+- =\pitch2(src, "wildcards", "intervalPool", fallbackMin, fallbackMax, "articPool", connect)= :: Like
+     =\pitch()=, but it remembers the previous pitch /that it
+     generated/, instead of looking back for every wildcard. This may
+     be used to produce multiple, interlocking lines. NOTE: This
+     generator resets every bar; unconstrained Brownian motion is
+     risky.
+
+#+BEGIN_SRC SuperCollider -i
+TempoClock.tempo = 140/60;
+Mode(\cphr) => Mode(\default);
+
+/make(pulseLeadVC:pl/melBP:pl);
+
+// Every "6,7," descending pattern starts at the previous given note
+/pl = "\ins("5'>| 3'>|4'>  2'>|", "*", 5..10, 0.25)::\pitch(, "*", "6,7,", 8, 10, ".")";
+/pl+
+
+// The first descent starts from "5'" and keeps going down through the bar
+/pl = "\ins("5'>| 3'>|4'>  2'>|", "*", 5..10, 0.25)::\pitch2(, "*", "6,7,", 8, 10, ".")";
+
+// One \pitch() stream;
+// another interlocking \pitch2() stream in a higher register
+/pl = "\ins("5'>| 3'>|4'>  2'>|", "*", 3..7, 0.25)::\ins(, "@", 3..8, 0.25)::\pitch(, "*", "6,7,", 8, 10, ".")::\pitch2(, "@", "6,7,23", 14, 18, ".", 0)";
+
+/pl-
+#+END_SRC
+
+**** TODO Maybe fix \prev to support this case later		   :noexport:
+#+BEGIN_SRC SuperCollider
+TempoClock.tempo = 140/60;
+Mode(\cphr) => Mode(\default);
+
+/make(pulseLeadVC:pl/melBP:pl);
+/pl = "\ins(, "*", 2..3, 0.5)::\seq(, "134")";
+/pl+
+
+/pl = "\ins(, "*", 2..3, 0.5)::\seq(, "134")::\ins(, "@", 16, 0.25)::\prev(, "", "@", 0.25)";
+
+// oh, that's unfortunate, prev doesn't skip over wildcards while searching
+/pl = "\ins(, "*", 2..3, 0.5)::\seq(, "134")::\ins(, "!", 2..5, 0.25)::\ins(, "@", 16, 0.25)::\prev(, "", "@", 0.25)::\seq(, "2'>4'>7'>6'>", "!")";
+
+/pl-
+#+END_SRC
 
 *** Modifier generators
 
