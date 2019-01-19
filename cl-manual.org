@@ -2400,9 +2400,10 @@ VC(\pad).v.gui; VC(\pl).v.gui;  // adjust filters
      previous note. Then, one of the intervals will be chosen from
      /intervalPool/ and added to the previous note. Intervals are
      written relative to the scale root: =1= is unison (no movement),
-     =2= is up a second, =8= is up an octave, and =6,= is a third down
-     (e.g., in C major, =6= is up a sixth = A, and =6,= lowers this by
-     an octave to be the A a third below the root). If there is no
+     =2= is up a second, =8= is up an octave, and
+     @@latex:\texttt{6,}@@ is a third down (e.g., in C major, =6= is
+     up a sixth = A, and @@latex:\texttt{6,}@@ lowers this by an
+     octave to be the A a third below the root). If there is no
      previous note, a pitch will be chosen randomly between
      /fallbackMin/ and /fallbackMax/ (given as integers, where 0 =
      root). For each note, and articulation will be chosen randomly
