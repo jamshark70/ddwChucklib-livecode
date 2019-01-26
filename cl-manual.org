@@ -12,7 +12,7 @@
 #+LANGUAGE: en
 #+SELECT_TAGS: export
 #+EXCLUDE_TAGS: noexport
-#+CREATOR: Emacs 24.3.1 (Org mode 8.3beta)
+#+CREATOR: Typeset by TeX Live 2017; Edited in Emacs 24.3.1 (Org mode 8.3beta).
 
 # /**
 #     Chucklib-livecode: A framework for live-coding improvisation of electronic music
@@ -114,10 +114,8 @@ Thanks are due to:
 is released using the Quarks v2 system, which is not supported prior
 to SC 3.7.)
 
-2018/01/12: You should update all of the =ddw*= quarks. The built-in
-instruments in the =ddwLivecodeInstruments= quark require code changes
-in several places, and they will not work correctly if you're using
-out of date quark versions.
+2019/01/26: As before, it is recommended to update all of the =ddw*=
+quarks.
 
 ** Installation with /git/
 If you have installed the /git/ version-control system on your
@@ -2695,6 +2693,8 @@ PR(\chucklibLiveCode).clMyNewStatement = { |code|
 * Code examples
 #+LaTeX: \renewcommand{\lstlistlistingname}{}
 #+LaTeX: \lstlistoflistings
+
+* Typesetting
 
 * Footnotes
 
