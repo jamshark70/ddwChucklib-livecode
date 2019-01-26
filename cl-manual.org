@@ -1354,16 +1354,6 @@ whose value is a =Rest= object.
 # should also return the value identifiers.
 # #+end_boxnote
 
-**** TODO Set pattern examples					   :noexport:
-
-# #+name: setpatternExamples
-# #+caption: Set pattern examples.
-# #+BEGIN_SRC {SuperCollider} -i
-# /kick = "----";  // Set kick's 'main' phrase to four quarter notes
-# 
-# /kick
-# #+END_SRC
-
 *** Generators and timing					   :noexport:
 /Generators/ (see Section [[Generators]]) produce new material for every
 bar, algorithmically. They fit multiple events into a span of time, so
@@ -1662,10 +1652,10 @@ The make statement instantiates one or more /chucklib/ factories.
 #+name: clMake1
 #+caption: Syntax template for make statements.
 #+BEGIN_SRC {SuperCollider} -i
-/make(factory0:targetName0/factory1:targetName1/...);
+/make(factory0:targetName0(parameters0)/factory1:targetName1(parameters1)/...);
 
 // Or, with autoGui
-/make*(factory0:targetName0/factory1:targetName1/...);
+/make*(factory0:targetName0(parameters0)/factory1:targetName1(parameters1)/...);
 #+END_SRC
 
 - =factory= :: The name of a =Fact= object to create.
@@ -1673,6 +1663,11 @@ The make statement instantiates one or more /chucklib/ factories.
      instance. If not given, the make statement looks into the factory
      for the =defaultName=. If not found, the factory's name will be
      used.
+- =parameters= :: (optional) A dictionary of =key: value= pairs to
+     insert into the Factory prior to making the resulting object, to
+     override defaults. NOTE: It is up to the Factory to pass values
+     into the final object. =Fact()= does not scan for unknown keys
+     and automatically forward them.
 
 Multiple =factory:targetName= pairs may be given, separated by
 slashes. Both =BP= and =VC= factories are supported.
@@ -1688,17 +1683,20 @@ object, and then =/make= them as you need them in performance.
 // THIS PART IN THE INIT FILE
 (
 defaultName: \demo,
+octave: 5,  // a default octave
 make: { |name|
 	PR(\abstractLiveCode).chuck(BP(name), nil, (
 		event: (eventKey: \default),
 		defaultParm: \degree,
-		parmMap: (degree: (isPitch: true))
+		parmMap: (degree: (isPitch: true)),
+		// Here, the Factory transmits ~octave
+		defaults: (octave: ~octave)
 	));
 }, type: \bp) => Fact(\demoBP);
 )
 
 // DO THIS IN PERFORMANCE
-/make(demoBP:dm);  // :dm overrides defaultName
+/make(demoBP:dm(octave:6));  // :dm overrides defaultName
 
 /dm = "1353427,5,";
 /dm+;
@@ -1713,7 +1711,26 @@ voicers into empty chucklib =VP= objects, for speed in setting up
 players during performance. =MCG= and =VP= arrays are created by
 =BP.loadGui=.
 
-*** TODO Make statement *parameters*
+*Parameters:* /ddwChucklib/ has two ways to write a "chuck" operation:
+
+- Simplified: =source =>.adverb target=, or
+- Complete: =source.chuck(target, adverb, parameters)= (=parameters=
+  is a dictionary, usually written in Event-style syntax).
+
+Different object types may handle the parameters differently. The
+/cll/ =/make= statement supports =Fact()= as a source, which imports
+the parameters into the factory's environment before making the
+result. The parameters are available to the factory, which may choose
+to insert them into the resulting object in whatever way is
+needed. Because Event-style syntax already encloses the names and
+values in parentheses, the =/make= statement simply reads the
+dictionary directly in the argument list.
+
+*Voicers and BPs:* If a single =/make= statement produces first a
+Voicer and then a BP, =/make= will additionally assign the Voicer to
+play the BP's notes, saving the time in performance of writing an
+additional =VC(\name) => BP(\name)= command.
+
 ** Passthrough statement
 The passthrough statement takes arbitrary SuperCollider code, enclosed
 in parentheses, and applies it to any existing /chucklib/ object. If
