@@ -399,7 +399,7 @@ protect {
 			};
 		};
 		~helpString = "\\gdefn(, `key)";
-		~snippet.("gdefn", "\\gdefn(, `##key##)");
+		~snippet.("gdefn", "\\gdefn(, `##key##, \"wildcards\", reset)");
 	} => PR(\clGenGdefn);
 
 	// similar, but each BP has its own stream repository
@@ -418,7 +418,7 @@ protect {
 				};
 			};
 		};
-		~snippet.("pdefn", "\\pdefn(, `##key##)");
+		~snippet.("pdefn", "\\pdefn(, `##key##, \"wildcards\", reset)");
 	} => PR(\clGenPdefn);
 
 	PR(\clGenSeq).clone {
