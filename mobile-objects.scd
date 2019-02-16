@@ -1047,8 +1047,16 @@ protect {
 		~getBPCtls = { |bp, startI|
 			if(bp.v[\globalControls].notNil) {
 				bp.globalControls.collect { |ctl, i|
-					~itemForCtl.(ctl, bp.collIndex, startI + i)
-				};
+					if(ctl.isKindOf(GlobalControlBase)) {
+						~itemForCtl.(ctl, bp.collIndex, startI + i)
+					} {
+						"BP(%).globalControls[%] is invalid: %"
+						.format(bp.collIndex.asCompileString, i, ctl)
+						.warn;
+						nil
+					};
+				}
+				.reject(_.isNil);
 			};
 		};
 		~itemForCtl = { |gc, key, i|  // 'key' and 'i' are for the id field
