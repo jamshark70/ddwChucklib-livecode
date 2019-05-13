@@ -2027,11 +2027,13 @@ midiNoteToFreq: #{ |notenum|
 },
 sustain: { ~length.value },
 
+scAccidentals: true,
+
 prepNote: #{
 	var i, args, argval, thisEvent = currentEnvironment;
 	~newFreq = ~freq ?? { ~note.asFloat };
 	~mtranspose.notNil.if({ ~newFreq = ~newFreq + ~mtranspose });
-	(~midi ? false).not.if({ ~newFreq = ~newFreq.unmapMode(~mode.asMode) });
+	(~midi ? false).not.if({ ~newFreq = ~newFreq.unmapMode(~mode.asMode, ~scAccidentals) });
 	~ctranspose.notNil.if({ ~newFreq = ~newFreq + ~ctranspose });
 
 	~newFreq = ~midiNoteToFreq.value(~newFreq).asArray;
