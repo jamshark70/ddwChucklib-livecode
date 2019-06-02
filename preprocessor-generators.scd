@@ -285,7 +285,7 @@ protect {
 			note
 		};
 		~isNumProxy = { |object|
-			object.tryPerform(\isNumProxy) == true
+			object.tryPerform(\isNumProxy) == true or: { object.isNumber }
 		};
 	}, parentKeys: #[canEmbed, protoID, isClGen, patternStringKeys, patternStringFuncs])
 	.import((clPatternSet: #[decodePitch])) => PR(\clGen);
