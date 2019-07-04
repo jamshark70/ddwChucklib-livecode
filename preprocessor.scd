@@ -2021,9 +2021,11 @@ var defaultParent = Event.default.parent;
 // ProtoEvent(\voicerNote), I have to copy/paste the entire thing.
 (	timingOffset: 0,
 stretch: 1.0,
+detuner: 1,
 midiNoteToFreq: #{ |notenum|
-	~mode.notNil.if({ ~mode.asMode.cpsFunc.value(notenum) },
+	var out = ~mode.notNil.if({ ~mode.asMode.cpsFunc.value(notenum) },
 		{ notenum.midicps });
+	out * ~detuner.(out)
 },
 sustain: { ~length.value },
 
