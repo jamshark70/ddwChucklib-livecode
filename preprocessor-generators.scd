@@ -556,8 +556,10 @@ protect {
 						~wildcards.isNil or: { ~wildcards.includesEqual(item.wildcard) }
 					}
 				}) {
-					~items[i] = item.copy
-					.put(\item, item.item.copy.freq_(item.item.asFloat + interval));
+					if(item.item.isRest.not) {
+						~items[i] = item.copy
+						.put(\item, item.item.copy.freq_(item.item.asFloat + interval));
+					};
 				};
 			};
 			~items
