@@ -261,7 +261,19 @@ protect {
 				startI: 8
 			),
 		];
-
+		~chuckOSCKeys = {
+			var allKeys = /*BP(~oscKey).*/ ~saveKeys.collect(_.asString),
+			keys, faderKeys, toggleKeys;
+			keys = allKeys.select { |key| "23".includes(key[1]) }.as(Array).sort;  // looking for /2... or /3...
+			keys = keys ++ sort(allKeys.select({ |key|
+				key[1] == $1 and: {
+					"ft".includes(key[3]) and: { key.last != $4 }
+				}
+			}).as(Array));
+			faderKeys = keys.select { |key| key[3] == $f }.collect(_.asSymbol);
+			toggleKeys = keys.select { |key| key[3] == $t }.collect(_.asSymbol);
+			(keys: keys, faderKeys: faderKeys, toggleKeys: toggleKeys)
+		};
 	} => PR(\mix16Touch);
 
 	Proto {
@@ -679,15 +691,9 @@ protect {
 		~event = ();  // dummy, to prevent bindVC from breaking
 
 		~prep = {
-			var allKeys = BP(~oscKey).saveKeys.collect(_.asString);
-			~keys = allKeys.select { |key| "23".includes(key[1]) }.as(Array).sort;  // looking for /2... or /3...
-			~keys = ~keys ++ sort(allKeys.select({ |key|
-				key[1] == $1 and: {
-					"ft".includes(key[3]) and: { key.last != $4 }
-				}
-			}).as(Array));
-			~faderKeys = ~keys.select { |key| key[3] == $f }.collect(_.asSymbol);
-			~toggleKeys = ~keys.select { |key| key[3] == $t }.collect(_.asSymbol);
+			BP(~oscKey).chuckOSCKeys.keysValuesDo { |key, value|
+				key.envirPut(value);
+			};
 			~maps = IdentityDictionary.new;
 
 			// drag-n-drop: the 'model' is BP(~oscKey)
