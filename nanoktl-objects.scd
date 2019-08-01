@@ -143,7 +143,10 @@ protect {
 				origin = ~gap.copy,
 				oneBound = Rect(0, 0, ~sliderWidth, ~buttonExtent.y),
 				buttonExtent = ~buttonExtent,
-				gap = ~gap.y;
+				gap = ~gap.y,
+				// must save colors because GUI object init runs in another proto
+				ltAqua = ~ltAqua, aqua = ~aqua,
+				green = ~green, ltGreen = ~ltGreen;
 				8.do { |i|
 					out.add("/1/toggle%".format((i+1).asPaddedString(2)).asSymbol).add((
 						bounds: Rect.fromPoints(
@@ -151,9 +154,9 @@ protect {
 							origin + Point(buttonExtent.x - gap, buttonExtent.y)
 						),
 						class: Button,
-						init: inEnvir { |view|
+						init: { |view|
 							// init func runs in the touchGui environment
-							view.states_([[" ", nil, ~ltAqua], ["", nil, ~aqua]])
+							view.states_([[" ", nil, ltAqua], ["", nil, aqua]])
 							.receiveDragHandler_(inEnvir { |view|
 								// we don't have access to the 't' touch object
 								// notification assumes there's just one (untested with multiple)
@@ -168,7 +171,7 @@ protect {
 						),
 						class: Slider,
 						// I considered implementing receive-drag on the slider too but it didn't work
-						init: inEnvir { |view| view.knobColor_(~green) },
+						init: { |view| view.knobColor_(green) },
 						spec: [0, 1]
 					))
 					.add("/1/toggle%".format((i+9).asPaddedString(2)).asSymbol).add((
@@ -177,13 +180,13 @@ protect {
 							origin + Point(buttonExtent.x + ~sliderWidth + gap, buttonExtent.y)
 						),
 						class: Button,
-						init: inEnvir { |view|
+						init: { |view|
 							// init func runs in the touchGui environment
-							view.states_([[" ", nil, ~ltAqua], ["", nil, ~aqua]])
+							view.states_([[" ", nil, ltAqua], ["", nil, aqua]])
 							.receiveDragHandler_(inEnvir { |view|
 								// we don't have access to the 't' touch object
 								// notification assumes there's just one (untested with multiple)
-								NotificationCenter.notify(~model, \receiveDrag, [View.currentDrag, i]);
+								NotificationCenter.notify(~model, \receiveDrag, [View.currentDrag, i+8]);
 							})
 						},
 					))
@@ -194,8 +197,8 @@ protect {
 						),
 						class: Knob,
 						// I considered implementing receive-drag on the slider too but it didn't work
-						init: inEnvir { |view|
-							view.color_([~ltGreen, ~green, ~ltGreen, ~green])
+						init: { |view|
+							view.color_([ltGreen, green, ltGreen, green])
 							.mode_(\vert)
 						},
 						spec: [0, 1]
