@@ -205,6 +205,17 @@ protect {
 				out
 			}.value
 		];
+
+		~chuckOSCKeys = {
+			var allKeys = ~saveKeys.collect(_.asString),
+			keys, faderKeys, toggleKeys;
+			keys = sort(allKeys.select({ |key|
+				key[1] == $1 and: { "ft".includes(key[3]) }
+			}).as(Array));
+			faderKeys = keys.select { |key| key[3] == $f }.collect(_.asSymbol);
+			toggleKeys = keys.select { |key| key[3] == $t }.collect(_.asSymbol);
+			(keys: keys, faderKeys: faderKeys, toggleKeys: toggleKeys)
+		};
 	} => PR(\nanoTouch);  // 'touch' is not accurate for MIDI, but reflects object design
 } {
 	AbstractChuckArray.defaultSubType = saveSubtype;
