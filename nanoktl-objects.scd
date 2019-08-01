@@ -78,7 +78,7 @@ protect {
 		~respond = { |msg, time, replyAddr, recvPort, guiOnly(false)|
 			var args = [msg, time, replyAddr, recvPort];
 			var sign, data;
-			[msg, time, replyAddr, recvPort, guiOnly].debug("respond");
+			// [msg, time, replyAddr, recvPort, guiOnly].debug("respond");
 			if(replyAddr.notNil) {
 				if(
 					(msg[1] ?? { -2 }) absdif: (~data[msg[0]] ?? { -3 }) > 0.007  // 1/127 ~= 0.00787
@@ -128,12 +128,83 @@ protect {
 
 		~saveValueFromMsg = { |msg|
 			if(msg.size == 2) {
-				"saveValueFromMsg".debug;
-				~data[msg[0]] = msg[1].dump
+				// "saveValueFromMsg".debug;
+				~data[msg[0]] = msg[1] //.dump
 			} {
 				~data[msg[0]] = msg[1..];
 			};
 		};
+
+		~fullWidth = 200;
+		~sliderWidth = ~fullWidth - (2 * (~buttonExtent.x + ~gap.x));
+		~tabSpecs = [
+			"Tab1", {
+				var out = Array(64),  // 8 rows: button, slider, button, knob with names
+				origin = ~gap.copy,
+				oneBound = Rect(0, 0, ~sliderWidth, ~buttonExtent.y),
+				buttonExtent = ~buttonExtent,
+				gap = ~gap.y;
+				8.do { |i|
+					out.add("/1/toggle%".format((i+1).asPaddedString(2)).asSymbol).add((
+						bounds: Rect.fromPoints(
+							origin + Point(gap.neg, 0),
+							origin + Point(buttonExtent.x - gap, buttonExtent.y)
+						),
+						class: Button,
+						init: inEnvir { |view|
+							// init func runs in the touchGui environment
+							view.states_([[" ", nil, ~ltAqua], ["", nil, ~aqua]])
+							.receiveDragHandler_(inEnvir { |view|
+								// we don't have access to the 't' touch object
+								// notification assumes there's just one (untested with multiple)
+								NotificationCenter.notify(~model, \receiveDrag, [View.currentDrag, i]);
+							})
+						},
+					))
+					.add("/1/fader%".format((i+1).asPaddedString(2)).asSymbol).add((
+						bounds: Rect.fromPoints(
+							origin + Point(buttonExtent.x, 0),
+							origin + oneBound.extent
+						),
+						class: Slider,
+						// I considered implementing receive-drag on the slider too but it didn't work
+						init: inEnvir { |view| view.knobColor_(~green) },
+						spec: [0, 1]
+					))
+					.add("/1/toggle%".format((i+9).asPaddedString(2)).asSymbol).add((
+						bounds: Rect.fromPoints(
+							origin + Point(gap + ~sliderWidth, 0),
+							origin + Point(buttonExtent.x + ~sliderWidth + gap, buttonExtent.y)
+						),
+						class: Button,
+						init: inEnvir { |view|
+							// init func runs in the touchGui environment
+							view.states_([[" ", nil, ~ltAqua], ["", nil, ~aqua]])
+							.receiveDragHandler_(inEnvir { |view|
+								// we don't have access to the 't' touch object
+								// notification assumes there's just one (untested with multiple)
+								NotificationCenter.notify(~model, \receiveDrag, [View.currentDrag, i]);
+							})
+						},
+					))
+					.add("/1/fader%".format((i+9).asPaddedString(2)).asSymbol).add((
+						bounds: Rect.fromPoints(
+							origin + Point(~fullWidth - buttonExtent.x, 0),
+							origin + Point(~fullWidth, buttonExtent.y)
+						),
+						class: Knob,
+						// I considered implementing receive-drag on the slider too but it didn't work
+						init: inEnvir { |view|
+							view.color_([~ltGreen, ~green, ~ltGreen, ~green])
+							.mode_(\vert)
+						},
+						spec: [0, 1]
+					));
+					origin.y = origin.y + oneBound.height + gap;
+				};
+				out
+			}.value
+		];
 	} => PR(\nanoTouch);  // 'touch' is not accurate for MIDI, but reflects object design
 } {
 	AbstractChuckArray.defaultSubType = saveSubtype;
