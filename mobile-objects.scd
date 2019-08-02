@@ -164,6 +164,8 @@ protect {
 		~xyExtent = Point(140, 145);
 		~gap = Point(5, 5);
 
+		~labelBG = Color.grey(1.0 - ~tabBackground.lightness.round, 0.06);
+
 		~sliders = { |n = 1, prefix = "/1", oneBound(Rect(0, 0, 400, 50)), buttonExtent(Point(50, 50)), gap = 10, bcolor, bltColor, scolor, sltColor, startI = 0, nameStartI = 1|
 			var out = Array(n * 5),
 			togStr = prefix ++ "/toggle",
@@ -390,7 +392,7 @@ protect {
 					};
 				};
 				~views[oscpath] = view;
-				~viewHook.(oscpath, view, parent);
+				~viewHook.(oscpath, view, parent);  // currently, adds superimposed label view
 			};
 		};
 
@@ -402,6 +404,7 @@ protect {
 				label = "" // oscpath.asString.split($/).last;
 			};
 			~labels[oscpath] = StaticText(parent, view.bounds.setExtent(view.bounds.width, ~model.labelHeight))
+			.background_(~model.tryPerform(\labelBG) ?? { Color.clear })
 			.align_(\center)
 			.font_(~font)
 			.string_(label);
