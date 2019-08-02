@@ -43,7 +43,10 @@ protect {
 			~pathTable.pairsDo { |ccnum, path|
 				~pathsForCC[ccnum] = path;
 			};
-			if(MIDIClient.initialized.not) { MIDIIn.connectAll };
+			// if we do this now, it delays server init messages
+			NotificationCenter.registerOneShot(\clInterface, \ready, \nanoKtl, {
+				if(MIDIClient.initialized.not) { MIDIIn.connectAll };
+			});
 			~resp = MIDIFunc.cc(inEnvir { |value, ccnum, chan|
 				var path;
 				path = ~pathsForCC[ccnum];
