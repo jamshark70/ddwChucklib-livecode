@@ -28,18 +28,22 @@ protect {
 	PR(\mix16Touch).clone {
 		~uid = nil;
 		~chan = nil;
+		// flat array of pairs: ccnum, oscpath, ccnum, oscpath etc.
+		// for GUI definition below, zero-padding the index is important!
 		~pathTable = [
-			1, '/2/fader1',
-			2, '/2/toggle1',
-			3, '/2/fader2',
-			4, '/2/toggle2'
-		];
+			[108, 109, 110, 111, 114, 115, 116, 117, 5, 80, 82, 83, 85, 104, 106, 105],
+			[21, 22, 23, 24, 25, 26, 27, 28, 2, 3, 4, 6, 8, 9, 11, 12],
+		].collect { |row, i|
+			var prefix = #["/1/fader", "/1/toggle"][i];
+			row.collect { |ccnum, j| [ccnum, (prefix ++ (j+1).asPaddedString(2)).asSymbol] }
+		}.flat;
 		~keepAlive = false;
 		~prep = {
 			~pathsForCC = Array.newClear(128);
 			~pathTable.pairsDo { |ccnum, path|
 				~pathsForCC[ccnum] = path;
 			};
+			if(MIDIClient.initialized.not) { MIDIIn.connectAll };
 			~resp = MIDIFunc.cc(inEnvir { |value, ccnum, chan|
 				var path;
 				path = ~pathsForCC[ccnum];
@@ -71,11 +75,19 @@ protect {
 		// if replyAddr is nil, the new value comes from MIDI
 		// and we should sync up if there's a saved value
 
+		~respond = { |msg, time, replyAddr, recvPort, guiOnly(false)|
+			if(msg[0].asString[3] == $f) {
+				~respondFader.(msg, time, replyAddr, recvPort, guiOnly);
+			} {
+				~respondToggle.(msg, time, replyAddr, recvPort, guiOnly);
+			};
+		};
+
 		// syncSigns:
 		// nil = not synced, check before changing real value
 		// 0 = synced, pass value through
 		// -1 = MIDI value is less than old value
-		~respond = { |msg, time, replyAddr, recvPort, guiOnly(false)|
+		~respondFader = { |msg, time, replyAddr, recvPort, guiOnly(false)|
 			var args = [msg, time, replyAddr, recvPort];
 			var sign, data;
 			// [msg, time, replyAddr, recvPort, guiOnly].debug("respond");
@@ -113,6 +125,25 @@ protect {
 						~prUpdateControl.(msg, args, guiOnly);
 					};
 				};
+			};
+		};
+
+		// toggle:
+		// if never used before (nothing in ~data), assume we are switching on
+		// otherwise read value and flip
+		~respondToggle = { |msg, time, replyAddr, recvPort, guiOnly(false)|
+			var args = [msg, time, replyAddr, recvPort];
+			var old;
+			if(replyAddr.notNil) {  // again, if setting from client (not MIDI)
+				~prUpdateControl.(msg, args, guiOnly);
+			} {
+				old = ~data[msg[0]];
+				if(old.isNil) {
+					msg[1] = 1;  // assume flipping on
+				} {
+					msg[1] = (old == 0).asInteger;
+				};
+				~prUpdateControl.(msg, args, guiOnly);
 			};
 		};
 
