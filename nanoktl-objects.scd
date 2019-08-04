@@ -31,8 +31,8 @@ protect {
 		// flat array of pairs: ccnum, oscpath, ccnum, oscpath etc.
 		// for GUI definition below, zero-padding the index is important!
 		~pathTable = [
-			[108, 109, 110, 111, 114, 115, 116, 117, 5, 80, 82, 83, 85, 104, 106, 105],
-			[21, 22, 23, 24, 25, 26, 27, 28, 2, 3, 4, 6, 8, 9, 11, 12],
+			[(0..7), (16..23)].flat,
+			[(64..71), (32..39)].flat
 		].collect { |row, i|
 			var prefix = #["/1/fader", "/1/toggle"][i];
 			row.collect { |ccnum, j| [ccnum, (prefix ++ (j+1).asPaddedString(2)).asSymbol] }
@@ -137,16 +137,18 @@ protect {
 		~respondToggle = { |msg, time, replyAddr, recvPort, guiOnly(false)|
 			var args = [msg, time, replyAddr, recvPort];
 			var old;
-			if(replyAddr.notNil) {  // again, if setting from client (not MIDI)
-				~prUpdateControl.(msg, args, guiOnly);
-			} {
-				old = ~data[msg[0]];
-				if(old.isNil) {
-					msg[1] = 1;  // assume flipping on
+			if(msg[1] > 0) {
+				if(replyAddr.notNil) {  // again, if setting from client (not MIDI)
+					~prUpdateControl.(msg, args, guiOnly);
 				} {
-					msg[1] = (old == 0).asInteger;
+					old = ~data[msg[0]];
+					if(old.isNil) {
+						msg[1] = 1;  // assume flipping on
+					} {
+						msg[1] = (old == 0).asInteger;
+					};
+					~prUpdateControl.(msg, args, guiOnly);
 				};
-				~prUpdateControl.(msg, args, guiOnly);
 			};
 		};
 
