@@ -783,6 +783,8 @@ protect {
 				};
 				MixerChannel.addDependant(newMap);
 				~maps[~toggleKeys[index]] = newMap;
+				// abstract responder doesn't set value; go to the model
+				BP(~oscKey).setGUIValue(~toggleKeys[index], mixer.muted.asInteger);
 				~setNotification.(newMap, ~toggleKeys[index]);
 			};
 		};
