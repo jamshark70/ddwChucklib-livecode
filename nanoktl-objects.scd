@@ -137,10 +137,10 @@ protect {
 		~respondToggle = { |msg, time, replyAddr, recvPort, guiOnly(false)|
 			var args = [msg, time, replyAddr, recvPort];
 			var old;
-			if(msg[1] > 0) {
-				if(replyAddr.notNil) {  // again, if setting from client (not MIDI)
-					~prUpdateControl.(msg, args, guiOnly);
-				} {
+			if(replyAddr.notNil) {  // again, if setting from client (not MIDI)
+				~prUpdateControl.(msg, args, guiOnly);
+			} {
+				if(msg[1] > 0) {
 					old = ~data[msg[0]];
 					if(old.isNil) {
 						msg[1] = 1;  // assume flipping on
