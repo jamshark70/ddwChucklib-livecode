@@ -137,3 +137,42 @@ Library.put(\clLivecode, \setupbars, \guiIsFront, false);
 	};
 	ev
 } => Func(\voicer);
+
+// record several mixers with sample-accurate onset
+// for simplicity/livecode use, create a folder in recordingsDir
+{ |... mixers|
+	var path, result, servers;
+	{
+		path = Platform.recordingsDir +/+ "tracks_" ++ Date.getDate.stamp;
+		result = File.mkdir(path);
+		if(result) {
+			servers = mixers.collect(_.server).as(Set);
+			if(servers.size > 1) {
+				"Recording on multiple servers; sample-accurate sync is not guaranteed".warn;
+			};
+			mixers.do { |mixer|
+				mixer.prepareRecord(path +/+ mixer.name ++ ".aiff", "AIFF");
+			};
+			servers.do(_.sync);
+			servers.do { |server|
+				server.makeBundle(0.2, {
+					mixers.do { |mixer|
+						if(mixer.server == server) {
+							mixer.startRecord;
+						};
+					};
+				});
+			};
+		} {
+			"Directory '%' is not empty; not recording".format(path).warn;
+		};
+	}.fork(SystemClock);
+} => Func(\syncRecord);
+
+{
+	MixerChannel.servers.do { |mixers|
+		mixers.do { |mixer|
+			if(mixer.isRecording) { mixer.stopRecord };
+		};
+	};
+} => Func(\stopRecord);
