@@ -556,7 +556,9 @@ protect {
 						~wildcards.isNil or: { ~wildcards.includesEqual(item.wildcard) }
 					}
 				}) {
-					if(item.item.isRest.not) {
+					if(item.item.isKindOf(SequenceNote) and: {
+						item.item.isRest.not
+					}) {
 						~items[i] = item.copy
 						.put(\item, item.item.copy.freq_(item.item.asFloat + interval));
 					};
