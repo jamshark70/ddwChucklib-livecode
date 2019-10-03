@@ -2023,7 +2023,7 @@ var defaultParent = Event.default.parent;
 stretch: 1.0,
 detuner: 1,
 midiNoteToFreq: #{ |notenum|
-	var out = ~mode.notNil.if({ ~mode.asMode.cpsFunc.value(notenum) },
+	var out = ~mode.notNil.if({ ~mode.cpsOfKey(notenum) },
 		{ notenum.midicps });
 	out * ~detuner.(out)
 },
