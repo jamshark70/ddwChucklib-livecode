@@ -3,21 +3,21 @@ var saveType = AbstractChuckArray.defaultSubType;
 // cl-livecode generator objects
 
 /**
-    Chucklib-livecode: A framework for live-coding improvisation of electronic music
-    Copyright (C) 2018  Henry James Harkins
+Chucklib-livecode: A framework for live-coding improvisation of electronic music
+Copyright (C) 2018  Henry James Harkins
 
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
 **/
 
 AbstractChuckArray.defaultSubType = \clGenerator;
@@ -1015,6 +1015,161 @@ protect {
 		};
 		~snippet.("delta", "\\delta(##src, pool, quant, weights...##)");
 	} => PR(\clGenDelta);
+
+	// non-metric generators
+
+	// Pool
+	// Max duration
+	// Factor (min duration = max / factor)
+	// Min number of notes
+	// Max number of notes
+	// Distribution type
+	// Parameters (except range, calculated as above)
+	PR(\clGenIns).clone {
+		~distributions = IdentityDictionary[
+			\lin -> { |lo, hi| Pwhite(lo, hi, inf) },
+			\exp -> { |lo, hi| Pexprand(lo, hi, inf) },
+			// "exponential beta": beta distribution weighted toward low values (for rhythm)
+			\expb -> { |lo, hi, spread(0.2), n(64)|
+				// base**i is now basically a 1/x function with the right endpoints
+				var base = (lo / hi) ** (n - 1).reciprocal,
+				table = Array.fill(n, { |i|
+					var x = (i+1) / (n+1);
+					(((1 - x) ** (spread - 1)) * (x ** (spread - 1))) * (base ** i)
+				}).asRandomTable;
+				Pfunc { table.tableRand.linlin(0.0, 1.0, lo, hi) }
+			},
+			// hard to balance toward low values for rhythm
+			\beta -> { |lo, hi, a(1), b(1)| Pbeta(lo, hi, a, b, inf) },
+			// \cauchy -> Pcauchy,  // mean-spread, can't support
+			// \gauss -> Pgauss,
+			\hp -> { |lo, hi| Phprand(lo, hi, inf) },
+			\lp -> { |lo, hi| Plprand(lo, hi, inf) }
+		];
+		~numToAdd = 1e10;  // hack: ~modifySource does min(~numToAdd, avail.size)
+		~prep = {
+			~baseItems = ~args[0];
+			~pool = ~args[1];
+			~maxDelta = ~args[2] ?? { 1 };
+			~factor = ~args[3] ?? { 2 };
+			~minNotes = ~args[4] ?? { 3 };
+			~maxNotes = ~args[5] ?? { 1e10 };
+			~distribution = ~args[6] ?? { \exp };
+			~parameters = ~args[7..];
+
+			#[maxDelta, factor, minNotes, maxNotes].do { |key|
+				var value = key.envirGet;
+				if(~isNumProxy.(value).not) {
+					Error("%: % '%' is not a number".format(~protoID, key, value)).throw;
+				};
+			};
+
+			~pclass = ~distribution.asClass;
+			if(~pclass.isNil or: { ~pclass.isPattern.not }) {
+				~pclass = ~distributions[~distribution];
+				if(~pclass.isNil) {
+					Error("%: Invalid distribution '%'".format(~protoID, ~distribution)).throw;
+				};
+			};
+
+			~poolStream = Prand(~pool.collect(_.item), inf).asStream;
+			currentEnvironment
+		};
+		~getAvail = { |items, quant, tolerance = 0.001|
+			var avail = List.new,
+			times = items.collect({ |item| item[\time] - ~time }) ++ [~dur],
+			now = 0, maxDelta, minNotes, maxNotes, i = 0, j = 0;
+
+			if(~pattern.isNil or: { ~doReset > 0 }) {
+				maxDelta = ~maxDelta.next;  // won't update, this is a mistake
+				~pattern = ~pclass.value(maxDelta / ~factor.next, maxDelta,
+					*(~parameters.collect(_.next))
+				);
+				~stream = ~pattern.asStream;
+			};
+
+			minNotes = ~minNotes.next;
+			maxNotes = ~maxNotes.next;
+			while {
+				avail.size < maxNotes and: {
+					now < ~dur or: { avail.size < minNotes }
+				}
+			} {
+				avail = avail.add(now);
+				now = now + ~stream.next;
+			};
+
+			// scale to generator duration;
+			// 'now' should be the sum of the deltas
+			avail = avail * (~dur / now);
+
+			// delete time points that are already used and return
+			~checkDups.(avail, times, tolerance) + ~time
+		};
+
+		~checkDups = { |avail, times, tolerance|
+			var i = 0, j = 0;
+			while { i < avail.size } {
+				if(avail[i] absdif: times[j] < tolerance) {
+					avail.removeAt(i);  // and don't advance 'i'
+				} {
+					while { j < times.size and: { avail[i] - times[j] >= tolerance } } {
+						j = j + 1;
+					};
+					if(j >= times.size) {
+						i = avail.size;  // force stop
+					} {
+						if(times[j] - avail[i] >= tolerance ) {
+							i = i + 1;
+						};
+					};
+				};
+			};
+			avail
+		};
+
+		~snippet.("rDelta", "\\rDelta(##src, pool, maxDelta, factor, minNotes, maxNotes, distribution, parameters##)");
+		~protoID = \clGenRDelta;
+	} => PR(\clGenRDelta);
+
+	// pool, avg delta, factor(>1 = accel to midpoint), midpoint, curve
+	PR(\clGenRDelta).clone {
+		~numToAdd = 1e10;  // hack: ~modifySource does min(~numToAdd, avail.size)
+		~prep = {
+			~baseItems = ~args[0];
+			~pool = ~args[1];
+			~initDelta = ~args[2] ?? { 1 };
+			~midDelta = ~args[3] ?? { 0.1 };
+			~midpoint = ~args[4] ?? { 1 };
+			~curve = ~args[5] ?? { 0 };
+
+			#[initDelta, midDelta, midpoint, curve].do { |key|
+				var value = key.envirGet;
+				if(~isNumProxy.(value).not) {
+					Error("%: % '%' is not a number".format(~protoID, key, value)).throw;
+				};
+			};
+
+			~poolStream = Prand(~pool.collect(_.item), inf).asStream;
+			currentEnvironment
+		};
+
+		~getAvail = { |items, quant, tolerance = 0.001|
+			var times = items.collect({ |item| item[\time] - ~time }) ++ [~dur],
+			start = ~initDelta.next, midLevel = ~midDelta.next,
+			mid = ~midpoint.next, curve = ~curve.next,
+			env = Env([start, midLevel, start], [mid, 1.0 - mid], [curve, curve.neg]),
+			avail = List.new, now = 0;
+			while { now < ~dur } {
+				avail.add(now);
+				now = now + env.at(now / ~dur);
+			};
+			~checkDups.(avail * (~dur / now), times, tolerance) + ~time
+		};
+
+		~snippet.("ramp", "\\ramp(##src, pool, initDelta, midDelta, midpoint, curve##)");
+		~protoID = \clGenRamp;
+	} => PR(\clGenRamp);
 
 	PR(\clGenIns).clone {
 		~superprep = ~prep;
