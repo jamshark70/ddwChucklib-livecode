@@ -101,6 +101,14 @@ Library.put(\clLivecode, \setupbars, \guiIsFront, false);
 	});
 } => Func(\changeTempo);
 
+{ |mode = \default|
+	if(Mode.exists(mode)) {
+		Mode(mode) => Mode(\default);
+	} {
+		"changeKey: Mode(%) does not exist".format(mode.asCompileString).warn;
+	};
+} => Func(\changeKey);
+
 // assign-voicer functions
 { |vcKey, bpKey|
 	if(bpKey.notNil) {
