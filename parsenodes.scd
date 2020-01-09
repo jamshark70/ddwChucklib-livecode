@@ -286,17 +286,16 @@ PR(\abstractClParseNode).clone {
 			denominator = str[slash+1 .. ].asInteger;
 			Rational(numerator / denominator)
 		} -> "[\\-+]?[0-9]+/[0-9]+",
-		// tuplet: float:divisor
+		// tuplet: numNotes:noteValue
 		{ |str|
 			var colon = str.indexOf($:),  // regexp guarantees ":" is there
 			numerator = str[ .. colon-1].asFloat,
 			denominator = str[colon+1 .. ].asInteger;
-			if(numerator == 1 and: { denominator.isPowerOfTwo }) {
-				numerator * 4 / denominator  // "1:4" --> 1 (qtr)
-			} {
-				// 1:3 = qtr-note triplet = 2/3 beat
-				Rational(numerator * (denominator.nextPowerOfTwo div: 2) / denominator)
-			}
+			// 3:2 = triplet spanning half note
+			// 3:4 = triplet spanning quarter note
+			// 5:4 = quintuplet spanning quarter
+			// 4:1 = 4 in a whole-note = quarter note
+			denominator * 0.25 / numerator  // was Rational(), needed?
 		} -> "[\\-+]?[0-9]*\\.?[0-9]+([eE][\\-+]?[0-9]+)?:[0-9]+",
 		_.asFloat -> "[\\-+]?[0-9]*\\.[0-9]+([eE][\\-+]?[0-9]+)?",
 		_.asInteger -> "(-[0-9]+|[0-9]+)"
