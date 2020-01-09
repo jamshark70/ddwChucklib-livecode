@@ -530,7 +530,7 @@ PR(\abstractClParseNode).clone {
 	~isPitch = false;
 	~types = [
 		(type: \clRhythmGenNode, regexp: "^:[a-zA-Z0-9_]+\\(.*\\)"),
-		(type: \clGeneratorNode, regexp: "^\\\\[a-zA-Z0-9_]+\\(.*\\)"),
+		(type: \clGeneratorNode, regexp: "^\\\\[a-zA-Z0-9_]+(\\*[0-9]+( *\\.\\. *[0-9]+)?)?\\(.*\\)"),
 		(type: \clPassthruNumberNode, regexp: "^\{.*\}"),
 		// more specific "" test must come first
 		(type: \clArticPoolNode, regexp: "^\"[._~>]+\"",
@@ -577,6 +577,16 @@ PR(\abstractClParseNode).clone {
 		~children = ~children.add(name);
 		~name = name.string;
 		ch = stream.next;
+		if(ch == $*) {
+			case
+			{ ~findType.(\clRangeNode)[\regexp].matchRegexp(stream.collection, stream.pos) } {
+				~repeats = PR(\clRangeNode).copy.prep(stream, currentEnvironment);
+			}
+			{ ~findType.(\clNumberNode)[\regexp].matchRegexp(stream.collection, stream.pos) } {
+				~repeats = PR(\clNumberNode).copy.prep(stream, currentEnvironment);
+			};
+			ch = stream.next;
+		};
 		if(ch == $() {
 			while {
 				ch = stream.next;
@@ -637,6 +647,11 @@ PR(\abstractClParseNode).clone {
 			stream << name[0].toUpper << name[1..];
 		};
 		stream << ").copy.putAll((";
+		if(~repeats.notNil) {
+			stream << "repeats: ";
+			~repeats.streamCode(stream);
+			stream << ", ";
+		};
 		stream << "bpKey: " <<< ~bpKey;
 		stream << ", args: [ ";
 		forBy(1, ~children.size - 1, 1) { |i|
@@ -662,6 +677,10 @@ PR(\abstractClParseNode).clone {
 			~children[i].setTime(onset, dur);  // meaningful for gens and patstrings
 		};
 		currentEnvironment
+	};
+
+	~findType = { |key|
+		~types.detect { |type| type[\type] == key }
 	};
 } => PR(\clGeneratorNode);
 
