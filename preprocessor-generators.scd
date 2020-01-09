@@ -34,6 +34,7 @@ protect {
 		~protoID = \clGen;
 		~isClGen = true;
 		~canBePool = false;
+		~repeats = 1;
 
 		// responsible for parsing any time-sequence strings
 		// each generator may have different ones
@@ -336,8 +337,13 @@ protect {
 			};
 		};
 
+		// makeStream should always be infinite
 		~makeStream = {
 			~seqStream = Pseq(~pool, inf).collect(_.item).asStream;
+		};
+		// embedInStream is for generators embedded in pools, should use repeats
+		~embedInStream = { |inval|
+			Pseq(~pool, ~repeats).embedInStream(inval)
 		};
 		~canBePool = true;
 		~helpString = "\\seq(\"items\")";
@@ -349,6 +355,9 @@ protect {
 		~makeStream = {
 			~seqStream = Prand(~pool, inf).collect(_.item).asStream;
 		};
+		~embedInStream = { |inval|
+			Prand(~pool, ~repeats).embedInStream(inval)
+		};
 		~helpString = "\\rand(\"timing\", \"items\")";
 		~snippet.("rand", "\\rand(##src, items, wildcards##)");
 	} => PR(\clGenRand);
@@ -356,6 +365,9 @@ protect {
 	PR(\clGenSeq).clone {
 		~makeStream = {
 			~seqStream = Pxrand(~pool, inf).collect(_.item).asStream;
+		};
+		~embedInStream = { |inval|
+			Pxrand(~pool, ~repeats).embedInStream(inval)
 		};
 		~helpString = "\\xrand(\"items\")";
 		~snippet.("xrand", "\\xrand(##src, items, wildcards, reset##)");
@@ -431,17 +443,21 @@ protect {
 			currentEnvironment
 		};
 		~makeStream = {
-			var firstNum = ~args.detectIndex { |item| ~isNumProxy.(item) },
-			weights;
+			~seqStream = Pwrand(~pool, ~weightPattern.(), inf).collect(_.item).asStream;
+		};
+		~embedInStream = { |inval|
+			Pwrand(~pool, ~weightPattern.(), ~repeats).embedInStream(inval)
+		};
+		~weightPattern = {
+			var firstNum = ~args.detectIndex { |item| ~isNumProxy.(item) };
 			if(firstNum.isNil) {
 				// optimization: constant weights, don't need a stream
-				weights = Array.fill(~pool.size, ~pool.size.reciprocal);
+				Array.fill(~pool.size, ~pool.size.reciprocal);
 			} {
 				// these are number proxies, should respond to asStream
-				weights = Ptuple(~args[firstNum..].extend(~pool.size, 1))
+				Ptuple(~args[firstNum..].extend(~pool.size, 1))
 				.asStream.collect(_.normalizeSum);
 			};
-			~seqStream = Pwrand(~pool, weights, inf).collect(_.item).asStream;
 		};
 		~helpString = "\\wrand(\"items\", weight0, weight1...)";
 		~snippet.("wrand", "\\wrand(##src, items, wildcards, weights...##)");
@@ -450,6 +466,9 @@ protect {
 	PR(\clGenSeq).clone {
 		~makeStream = {
 			~seqStream = Pn(Pshuf(~pool, 1), inf).collect(_.item).asStream;
+		};
+		~embedInStream = { |inval|
+			Pn(Pshuf(~pool, 1), ~repeats).embedInStream(inval)
 		};
 		~helpString = "\\shuf(\"items\")";
 		~snippet.("shuf", "\\shuf(##src, items, wildcards, reset##)");
