@@ -693,7 +693,7 @@ protect {
 			times = items.collect({ |item| item[\time] - ~time }) ++ [~dur];
 			time = i * quant;
 			while {
-				(time absdif: ~dur) >= tolerance
+				time < (~dur - tolerance)
 			} {
 				if(time absdif: times[j] < tolerance) {
 					if(items[j][\initialRest] == true) { avail.add(time) };
@@ -780,7 +780,7 @@ protect {
 			blocks = Array(numToAdd);
 			blockDur = quant;
 			div = ~divisible.next(quant);
-			while { numToAdd > 0 and: { (blockDur absdif: ~dur) >= tolerance } } {
+			while { numToAdd > 0 and: { blockDur < (~dur - tolerance) } } {
 				i = durs.collectIndices { |dur, i| avail[i] and: { dur == blockDur } };
 				if(i.isEmpty) {
 					if(div == 0) {
@@ -1092,7 +1092,7 @@ protect {
 			maxNotes = ~maxNotes.next;
 			while {
 				avail.size < maxNotes and: {
-					(now absdif: ~dur) >= tolerance or: { avail.size < minNotes }
+					now < (~dur - tolerance) or: { avail.size < minNotes }
 				}
 			} {
 				avail = avail.add(now);
@@ -1160,7 +1160,7 @@ protect {
 			mid = ~midpoint.next, curve = ~curve.next,
 			env = Env([start, midLevel, start], [mid, 1.0 - mid], [curve, curve.neg]),
 			avail = List.new, now = 0;
-			while { (now absdif: ~dur) >= tolerance } {
+			while { now < (~dur - tolerance) } {
 				avail.add(now);
 				now = now + env.at(now / ~dur);
 			};
