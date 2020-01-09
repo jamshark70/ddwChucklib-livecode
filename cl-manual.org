@@ -2113,17 +2113,18 @@ Arguments are separated by commas. Each argument should be one of the following:
 - A subordinate generator expression (which must begin with a
   backslash and end with a closing parenthesis).
 
-- A number. Integer ranges may be specified =low..high=, e.g., =1..3=
-  to insert 1, 2 or 3 notes. Numbers may also use SuperCollider
-  pass-through expressions, in braces. For example, to
-  @@latex:``choke''@@ notes either 0.25 or 0.5 beats later, you could
-  write =\someGenerator(...)::\choke(, {rrand(1,2)*0.25}, "x")=.
+- A number, which may be written as follows:
+  - An integer (=12=) or floating-point number (=1.5=).
+  - An integer range: =1..3=. Especially useful for arguments representing a number of notes to insert or process.
+  - A fraction: =1/3=.
+  - A tuplet: e.g., =3:4= means "three notes in the space of a quarter note."
+  - A pass-through expression in curly braces: ={rrand(1, 4) * 0.5}= for 0.5, 1.0, 1.5, 2.0.
 
-#+BEGIN_boxnote
-Currently, pass-through expressions in braces may not contain
-backslashes.  If you need to refer to a symbol, use ='singlequote'=
-symbol literal syntax.
-#+END_boxnote
+  #+BEGIN_boxnote
+  Currently, pass-through expressions in braces may not contain
+  backslashes.  If you need to refer to a symbol, use ='singlequote'=
+  symbol literal syntax.
+  #+END_boxnote
 
 - A Symbol, written in LISP-influenced style with an opening backtick:
   =`name=.
