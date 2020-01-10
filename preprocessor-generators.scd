@@ -42,9 +42,7 @@ protect {
 		~prep = {
 			// ~baseItems = ~parse.(~args[0]);
 			~baseItems = ~args[0];
-			if(~checkPoolArgs.().not) {
-				Error("A pool argument contains an invalid generator").throw;
-			};
+			~checkPoolArgs.();
 			currentEnvironment
 		};
 
@@ -292,37 +290,30 @@ protect {
 		~isNumProxy = { |object|
 			object.tryPerform(\isNumProxy) == true or: { object.isNumber }
 		};
-		~poolArgs = { ~args };  // top level must check all
+		~poolArgs = nil;
 		~checkPoolArgs = { |inPool = false|
-			var list;
-			case
-			{ inPool and: { ~canBePool != true } } {
-				Error("Invalid generator '%' within pool".format(~protoID)).throw;
-			}  // not pool-able, don't bother
-			{
-				list = ~poolArgs.();
-				list.notNil
-			} {
-				list.do { |obj|
-					if(obj.isArray) {
-						obj.do { |item|
-							// normal item (event) or a generator that is pool-safe
-							// doesn't implement checkPoolSafety --> not generator, fail
-							if(not(item.isKindOf(Event) or: {
-								inPool.not or: {
-									item.isKindOf(Proto) and: {
-										item.tryPerform(\checkPoolArgs, true) ?? { false }
-									}
-								}
-							})) {
-								Error("Invalid item '%' found in pool".format(item)).throw;
-							};
-						}
+			var poolArgs = ~poolArgs.().asArray, pool;
+			// [~protoID, inPool].debug(">> checkPoolArgs");
+			// check myself, before recursion
+			if(inPool and: { not(~canBePool ?? { false }) }) {
+				Error("Invalid generator '%' in pool".format(~protoID)).throw;
+			};
+			~args.do { |obj, i|
+				// [obj, i].debug("checking");
+				case
+				{ obj.tryPerform(\isClGen) ?? { false } } {
+					obj.checkPoolArgs(poolArgs.includes(obj));
+				}
+				{ obj.isArray } {
+					pool = poolArgs.includes(obj);
+					obj.do { |item|
+						if(item.tryPerform(\isClGen) ?? { false }) {
+							item.checkPoolArgs(pool)
+						};
 					};
 				};
-				true  // got through whole loop, pass
-			}
-			{ true }
+			};
+			// [~protoID, inPool].debug("<< checkPoolArgs");
 		};
 	}, parentKeys: #[canEmbed, protoID, isClGen, patternStringKeys, patternStringFuncs])
 	.import((clPatternSet: #[decodePitch])) => PR(\clGen);
@@ -1367,6 +1358,7 @@ protect {
 			~pool = ~args[1] ?? { "_" };
 			~checkArticPool.(~pool);
 			~wildcards = ~args[2];
+			~override = ~args[3] ?? { 1 };
 			if(~wildcards.notNil) {
 				~wildcards = ~wildcards.collect(_.item);
 			};
@@ -1491,6 +1483,22 @@ protect {
 			});
 			~items = ~newItems.flatten(1);
 		};
+
+		// pool validation: tricky because non-pool gens are allowed here
+		// but each should be validated
+		~checkPoolArgs = { |inPool = false|
+			var checkOne = { |item|
+				if(item.isKindOf(Proto)) {
+					item.checkPoolArgs(false)  // not in pool
+				};
+			};
+			if(inPool) {
+				Error("\\fork may not be used in a pool").throw;
+			};
+			~baseItems.do(~checkOne);
+			~generators.do(~checkOne);
+		};
+
 		~snippet.("fork", "\\fork(##src, genString##)");
 	} => PR(\clGenFork);
 
@@ -1560,6 +1568,17 @@ protect {
 				items = gen.process;
 			};
 			~items = items;
+		};
+
+		~checkPoolArgs = { |inPool = false|
+			if(inPool) {
+				Error("\\chain may not be used in a pool").throw;
+			};
+			~args.do { |item|
+				if(item.isKindOf(Proto)) {
+					item.checkPoolArgs(false)  // not in pool
+				};
+			};
 		};
 	} => PR(\clGenChain);
 
