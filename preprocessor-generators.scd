@@ -42,6 +42,9 @@ protect {
 		~prep = {
 			// ~baseItems = ~parse.(~args[0]);
 			~baseItems = ~args[0];
+			if(~checkPoolArgs.().not) {
+				Error("A pool argument contains an invalid generator").throw;
+			};
 			currentEnvironment
 		};
 
@@ -289,6 +292,36 @@ protect {
 		~isNumProxy = { |object|
 			object.tryPerform(\isNumProxy) == true or: { object.isNumber }
 		};
+		~poolArgs = { ~args };  // top level must check all
+		~checkPoolArgs = { |inPool = false|
+			var list;
+			case
+			{ inPool and: { ~canBePool != true } } {
+				Error("Invalid generator '%' within pool".format(~protoID)).throw;
+			}  // not pool-able, don't bother
+			{
+					list = ~poolArgs.();
+					list.notNil
+			} {
+				list.do { |obj|
+					if(obj.isArray) {
+						obj.do { |item|
+							// normal item (event) or a generator that is pool-safe
+							// doesn't implement checkPoolSafety --> not generator, fail
+							if(not(item.isKindOf(Event) or: {
+								item.isKindOf(Proto) and: {
+									item.tryPerform(\checkPoolArgs, true) ?? { false }
+								}
+							})) {
+								Error("Invalid item '%' found in pool".format(item)).throw;
+							};
+						}
+					};
+				};
+				true  // got through whole loop, pass
+			}
+			{ true }
+		};
 	}, parentKeys: #[canEmbed, protoID, isClGen, patternStringKeys, patternStringFuncs])
 	.import((clPatternSet: #[decodePitch])) => PR(\clGen);
 
@@ -296,6 +329,7 @@ protect {
 
 	// "\seq("rhythm", "itemseq", "replaceItems", >0 to reset)
 	PR(\clGen).clone {
+		~poolArgs = { [~args[1]] };
 		~prep = {
 			~baseItems = ~args[0];
 			~pool = ~args[1];
@@ -374,6 +408,7 @@ protect {
 	} => PR(\clGenXrand);
 
 	PR(\clGenSeq).clone {
+		~poolArgs = nil;
 		// The whole point of a "reference" generator is:
 		// Every instance should share the same stream.
 		// Pdefn(key).asStream follows SC convention and makes
@@ -475,6 +510,7 @@ protect {
 	} => PR(\clGenShuf);
 
 	PR(\clGenSeq).clone {
+		~poolArgs = { [~args[2]] };
 		~canBePool = false;  // inheritance here is messy...
 		~defaults = [[], [(item: $*)], #[-2, -1, 1, 2].collect({ |int| (item: int) }), 0, 7, "_"];
 		~argNames = #[baseItems, replaceItems, intervalPool, fallbackMin, fallbackMax, articPool];
@@ -592,6 +628,7 @@ protect {
 	} => PR(\clGenXpose);
 
 	PR(\clGenSeq).clone {
+		~poolArgs = { [~args[1]] };
 		~canBePool = false;
 		~snippet.("prev", "\\prev(##src, pool, replaceItems, staccDur##)");
 		~prep = {
@@ -676,6 +713,7 @@ protect {
 	PR(\clGenSeq).clone {
 		~doReset = 0;
 		~canBePool = false;
+		~poolArgs = { [~args[1]] };
 		~prep = {
 			~baseItems = ~args[0];
 			~pool = ~args[1];
@@ -855,6 +893,7 @@ protect {
 	// \stutt(source, pool, numToAdd, quant, prob, insItem "-")
 	// choose numToAdd of "pool" items and of these, add more items after it
 	PR(\clGenIns).clone {
+		~poolArgs = nil;
 		~prep = {
 			~defaultNames.do { |key, i|
 				var value = ~args[i] ?? { ~defaults[i].value },
@@ -1196,6 +1235,7 @@ protect {
 	} => PR(\clGenRamp);
 
 	PR(\clGenIns).clone {
+		~poolArgs = nil;
 		~superprep = ~prep;
 		~prep = {
 			~superprep.();
@@ -1271,6 +1311,7 @@ protect {
 	} => PR(\clGenShift);
 
 	PR(\clGen).clone {
+		~poolArgs = nil;
 		~prep = {
 			~baseItems = ~args[0];
 			~quant = ~args[1];
@@ -1318,6 +1359,7 @@ protect {
 	} => PR(\clGenRot);
 
 	PR(\clGen).clone {
+		~poolArgs = { [~args[1]] };
 		~prep = {
 			~baseItems = ~args[0];
 			~pool = ~args[1] ?? { "_" };
@@ -1355,6 +1397,7 @@ protect {
 	}.import((clGenPitch: #[artic])) => PR(\clGenArtic);
 
 	PR(\clGen).clone {
+		~poolArgs = { [~args[1]] };
 		~prep = {
 			~srcParm = ~args[0];
 			~pool = ~args[1];
