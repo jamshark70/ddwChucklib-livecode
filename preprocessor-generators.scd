@@ -300,8 +300,8 @@ protect {
 				Error("Invalid generator '%' within pool".format(~protoID)).throw;
 			}  // not pool-able, don't bother
 			{
-					list = ~poolArgs.();
-					list.notNil
+				list = ~poolArgs.();
+				list.notNil
 			} {
 				list.do { |obj|
 					if(obj.isArray) {
@@ -309,8 +309,10 @@ protect {
 							// normal item (event) or a generator that is pool-safe
 							// doesn't implement checkPoolSafety --> not generator, fail
 							if(not(item.isKindOf(Event) or: {
-								item.isKindOf(Proto) and: {
-									item.tryPerform(\checkPoolArgs, true) ?? { false }
+								inPool.not or: {
+									item.isKindOf(Proto) and: {
+										item.tryPerform(\checkPoolArgs, true) ?? { false }
+									}
 								}
 							})) {
 								Error("Invalid item '%' found in pool".format(item)).throw;
@@ -524,7 +526,7 @@ protect {
 			};
 			~checkArticPool.(~articPool);  // throws error on failure
 			~replaceItems = ~replaceItems.collect { |item| item.item };
-			~intervalPool = ~intervalPool.collect { |item| item.item.asFloat };
+			~intervalStream = Prand(~intervalPool, inf).asStream.collect { |item| item.item.asFloat };
 			~articPool = ~articPool.reject(_ == $");
 			currentEnvironment
 		};
@@ -544,7 +546,7 @@ protect {
 				if(prev.isNil) {
 					pitch = rrand(~fallbackMin.next, ~fallbackMax.next);
 				} {
-					pitch = prev.item.asFloat + ~intervalPool.choose;
+					pitch = prev.item.asFloat + ~intervalStream.next;
 				};
 				new = SequenceNote(pitch);
 				new = ~applyArtic.(~articPool.choose, new);
@@ -578,7 +580,7 @@ protect {
 					prev = prev.item;
 				};
 				loop {
-					pitch = prev.asFloat + ~intervalPool.choose;
+					pitch = prev.asFloat + ~intervalStream.next;
 					prev = pitch;  // loop is always going forward
 					new = SequenceNote(pitch);
 					new = ~applyArtic.(~articPool.choose, new);
@@ -599,8 +601,7 @@ protect {
 			~argNames.do { |key, i|
 				key.envirPut(~args[i] ?? { ~defaults[i] });
 			};
-			~checkArticPool.(~articPool);  // throws error on failure
-			~intervalPool = ~intervalPool.collect { |item| item.item.asFloat };
+			~intervalStream = Prand(~intervalPool, inf).asStream.collect { |item| item.item.asFloat };
 			~wildcards = ~wildcards.collect { |item| item.item };
 			currentEnvironment
 		};
@@ -608,7 +609,7 @@ protect {
 			var endTime = ~time + ~dur;
 			~items = ~getUpstreamItems.();
 			~items.do { |item, i|
-				var interval = ~intervalPool.choose;
+				var interval = ~intervalStream.next;
 				if(item.time >= ~time and: {
 					item.time < endTime and: {
 						~wildcards.isNil or: { ~wildcards.includesEqual(item.wildcard) }
@@ -648,6 +649,7 @@ protect {
 				~staccDur = 0;
 			};
 			~doReset = 0;  // required by superclass
+			~poolStream = if(~pool.size > 0) { Prand(~pool, inf).asStream } { nil };
 			currentEnvironment
 		};
 		~makeStream = {
@@ -670,7 +672,7 @@ protect {
 				};
 				if(prevIndex < 0) {
 					// if none, choose from pool
-					new = ~pool.choose;
+					new = ~pool.next;
 					if(new.notNil) {
 						new = new.item.copy;
 					} {
@@ -722,7 +724,7 @@ protect {
 				Error("numToAdd '%' is not a number".format(~numToAdd)).throw;
 			};
 			~quant = ~args[3] ?? { 0.25 };
-			~poolStream = Prand(~pool.collect(_.item), inf).asStream;
+			~poolStream = Prand(~pool, inf).asStream.collect(_.item);
 			currentEnvironment
 		};
 		~modifySource = {
@@ -774,7 +776,7 @@ protect {
 				};
 				i = i + 1;
 			};
-			avail + ~time
+			avail.sort + ~time
 		};
 		~snippet.("ins", "\\ins(##src, pool, numToAdd, quant##)");
 	} => PR(\clGenIns);
@@ -1408,6 +1410,7 @@ protect {
 			} {
 				Error("\\unis: BP(%) doesn't exist".format(~srcBP.asCompileString)).throw;
 			};
+			~poolStream = if(~pool.size > 0) { Prand(~pool, inf).asStream } { nil };
 			currentEnvironment
 		};
 		~process = {
@@ -1427,11 +1430,8 @@ protect {
 					.do { |item|
 						// if no item already at the source's time slot
 						if(~items.detect { |x| x.time == item.time }.isNil) {
-							if(~pool.size > 0) {
-								new = ~pool.choose.item;
-							} {
-								new = item.item;
-							};
+							new = ~poolStream.next ?? { item };
+							new = new.item;
 							~insertItem.((item: new, wildcard: new, src: \unis, time: item.time));
 						};
 					};
