@@ -536,14 +536,14 @@ Proto {
 		id, objKey, phrase, parm, bpb, stream, yieldsKeys, wrapArray = false,
 		streamOne = { |stream, i|
 			var phraseSym = if(i.notNil) { (phrase ++ i).asSymbol } { phrase };
-			stream << "BP(" <<< objKey << ").setPhraseDur("
-			<<< phraseSym << ", " << bpb << ");\n";
 			stream << "BP(" <<< objKey << ").setPattern(" <<< phraseSym << ", ";
 			stream <<< yieldsKeys << ", " <<< parm << ", Pseq(";
 			if(wrapArray) { stream << "[ " };
 			parsed.patStringNode.streamCode(stream);
 			if(wrapArray) { stream << " ]" };
-			stream << ", 1), " <<< rightHand << ", " << nil << ")";  // nil = quant... needed?
+			stream << ", 1), " <<< rightHand << ", " << nil << ");\n";  // nil = quant... needed?
+			stream << "BP(" <<< objKey << ").setPhraseDur("
+			<<< phraseSym << ", " << bpb << ")";
 		};
 		~parsed = parsed;
 		id = parsed.idNode;
