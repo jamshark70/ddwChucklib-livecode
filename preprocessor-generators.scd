@@ -324,6 +324,11 @@ protect {
 			};
 			// [~protoID, inPool].debug("<< checkPoolArgs");
 		};
+		~checkEmpty = { |obj, str|
+			if(obj.size == 0) {
+				Error("Values expected for %, but was empty".format(str)).throw;
+			};
+		};
 	}, parentKeys: #[canEmbed, protoID, isClGen, patternStringKeys, patternStringFuncs])
 	.import((clPatternSet: #[decodePitch])) => PR(\clGen);
 
@@ -334,7 +339,8 @@ protect {
 		~poolArgs = { [~args[1]] };
 		~prep = {
 			~baseItems = ~args[0];
-			~pool = ~args[1];
+			~pool = ~args[1].asArray;
+			~checkEmpty.(~pool, "pool");
 			if(~args[2].isSequenceableCollection) {
 				~replaceItems = ~args[2].collect { |item| item.item };
 			} {
@@ -639,6 +645,8 @@ protect {
 		~prep = {
 			~baseItems = ~args[0];
 			~pool = ~args[1] ?? { [] };
+			// empty pool = ignored
+			~poolStream = if(~pool.size > 0) { Prand(~pool, inf).asStream } { nil };
 			if(~args[2].notNil) {
 				~replaceItems = ~args[2].collect { |item| item.item };
 			} {
@@ -653,7 +661,6 @@ protect {
 				~staccDur = 0;
 			};
 			~doReset = 0;  // required by superclass
-			~poolStream = if(~pool.size > 0) { Prand(~pool, inf).asStream } { nil };
 			currentEnvironment
 		};
 		~makeStream = {
@@ -722,7 +729,8 @@ protect {
 		~poolArgs = { [~args[1]] };
 		~prep = {
 			~baseItems = ~args[0];
-			~pool = ~args[1];
+			~pool = ~args[1].asArray;
+			~checkEmpty.(~pool, "pool");
 			~numToAdd = ~args[2] ?? { 1 };
 			if(~isNumProxy.(~numToAdd).not) {
 				Error("numToAdd '%' is not a number".format(~numToAdd)).throw;
@@ -1118,7 +1126,8 @@ protect {
 		~numToAdd = 1e10;  // hack: ~modifySource does min(~numToAdd, avail.size)
 		~prep = {
 			~baseItems = ~args[0];
-			~pool = ~args[1];
+			~pool = ~args[1].asArray;
+			~checkEmpty.(~pool, "pool");
 			~maxDelta = ~args[2] ?? { 1 };
 			~factor = ~args[3] ?? { 2 };
 			~minNotes = ~args[4] ?? { 3 };
@@ -1206,7 +1215,8 @@ protect {
 		~numToAdd = 1e10;  // hack: ~modifySource does min(~numToAdd, avail.size)
 		~prep = {
 			~baseItems = ~args[0];
-			~pool = ~args[1];
+			~pool = ~args[1].asArray;
+			~checkEmpty.(~pool, "pool");
 			~initDelta = ~args[2] ?? { 1 };
 			~midDelta = ~args[3] ?? { 0.1 };
 			~midpoint = ~args[4] ?? { 1 };
@@ -1324,7 +1334,7 @@ protect {
 			if(~isNumProxy.(~quant).not) {
 				Error("\rot() quant must be a number").throw;
 			};
-			~pool = ~args[2].collect(_.item);  // also handles nil
+			~pool = ~args[2].collect(_.item);  // also handles nil; not really a pool
 			currentEnvironment
 		};
 		~process = {
@@ -1375,7 +1385,7 @@ protect {
 			if(~wildcards.notNil) {
 				~wildcards = ~wildcards.collect(_.item);
 			};
-			~poolStream = Prand(~pool, inf).asStream;
+			~poolStream = Prand(~pool.asArray, inf).asStream;
 			// Possible future feature
 			// ~durSplit = ~args[1];
 			// if(~durSplit.isNumber.not) {
@@ -1410,7 +1420,8 @@ protect {
 		~poolArgs = { [~args[1]] };
 		~prep = {
 			~srcParm = ~args[0];
-			~pool = ~args[1];
+			~pool = ~args[1].asArray;
+			~checkEmpty.(~pool, "pool");
 			~srcBP = ~args[2] ?? { ~bpKey };
 			if(BP.exists(~srcBP)) {
 				// will throw DoesNotUnderstand if there's no defaultParm
