@@ -381,7 +381,7 @@ protect {
 
 		// makeStream should always be infinite
 		~makeStream = {
-			~seqStream = Pseq(~pool, inf).collect(_.item).asStream;
+			~seqStream = Pseq(~pool.asArray, inf).collect(_.item).asStream;
 		};
 		// embedInStream is for generators embedded in pools, should use repeats
 		~embedInStream = { |inval|
@@ -395,7 +395,7 @@ protect {
 	PR(\clGenSeq).clone {
 		// ~asPattern = { Prand(~args[0], inf) };
 		~makeStream = {
-			~seqStream = Prand(~pool, inf).collect(_.item).asStream;
+			~seqStream = Prand(~pool.asArray, inf).collect(_.item).asStream;
 		};
 		~embedInStream = { |inval|
 			Prand(~pool, ~repeats).embedInStream(inval)
@@ -406,7 +406,7 @@ protect {
 
 	PR(\clGenSeq).clone {
 		~makeStream = {
-			~seqStream = Pxrand(~pool, inf).collect(_.item).asStream;
+			~seqStream = Pxrand(~pool.asArray, inf).collect(_.item).asStream;
 		};
 		~embedInStream = { |inval|
 			Pxrand(~pool, ~repeats).embedInStream(inval)
@@ -486,7 +486,7 @@ protect {
 			currentEnvironment
 		};
 		~makeStream = {
-			~seqStream = Pwrand(~pool, ~weightPattern.(), inf).collect(_.item).asStream;
+			~seqStream = Pwrand(~pool.asArray, ~weightPattern.(), inf).collect(_.item).asStream;
 		};
 		~embedInStream = { |inval|
 			Pwrand(~pool, ~weightPattern.(), ~repeats).embedInStream(inval)
@@ -508,7 +508,7 @@ protect {
 
 	PR(\clGenSeq).clone {
 		~makeStream = {
-			~seqStream = Pn(Pshuf(~pool, 1), inf).collect(_.item).asStream;
+			~seqStream = Pn(Pshuf(~pool.asArray, 1), inf).collect(_.item).asStream;
 		};
 		~embedInStream = { |inval|
 			Pn(Pshuf(~pool, 1), ~repeats).embedInStream(inval)
@@ -741,7 +741,7 @@ protect {
 		};
 		~modifySource = {
 			var avail = ~getAvail.(~items, ~quant.next).scramble;
-			avail = avail.keep(min(~numToAdd.next, avail.size)).sort;
+			avail = avail.keep(min(~numToAdd.next, avail.size).asInteger).sort;
 			avail.size.do { |i|
 				var newTime = avail[i],
 				new;
@@ -925,6 +925,7 @@ protect {
 			// Prand(~insPool) must not get a number as the inval, or it dies
 			// but the function must get the number! So I have to pass it conditionally
 			// Whose fault is that? Dictionary:embedInStream
+			~insPool = ~insPool.asArray;
 			~passIndex = ~insPool.size <= 0;
 			~insStream = if(~passIndex.not) {
 				Prand(~insPool, inf).asStream.collect(_.item);
@@ -966,7 +967,7 @@ protect {
 			}
 		};
 		~modifySource = {
-			var nextTime, time, new, quant, prob;
+			var nextTime, time, times, new, quant, prob;
 			// later, we check index vs ~items.size
 			// but ~items.size changes as we add new items
 			// so, save the original input size
@@ -988,8 +989,7 @@ protect {
 					time < nextTime
 				} {
 					if(prob.coin) {
-						new = ~insStream.value(if(~passIndex) { index });  // else nil
-						~items = ~items.add((item: new, wildcard: new, src: \stutt, time: time));
+						times = times.add([time, index]);
 						didAdd = true;
 					};
 				};
@@ -999,6 +999,10 @@ protect {
 					};
 				};
 			};
+			times.do { |pair|
+				new = ~insStream.value(if(~passIndex) { pair[1] });  // else nil
+				~items = ~items.add((item: new, wildcard: new, src: \stutt, time: pair[0]));
+			};
 			~items.sort { |a, b| a.time < b.time }
 		};
 		~makeStream = 0;  // ~seqStream is not used here
@@ -1006,6 +1010,7 @@ protect {
 	}.import((clGenPitch: #[artic])) => PR(\clGenStutt);
 
 	PR(\clGenStutt).clone {
+		~poolArgs = { [~args[2]] };
 		~defaultNames = #[baseItems, maxDur, insPool, wildcards];
 		~defaults = [nil, 0.5, [(item: $x, time: 0)], nil];
 		~validation = [nil, \isNumProxy, nil, nil];
@@ -1021,7 +1026,7 @@ protect {
 						and: { time - lastEvent.time > maxDur }
 					}
 				}) {
-					new = ~insStream.next;
+					new = ~insStream.value;
 					~insertItem.((item: new, wildcard: new, src: \choke, time: lastEvent.time + maxDur));
 				};
 				lastEvent = localItems[i];
@@ -1045,7 +1050,7 @@ protect {
 				~initRest = false;
 			};
 			~weights = Ptuple(~weights, inf).asStream.collect(_.normalizeSum);
-			~poolStream = Prand(~pool.collect(_.item), inf).asStream;
+			~poolStream = Prand(~pool.asArray, inf).collect(_.item).asStream;
 			currentEnvironment
 		};
 		~modifySource = {
@@ -1156,7 +1161,7 @@ protect {
 				};
 			};
 
-			~poolStream = Prand(~pool.collect(_.item), inf).asStream;
+			~poolStream = Prand(~pool.asArray, inf).collect(_.item).asStream;
 			currentEnvironment
 		};
 		~getAvail = { |items, quant, tolerance = 0.001|
@@ -1235,7 +1240,7 @@ protect {
 				};
 			};
 
-			~poolStream = Prand(~pool.collect(_.item), inf).asStream;
+			~poolStream = Prand(~pool.asArray, inf).collect(_.item).asStream;
 			currentEnvironment
 		};
 
