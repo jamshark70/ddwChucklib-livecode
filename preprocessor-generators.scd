@@ -243,8 +243,18 @@ protect {
 		);
 		~isValidArtic = { |artic|
 			~artic[artic.value].notNil or: {
-				artic.tryPerform(\key) == \accent
-			}
+				artic.tryPerform(\key) == \accent or: {
+					if(artic.tryPerform(\canBePool) ?? { false }) {
+						artic.poolArgs.every { |item|  // poolArgs is array-of-args
+							item.asArray.every { |artic|  // each arg may be a Proto or an array
+								~isValidArtic.(artic)
+							};
+						};
+					} {
+						if(artic.size > 0) { artic.every(~isValidArtic) } { true }
+					};
+				};
+			};
 		};
 		~checkArticPool = { |pool|
 			// for now, shortcut, assume Association's key is \accent
@@ -1366,6 +1376,7 @@ protect {
 			if(~wildcards.notNil) {
 				~wildcards = ~wildcards.collect(_.item);
 			};
+			~poolStream = Prand(~pool, inf).asStream;
 			// Possible future feature
 			// ~durSplit = ~args[1];
 			// if(~durSplit.isNumber.not) {
@@ -1385,7 +1396,7 @@ protect {
 			if(item.item.isKindOf(SequenceNote) and: {
 				~wildcards.isNil or: { ~wildcards.includes(item.wildcard) }
 			}) {
-				artic = ~pool.choose;
+				artic = ~poolStream.next;
 				new = item.item.copy;
 				new = ~applyArtic.(artic, new);
 				item.copy.put(\item, new);
