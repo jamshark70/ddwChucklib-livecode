@@ -246,15 +246,14 @@ protect {
 				artic.tryPerform(\key) == \accent or: {
 					if(artic.tryPerform(\canBePool) ?? { false }) {
 						artic.poolArgs.every { |item|  // poolArgs is array-of-args
-							item.asArray.every { |artic|  // each arg may be a Proto or an array
-								~isValidArtic.(artic)
-							};
+							// each arg may be a Proto or an array
+							item.asArray.every(~isValidArtic)
 						};
 					} {
-						if(artic.size > 0) { artic.every(~isValidArtic) } { true }
+						if(artic.size > 0) { artic.every(~isValidArtic) } { false }
 					};
 				};
-			};
+			}
 		};
 		~checkArticPool = { |pool|
 			// for now, shortcut, assume Association's key is \accent
