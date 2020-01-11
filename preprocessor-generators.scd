@@ -600,21 +600,24 @@ protect {
 			var endTime = ~time + ~dur;
 			~items = ~getUpstreamItems.();
 			~items.do { |item, i|
-				var interval = ~intervalStream.next;
 				if(item.time >= ~time and: {
 					item.time < endTime and: {
 						~wildcards.isNil or: { ~wildcards.includesEqual(item.wildcard) }
 					}
 				}) {
-					if(item.item.isKindOf(SequenceNote) and: {
-						item.item.isRest.not
-					}) {
-						~items[i] = item.copy
-						.put(\item, item.item.copy.freq_(item.item.asFloat + interval));
-					};
+					~items[i] = ~apply.(item);
 				};
 			};
 			~items
+		};
+		~apply = { |item|
+			var interval = ~intervalStream.next;
+			if(item.item.isKindOf(SequenceNote) and: {
+				item.item.isRest.not
+			}) {
+				item.copy
+				.put(\item, item.item.copy.freq_(item.item.asFloat + interval));
+			} { item };
 		};
 		~snippet.("xpose", "\\xpose(##src, intervalPool, wildcards##)");
 	} => PR(\clGenXpose);
@@ -1373,18 +1376,20 @@ protect {
 		};
 		~process = {
 			~items = ~getUpstreamItems.();
-			~items.collect { |item|
-				var artic, new, newLen;
-				if(item.item.isKindOf(SequenceNote) and: {
-					~wildcards.isNil or: { ~wildcards.includes(item.wildcard) }
-				}) {
-					artic = ~pool.choose;
-					new = item.item.copy;
-					new = ~applyArtic.(artic, new);
-					item.copy.put(\item, new);
-				} {
-					item
-				};
+			~items.collect(~apply);
+		};
+		// for chain-in-pool
+		~apply = { |item|
+			var artic, new, newLen;
+			if(item.item.isKindOf(SequenceNote) and: {
+				~wildcards.isNil or: { ~wildcards.includes(item.wildcard) }
+			}) {
+				artic = ~pool.choose;
+				new = item.item.copy;
+				new = ~applyArtic.(artic, new);
+				item.copy.put(\item, new);
+			} {
+				item
 			};
 		};
 		~snippet.("artic", "\\artic(##src, articPool, wildcards##)");
@@ -1551,6 +1556,7 @@ protect {
 	// \gen1(...)::\gen2(...)::\gen3(...)
 	// gen1 processed items -> gen2 processed items -> gen3
 	PR(\clGen).clone {
+		~canBePool = true;  // pitch procs can chain \artic or \xpose in a pool
 		~prep = {
 			currentEnvironment  // just use ~args
 		};
@@ -1570,13 +1576,33 @@ protect {
 			~items = items;
 		};
 
+		~embedInStream = { |inval|
+			~args[0].asStream.collect { |item|
+				(1 .. ~args.size - 1).do { |i|
+					item = ~args[i].apply(item);
+				};
+				item
+			}.embedInStream(inval);
+		};
+
+		~poolable = #[clGenArtic, clGenXpose];
 		~checkPoolArgs = { |inPool = false|
 			if(inPool) {
-				Error("\\chain may not be used in a pool").throw;
-			};
-			~args.do { |item|
-				if(item.isKindOf(Proto)) {
-					item.checkPoolArgs(false)  // not in pool
+				if(not(~args[0].tryPerform(\canBePool) ?? { false })) {
+					Error("Chain first generator '%' may not be used in a pool".format(~args[0][\protoID])).throw;
+				} {
+					~args[0].checkPoolArgs(true);
+				};
+				(1 .. ~args.size - 1).do { |i|
+					if(~poolable.includes(~args[i][\protoID]).not) {
+						Error("Chain filter generator '%' may not be used in a pool".format(~args[i][\protoID])).throw;
+					};
+				};
+			} {
+				~args.do { |item|
+					if(item.isKindOf(Proto)) {
+						item.checkPoolArgs(false)  // not in pool, but subgens might have pools
+					};
 				};
 			};
 		};
