@@ -741,7 +741,8 @@ protect {
 		};
 		~modifySource = {
 			var avail = ~getAvail.(~items, ~quant.next).scramble;
-			min(~numToAdd.next, avail.size).do { |i|
+			avail = avail.keep(min(~numToAdd.next, avail.size)).sort;
+			avail.size.do { |i|
 				var newTime = avail[i],
 				new;
 				// should be guaranteed but, protect against mistakes
@@ -788,7 +789,7 @@ protect {
 				};
 				i = i + 1;
 			};
-			avail.sort + ~time
+			avail + ~time
 		};
 		~snippet.("ins", "\\ins(##src, pool, numToAdd, quant##)");
 	} => PR(\clGenIns);
@@ -830,7 +831,7 @@ protect {
 			~items
 		};
 		~modifySource = {
-			var avail = ~getAvail.(~items, ~quant.next).scramble;
+			var avail = ~getAvail.(~items, ~quant.next).sort;
 			avail.size.do { |i|
 				var newTime = avail[i],
 				new;
@@ -907,7 +908,7 @@ protect {
 	// \stutt(source, pool, numToAdd, quant, prob, insItem "-")
 	// choose numToAdd of "pool" items and of these, add more items after it
 	PR(\clGenIns).clone {
-		~poolArgs = nil;
+		~poolArgs = { [~args[5]] };
 		~prep = {
 			~defaultNames.do { |key, i|
 				var value = ~args[i] ?? { ~defaults[i].value },
@@ -920,8 +921,13 @@ protect {
 				if(error.notNil) { Error(error).throw };
 				key.envirPut(value);
 			};
-			~insStream = if(~insPool.notNil) {
-				Prand(~insPool.collect(_.item), inf).asStream;
+			// oh, I don't like this workaround.
+			// Prand(~insPool) must not get a number as the inval, or it dies
+			// but the function must get the number! So I have to pass it conditionally
+			// Whose fault is that? Dictionary:embedInStream
+			~passIndex = ~insPool.size <= 0;
+			~insStream = if(~passIndex.not) {
+				Prand(~insPool, inf).asStream.collect(_.item);
 			} {
 				{ |srcIndex| // will only be called internally
 					var new = ~items[srcIndex].item;
@@ -982,7 +988,7 @@ protect {
 					time < nextTime
 				} {
 					if(prob.coin) {
-						new = ~insStream.value(index);
+						new = ~insStream.value(if(~passIndex) { index });  // else nil
 						~items = ~items.add((item: new, wildcard: new, src: \stutt, time: time));
 						didAdd = true;
 					};
