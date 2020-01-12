@@ -40,7 +40,6 @@ protect {
 		// each generator may have different ones
 		// generic one assumes only ~args[0]
 		~prep = {
-			// ~baseItems = ~parse.(~args[0]);
 			~baseItems = ~args[0];
 			~checkPoolArgs.();
 			currentEnvironment
@@ -332,26 +331,32 @@ protect {
 	}, parentKeys: #[canEmbed, protoID, isClGen, patternStringKeys, patternStringFuncs])
 	.import((clPatternSet: #[decodePitch])) => PR(\clGen);
 
-	PR(\clGen).copy => PR(\clGenTest);
+	// PR(\clGen).copy => PR(\clGenTest);
+
+	PR(\clGen).clone {
+		~prep = {
+			~baseItems = ~args[0];  // getUpstreamItems looks here
+			currentEnvironment
+		};
+	} => PR(\clGenSrc);
 
 	// "\seq("rhythm", "itemseq", "replaceItems", >0 to reset)
 	PR(\clGen).clone {
-		~poolArgs = { [~args[1]] };
+		~poolArgs = { [~args[0]] };
 		~prep = {
-			~baseItems = ~args[0];
-			~pool = ~args[1].asArray;
+			~pool = ~args[0].asArray;
 			~checkEmpty.(~pool, "pool");
-			if(~args[2].isSequenceableCollection) {
-				~replaceItems = ~args[2].collect { |item| item.item };
+			if(~args[1].isSequenceableCollection) {
+				~replaceItems = ~args[1].collect { |item| item.item };
 			} {
 				~replaceItems = [$*];
 			};
-			// if(~args[3].isNumber) {
-			// 	~doReset = ~args[3] > 0;
+			// if(~args[2].isNumber) {
+			// 	~doReset = ~args[2] > 0;
 			// } {
 			// 	~doReset = false;
 			// };
-			~doReset = ~args[3] ?? { 0 };
+			~doReset = ~args[2] ?? { 0 };
 			currentEnvironment
 		};
 
@@ -518,10 +523,10 @@ protect {
 	} => PR(\clGenShuf);
 
 	PR(\clGenSeq).clone {
-		~poolArgs = { [~args[2]] };
+		~poolArgs = { [~args[1]] };
 		~canBePool = false;  // inheritance here is messy...
-		~defaults = [[], [(item: $*)], #[-2, -1, 1, 2].collect({ |int| (item: int) }), 0, 7, "_"];
-		~argNames = #[baseItems, replaceItems, intervalPool, fallbackMin, fallbackMax, articPool];
+		~defaults = [/*[],*/ [(item: $*)], #[-2, -1, 1, 2].collect({ |int| (item: int) }), 0, 7, "_"];
+		~argNames = #[/*baseItems,*/ replaceItems, intervalPool, fallbackMin, fallbackMax, articPool];
 		~artic = ($~: inf /*1.01*/, $_: 0.9, $.: 0.4,
 			$>: { |note| note.args = \accent; nil }  // don't change length
 		);
@@ -563,8 +568,8 @@ protect {
 	} => PR(\clGenPitch);
 
 	PR(\clGenPitch).clone {
-		~defaults = [[], [(item: $*)], #[-2, -1, 1, 2].collect({ |int| (item: int) }), 0, 7, "_", 1];
-		~argNames = #[baseItems, replaceItems, intervalPool, fallbackMin, fallbackMax, articPool, connect];
+		~defaults = [/*[],*/ [(item: $*)], #[-2, -1, 1, 2].collect({ |int| (item: int) }), 0, 7, "_", 1];
+		~argNames = #[/*baseItems,*/ replaceItems, intervalPool, fallbackMin, fallbackMax, articPool, connect];
 		~doReset = 1;
 		~makeStream = {
 			~seqStream = Routine {
@@ -601,14 +606,14 @@ protect {
 	// 1 = no transposition. 1' = octave up, 1, = octave down
 	// can limit to wildcards
 	PR(\clGen).clone {
-		~poolArgs = { [~args[1]] };
-		~defaults = [[], [(item: SequenceNote(0, nil, 0.9))], nil];
-		~argNames = #[baseItems, intervalPool, wildcards];
+		~poolArgs = { [~args[0]] };
+		~defaults = [/*[],*/ [(item: SequenceNote(0, nil, 0.9))], nil];
+		~argNames = #[/*baseItems,*/ intervalPool, wildcards];
 		~prep = {
 			~argNames.do { |key, i|
 				key.envirPut(~args[i] ?? { ~defaults[i] });
 			};
-			~intervalStream = Prand(~intervalPool, inf).asStream.collect { |item| item.item.asFloat };
+			~intervalStream = Prand(~intervalPool.asArray, inf).asStream.collect { |item| item.item.asFloat };
 			~wildcards = ~wildcards.collect { |item| item.item };
 			currentEnvironment
 		};
@@ -639,24 +644,23 @@ protect {
 	} => PR(\clGenXpose);
 
 	PR(\clGenSeq).clone {
-		~poolArgs = { [~args[1]] };
+		~poolArgs = { [~args[0]] };
 		~canBePool = false;
 		~snippet.("prev", "\\prev(##src, pool, replaceItems, staccDur##)");
 		~prep = {
-			~baseItems = ~args[0];
-			~pool = ~args[1] ?? { [] };
+			~pool = ~args[0] ?? { [] };
 			// empty pool = ignored
 			~poolStream = if(~pool.size > 0) { Prand(~pool, inf).asStream } { nil };
-			if(~args[2].notNil) {
-				~replaceItems = ~args[2].collect { |item| item.item };
+			if(~args[1].notNil) {
+				~replaceItems = ~args[1].collect { |item| item.item };
 			} {
 				~replaceItems = [$*];
 			};
 			// rhythmic values <= ~staccDur will be made staccato, otherwise _
 			// ~staccDur = 0 disables this feature
 			// ignored for non-pitch parameters (because, no concept of articulation)
-			if(~isNumProxy.(~args[3])) {
-				~staccDur = ~args[3];
+			if(~isNumProxy.(~args[2])) {
+				~staccDur = ~args[2];
 			} {
 				~staccDur = 0;
 			};
@@ -726,16 +730,15 @@ protect {
 	PR(\clGenSeq).clone {
 		~doReset = 0;
 		~canBePool = false;
-		~poolArgs = { [~args[1]] };
+		~poolArgs = { [~args[0]] };
 		~prep = {
-			~baseItems = ~args[0];
-			~pool = ~args[1].asArray;
+			~pool = ~args[0].asArray;
 			~checkEmpty.(~pool, "pool");
-			~numToAdd = ~args[2] ?? { 1 };
+			~numToAdd = ~args[1] ?? { 1 };
 			if(~isNumProxy.(~numToAdd).not) {
 				Error("numToAdd '%' is not a number".format(~numToAdd)).throw;
 			};
-			~quant = ~args[3] ?? { 0.25 };
+			~quant = ~args[2] ?? { 0.25 };
 			~poolStream = Prand(~pool, inf).asStream.collect(_.item);
 			currentEnvironment
 		};
@@ -804,19 +807,18 @@ protect {
 	PR(\clGenIns).clone {
 		~superprep = ~prep;
 		~prep = {
-			~baseItems = ~args[0];
-			~pool = ~args[1];
-			~replaceItems = ~args[2] ?? { ~pool };
-			~numToAdd = ~args[3] ?? { 1 };
+			~pool = ~args[0];
+			~replaceItems = ~args[1] ?? { ~pool };
+			~numToAdd = ~args[2] ?? { 1 };
 			if(~isNumProxy.(~numToAdd).not) {
 				Error("numToAdd '%' is not a number".format(~numToAdd)).throw;
 			};
-			~quant = ~args[4] ?? { 0.25 };
-			~divisor = ~args[5] ?? { 2 };
+			~quant = ~args[3] ?? { 0.25 };
+			~divisor = ~args[4] ?? { 2 };
 			// if(~divisor <= 1) {
 			// 	Error("\\clGenDiv divisor must be >= 1.0").throw;
 			// };
-			~divisible = ~args[6] ?? { Pfunc({ |quant| quant }) };
+			~divisible = ~args[5] ?? { Pfunc({ |quant| quant }) };
 			~replaceItems = ~replaceItems.collect(_.item);
 			~poolItems = ~pool.collect(_.item);
 			if(~poolItems.size > 0) {
@@ -908,7 +910,7 @@ protect {
 	// \stutt(source, match, numToAdd, quant, prob, insItem "-")
 	// choose numToAdd of "pool" items and of these, add more items after it
 	PR(\clGenIns).clone {
-		~poolArgs = { [~args[5]] };
+		~poolArgs = { [~args[4]] };
 		~prep = {
 			~defaultNames.do { |key, i|
 				var value = ~args[i] ?? { ~defaults[i].value },
@@ -948,8 +950,8 @@ protect {
 			};
 			currentEnvironment
 		};
-		~defaultNames = #[baseItems, match, numToAdd, quant, prob, insPool, wildcards];
-		~defaults = [nil, nil, 1, 0.25, 0.75, nil, nil];
+		~defaultNames = #[/*baseItems,*/ match, numToAdd, quant, prob, insPool, wildcards];
+		~defaults = [/*nil,*/ nil, 1, 0.25, 0.75, nil, nil];
 		// expand this later
 		~validation = [nil, nil, \isNumProxy, \isNumProxy, \isNumProxy, nil, nil];
 		~isNumProxy = { |thing, key|
@@ -1010,9 +1012,9 @@ protect {
 	}.import((clGenPitch: #[artic])) => PR(\clGenStutt);
 
 	PR(\clGenStutt).clone {
-		~poolArgs = { [~args[2]] };
-		~defaultNames = #[baseItems, maxDur, insPool, wildcards];
-		~defaults = [nil, 0.5, [(item: $x, time: 0)], nil];
+		~poolArgs = { [~args[1]] };
+		~defaultNames = #[/*baseItems,*/ maxDur, insPool, wildcards];
+		~defaults = [/*nil,*/ 0.5, [(item: $x, time: 0)], nil];
 		~validation = [nil, \isNumProxy, nil, nil];
 		~process = {
 			var lastEvent, localItems, new, maxDur;
@@ -1039,9 +1041,8 @@ protect {
 
 	PR(\clGenIns).clone {
 		~prep = {
-			~baseItems = ~args[0];
-			~pool = ~args[1];
-			~quant = ~args[2] ?? { 0.25 };
+			~pool = ~args[0];
+			~quant = ~args[1] ?? { 0.25 };
 			~weights = ~args[3..];
 			if(~weights.last.isSymbol) {
 				~initRest = true;
@@ -1136,14 +1137,13 @@ protect {
 		];
 		~numToAdd = 1e10;  // hack: ~modifySource does min(~numToAdd, avail.size)
 		~prep = {
-			~baseItems = ~args[0];
-			~pool = ~args[1].asArray;
+			~pool = ~args[0].asArray;
 			~checkEmpty.(~pool, "pool");
-			~maxDelta = ~args[2] ?? { 1 };
-			~factor = ~args[3] ?? { 2 };
-			~minNotes = ~args[4] ?? { 3 };
-			~maxNotes = ~args[5] ?? { 1e10 };
-			~distribution = ~args[6] ?? { \exp };
+			~maxDelta = ~args[1] ?? { 1 };
+			~factor = ~args[2] ?? { 2 };
+			~minNotes = ~args[3] ?? { 3 };
+			~maxNotes = ~args[4] ?? { 1e10 };
+			~distribution = ~args[5] ?? { \exp };
 			~parameters = ~args[7..];
 
 			#[maxDelta, factor, minNotes, maxNotes].do { |key|
@@ -1225,13 +1225,12 @@ protect {
 	PR(\clGenRDelta).clone {
 		~numToAdd = 1e10;  // hack: ~modifySource does min(~numToAdd, avail.size)
 		~prep = {
-			~baseItems = ~args[0];
-			~pool = ~args[1].asArray;
+			~pool = ~args[0].asArray;
 			~checkEmpty.(~pool, "pool");
-			~initDelta = ~args[2] ?? { 1 };
-			~midDelta = ~args[3] ?? { 0.1 };
-			~midpoint = ~args[4] ?? { 1 };
-			~curve = ~args[5] ?? { 0 };
+			~initDelta = ~args[1] ?? { 1 };
+			~midDelta = ~args[2] ?? { 0.1 };
+			~midpoint = ~args[3] ?? { 1 };
+			~curve = ~args[4] ?? { 0 };
 
 			#[initDelta, midDelta, midpoint, curve].do { |key|
 				var value = key.envirGet;
@@ -1275,7 +1274,7 @@ protect {
 		~modifySource = {
 			var quant = ~quant.next,
 			possShifts = (quant ?? { 0.25 }) * [-1, 1],
-			numToShift = (~args[2] ?? { 1 }).next;
+			numToShift = (~args[1] ?? { 1 }).next;
 			// check number of source items present in the match pool (but only if match was explicitly given)
 			// it's possible to ask for 4 shifts but the source has only two shiftable items
 			// reduce to 2 in that case
@@ -1342,12 +1341,11 @@ protect {
 	PR(\clGen).clone {
 		~poolArgs = nil;
 		~prep = {
-			~baseItems = ~args[0];
-			~quant = ~args[1];
+			~quant = ~args[0];
 			if(~isNumProxy.(~quant).not) {
 				Error("\rot() quant must be a number").throw;
 			};
-			~match = ~args[2].collect(_.item);  // also handles nil; not really a pool
+			~match = ~args[1].collect(_.item);  // also handles nil; not really a pool
 			currentEnvironment
 		};
 		~process = {
@@ -1388,24 +1386,23 @@ protect {
 	} => PR(\clGenRot);
 
 	PR(\clGen).clone {
-		~poolArgs = { [~args[1]] };
+		~poolArgs = { [~args[0]] };
 		~prep = {
-			~baseItems = ~args[0];
-			~pool = ~args[1] ?? { "_" };
+			~pool = ~args[0] ?? { "_" };
 			~checkArticPool.(~pool);
-			~wildcards = ~args[2];
-			~override = ~args[3] ?? { 1 };
+			~wildcards = ~args[1];
+			~override = ~args[2] ?? { 1 };
 			if(~wildcards.notNil) {
 				~wildcards = ~wildcards.collect(_.item);
 			};
 			~poolStream = Prand(~pool.asArray, inf).asStream;
 			// Possible future feature
-			// ~durSplit = ~args[1];
+			// ~durSplit = ~args[0];
 			// if(~durSplit.isNumber.not) {
 			// 	Error("\artic() durSplit must be a number").throw;
 			// };
-			// ~shortPool = ~args[2];
-			// ~longPool = ~args[3] ?? { ~args[2] };
+			// ~shortPool = ~args[1];
+			// ~longPool = ~args[2] ?? { ~args[1] };
 			currentEnvironment
 		};
 		~process = {
@@ -1430,11 +1427,11 @@ protect {
 	}.import((clGenPitch: #[artic])) => PR(\clGenArtic);
 
 	PR(\clGen).clone {
-		~poolArgs = { [~args[1]] };
+		~poolArgs = { [~args[0]] };
 		~prep = {
-			~srcParm = ~args[0];
-			~pool = ~args[1].asArray;
-			~srcBP = ~args[2] ?? { ~bpKey };
+			// ~srcParm = ~args[0];
+			~pool = ~args[0].asArray;
+			~srcBP = ~args[1] ?? { ~bpKey };
 			if(BP.exists(~srcBP)) {
 				// will throw DoesNotUnderstand if there's no defaultParm
 				if(~srcParm.isNil) { ~srcParm = BP(~srcBP).defaultParm };
@@ -1490,8 +1487,7 @@ protect {
 	// \fork(items, "\gen()| \gen()|...")
 	PR(\clGen).clone {
 		~prep = {
-			~baseItems = ~args[0];
-			~generators = ~args[1];
+			~generators = ~args[0];
 			currentEnvironment
 		};
 		~process = {
@@ -1544,7 +1540,6 @@ protect {
 	PR(\clGen).clone {
 		~prep = {
 			var stream, thing;
-			~baseItems = ~args[0];
 			~list = Array.new;
 			~weights = Array.new;
 			stream = Pseq(~args.drop(1), 1).asStream;
