@@ -419,7 +419,7 @@ PR(\abstractClParseNode).clone {
 	};
 
 	~parseItem = { |stream, ch|
-		var new, begin, colonCount, rewindPos;
+		var new, begin;
 		// [ch.asCompileString, stream.collection[stream.pos .. stream.pos + 10]].debug(">> parseItem");
 		if(ch.isNil) { ch = stream.next };
 		begin = stream.pos - 1;
@@ -429,21 +429,22 @@ PR(\abstractClParseNode).clone {
 			new = PR(\clGeneratorNode).copy
 			.putAll((bpKey: ~bpKey, isPitch: ~isPitch, isMain: ~isMain, parm: ~parm))
 			.prep(stream, currentEnvironment);
-			if(stream.peek == $:) {
-				colonCount = 0;
-				rewindPos = stream.pos;
-				while { stream.next == $: } { colonCount = colonCount + 1 };
-				if(colonCount == 2) {
-					stream.pos = stream.pos - 1;  // need next to be the backslash
-					new = PR(\clChainNode).copy
-					.putAll((bpKey: ~bpKey, isPitch: ~isPitch, isMain: ~isMain, parm: ~parm))
-					.prep(stream, currentEnvironment, new);  // 3rd arg is first item in the chain
-				} {
-					Error("'::' syntax, wrong number of colons").throw;
-				};
-			};
+			new = ~handleChain.(stream, new);
 			~children = ~children.add(new);
 			new//.debug("<< parseItem");
+		}
+		{ ch == $[ } {
+			stream.pos = stream.pos - 1;
+			new = PR(\clSourceNode).copy
+			.putAll((bpKey: ~bpKey, isPitch: ~isPitch, isMain: ~isMain, parm: ~parm))
+			.prep(stream, currentEnvironment);
+			new = ~handleChain.(stream, new);
+			~children = ~children.add(new);
+			new//.debug("<< parseItem");
+		}
+		// legit chains should be handled in one of the above branches
+		{ stream.collection[stream.pos .. stream.pos + 2] == "::\\" } {
+			Error(":: chain syntax applies only to generators or [source]").throw;
 		}
 		{ ~isPitch } {
 			if(ch.isDecDigit) {
@@ -485,6 +486,27 @@ PR(\abstractClParseNode).clone {
 			);
 			new//.debug("<< parseItem");
 		};
+	};
+
+	~handleChain = { |stream, new|
+		var begin, colonCount, rewindPos;
+		// if(#[clGeneratorNode, clSourceNode].includes(new.nodeType.debug("nodeType")).not) {
+		// 	Error(":: chain syntax applies only to generators or [source]").throw;
+		// };
+		if(stream.peek == $:) {
+			colonCount = 0;
+			rewindPos = stream.pos;
+			while { stream.next == $: } { colonCount = colonCount + 1 };
+			if(colonCount == 2) {
+				stream.pos = stream.pos - 1;  // need next to be the backslash
+				new = PR(\clChainNode).copy
+				.putAll((bpKey: ~bpKey, isPitch: ~isPitch, isMain: ~isMain, parm: ~parm))
+				.prep(stream, currentEnvironment, new);  // 3rd arg is first item in the chain
+			} {
+				Error("'::' syntax, wrong number of colons").throw;
+			};
+		};
+		new
 	};
 
 	~hasItems = { ~children.any { |item| item.isSpacer.not } };
@@ -641,7 +663,9 @@ PR(\abstractClParseNode).clone {
 
 	~streamCode = { |stream|
 		var name = ~children[0].string;
-		if(~children[1].isNil or: { ~children[1][\time].isNil }) { ~setTime.(~time, ~dur) };
+		// if(~children[1].isNil or: { ~children[1][\time].isNil }) {
+			~setTime.(~time, ~dur);
+		// };
 		stream << "PR(\\clGen";
 		if(name.size > 0) {
 			stream << name[0].toUpper << name[1..];
@@ -774,6 +798,56 @@ PR(\clGeneratorNode).clone {
 		~superParse.(stream);
 	};
 } => PR(\clRhythmGenNode);
+
+PR(\abstractClParseNode).clone {
+	~isPitch = false;
+	~parse = { |stream|
+		var str = String.new, ch, divider;
+		// stream.collection[stream.pos .. stream.pos + 10].debug(">> clPatStringNode");
+		if(stream.peek != $[) {
+			Error("Invalid bracketed source string").throw;
+		};
+		while {
+			ch = stream.next;
+			ch.notNil and: { ch != $] }
+		} {
+			divider = PR(\clDividerNode).copy
+			.putAll((bpKey: ~bpKey, isPitch: ~isPitch, isMain: ~isMain, parm: ~parm, endChars: "|]"))
+			.prep(stream, currentEnvironment)
+		};
+		if(ch != $]) {
+			Error("Unterminated bracketed source string").throw;
+		};
+		~children.add(divider);
+		// stream.collection[~begin .. ~begin + 10].debug("<< clPatStringNode");
+	};
+	~streamCode = { |stream|
+		~setTime.(~time, ~dur);
+		stream << "PR(\\clGenSrc).copy.putAll((";
+		stream << "bpKey: " <<< ~bpKey;
+		stream << ", args: [ [ ";
+		~children.do { |child, i|
+			if(i > 0) { stream << ", " };
+			if(child.string == "") {
+				stream << "nil"
+			} {
+				child.streamCode(stream);
+			};
+		};
+		stream << " ] ], dur: " << ~dur << ", time: " << ~time;
+		stream << ", isPitch: " << (~isPitch ?? { false });
+		stream << ", isMain: " << (~isMain ?? { false });
+		stream << ", parm: " <<< ~parm;
+		stream << ")).prep";
+		currentEnvironment
+	};
+	~setTime = { |onset(0), dur(4)|
+		~time = onset;
+		~dur = dur;
+		~children.do { |item| item.setTime(onset, dur) };
+		currentEnvironment
+	};
+} => PR(\clSourceNode);
 
 PR(\abstractClParseNode).clone {
 	~isPitch = false;
