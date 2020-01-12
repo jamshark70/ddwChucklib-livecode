@@ -905,7 +905,7 @@ protect {
 		~snippet.("div", "\\div(##src, pool, replaceItems, numToAdd, quant, divisor, divisible##)");
 	} => PR(\clGenDiv);
 
-	// \stutt(source, pool, numToAdd, quant, prob, insItem "-")
+	// \stutt(source, match, numToAdd, quant, prob, insItem "-")
 	// choose numToAdd of "pool" items and of these, add more items after it
 	PR(\clGenIns).clone {
 		~poolArgs = { [~args[5]] };
@@ -939,7 +939,7 @@ protect {
 					new
 				}
 			};
-			~poolItems = ~pool.collect(_.item);
+			~matchItems = ~match.asArray.collect(_.item);
 			if(~wildcards.isNil) {
 				~wildcardCheck = true;
 			} {
@@ -948,8 +948,8 @@ protect {
 			};
 			currentEnvironment
 		};
-		~defaultNames = #[baseItems, pool, numToAdd, quant, prob, insPool, wildcards];
-		~defaults = [nil, Error("Must specify pool"), 1, 0.25, 0.75, nil, nil];
+		~defaultNames = #[baseItems, match, numToAdd, quant, prob, insPool, wildcards];
+		~defaults = [nil, nil, 1, 0.25, 0.75, nil, nil];
 		// expand this later
 		~validation = [nil, nil, \isNumProxy, \isNumProxy, \isNumProxy, nil, nil];
 		~isNumProxy = { |thing, key|
@@ -961,7 +961,7 @@ protect {
 		~canStutter = { |item, index, quant|
 			BP(~bpKey).valueIsRest(item.item, ~parm).not and: {
 				~getIndexDur.(index) >= (2 * quant) and: {
-					~poolItems.isEmpty or: { ~poolItems.includesEqual(item.item) }
+					~matchItems.isEmpty or: { ~matchItems.includesEqual(item.item) }
 					and: { ~wildcardCheck.(item[\wildcard]) }
 				}
 			}
@@ -1006,7 +1006,7 @@ protect {
 			~items.sort { |a, b| a.time < b.time }
 		};
 		~makeStream = 0;  // ~seqStream is not used here
-		~snippet.("stutt", "\\stutt(##src, pool, numToAdd, quant, prob, insItem \"-\", wildcards##)");
+		~snippet.("stutt", "\\stutt(##src, match, numToAdd, quant, prob, insItem \"-\", wildcards##)");
 	}.import((clGenPitch: #[artic])) => PR(\clGenStutt);
 
 	PR(\clGenStutt).clone {
@@ -1266,22 +1266,24 @@ protect {
 		~superprep = ~prep;
 		~prep = {
 			~superprep.();
-			~poolItems = ~pool.collect(_.item);
-			~poolStream = Pn(Pshuf(~poolItems, 1), inf).asStream;
+			// pool comes from superclass, but it isn't a "pool"
+			// it's a list of matching items
+			~matchItems = ~pool.collect(_.item);
+			~matchStream = Pn(Pshuf(~matchItems, 1), inf).asStream;
 			currentEnvironment
 		};
 		~modifySource = {
 			var quant = ~quant.next,
 			possShifts = (quant ?? { 0.25 }) * [-1, 1],
 			numToShift = (~args[2] ?? { 1 }).next;
-			// check number of source items present in the pool (but only if pool was explicitly given)
+			// check number of source items present in the match pool (but only if match was explicitly given)
 			// it's possible to ask for 4 shifts but the source has only two shiftable items
 			// reduce to 2 in that case
-			if(~poolItems.notNil) {
-				numToShift = min(numToShift, ~items.count { |item| ~poolItems.includes(item.item) });
+			if(~matchItems.notNil) {
+				numToShift = min(numToShift, ~items.count { |item| ~matchItems.includes(item.item) });
 			};
 			~endTime = ~time + ~dur;  // traverseShifts needs this value, many times
-			~traverseShifts.(numToShift, ~items, ~poolItems.copy, possShifts);
+			~traverseShifts.(numToShift, ~items, ~matchItems.copy, possShifts);
 			~items
 		};
 
@@ -1289,14 +1291,14 @@ protect {
 		// If it first moves 0.5 to 0.25, there is nowhere for 0 to go.
 		// The correct solution is to backtrack and move 0.5 to 0.75.
 		// Backtracking = recursion.
-		~traverseShifts = { |numToShift, items, pool, shiftArray, shiftedIndices(List.new)|
+		~traverseShifts = { |numToShift, items, match, shiftArray, shiftedIndices(List.new)|
 			var shiftItem, shiftIndex, shift, newTime, oldItem, tries;
 
 			if(numToShift > 0) {
 				shiftIndex = nil;
-				tries = ~poolItems.size * 2;
+				tries = ~matchItems.size * 2;
 				while { shiftIndex.isNil and: { tries > 0 } } {
-					shiftItem = ~poolStream.next;
+					shiftItem = ~matchStream.next;
 					shiftIndex = ~items.collectIndices { |item, i|
 						item.item == shiftItem and: { shiftedIndices.includes(i).not }
 					};
@@ -1312,17 +1314,17 @@ protect {
 						}) {
 							oldItem = ~items[shiftIndex];
 							~items[shiftIndex] = ~items[shiftIndex].copy.put(\time, newTime);
-							pool.remove(shiftItem);
+							match.remove(shiftItem);
 							shiftedIndices.add(shiftIndex);
 							if(numToShift > 1) {
-								if(~traverseShifts.(numToShift - 1, ~items, pool, shiftArray, shiftedIndices)) {
+								if(~traverseShifts.(numToShift - 1, ~items, match, shiftArray, shiftedIndices)) {
 									break.(newTime);
 								}
 							} {
 								break.(newTime);
 							};
 							// if we didn't break for success, undo for next iteration
-							pool = pool.add(shiftItem);
+							match = match.add(shiftItem);
 							shiftedIndices.remove(shiftIndex);
 							~items[shiftIndex] = oldItem;
 						};
@@ -1334,7 +1336,7 @@ protect {
 				true  // calling this with numToShift == 0 --> do nothing, success
 			}
 		};
-		~snippet.("shift", "\\shift(##src, pool, numToShift, quant##)");
+		~snippet.("shift", "\\shift(##src, match, numToShift, quant##)");
 	} => PR(\clGenShift);
 
 	PR(\clGen).clone {
@@ -1345,17 +1347,17 @@ protect {
 			if(~isNumProxy.(~quant).not) {
 				Error("\rot() quant must be a number").throw;
 			};
-			~pool = ~args[2].collect(_.item);  // also handles nil; not really a pool
+			~match = ~args[2].collect(_.item);  // also handles nil; not really a pool
 			currentEnvironment
 		};
 		~process = {
 			var quant = ~quant.next,
 			firstI, endTime = ~time + ~dur,
 			newItems,
-			testFunc = if(~pool.size > 0) {
+			testFunc = if(~match.size > 0) {
 				{ |item|
-					~pool.includesEqual(item[\item]) or: {
-						~pool.includesEqual(item[\wildcard])
+					~match.includesEqual(item[\item]) or: {
+						~match.includesEqual(item[\wildcard])
 					}
 				}
 			} {
@@ -1382,7 +1384,7 @@ protect {
 			};
 			~items = newItems.sort { |a, b| a[\time] < b[\time] };
 		};
-		~snippet.("rot", "\\rot(##src, quant, pool##)");
+		~snippet.("rot", "\\rot(##src, quant, match##)");
 	} => PR(\clGenRot);
 
 	PR(\clGen).clone {
