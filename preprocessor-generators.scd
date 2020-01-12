@@ -1434,7 +1434,6 @@ protect {
 		~prep = {
 			~srcParm = ~args[0];
 			~pool = ~args[1].asArray;
-			~checkEmpty.(~pool, "pool");
 			~srcBP = ~args[2] ?? { ~bpKey };
 			if(BP.exists(~srcBP)) {
 				// will throw DoesNotUnderstand if there's no defaultParm
