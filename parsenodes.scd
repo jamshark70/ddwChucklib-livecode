@@ -802,56 +802,6 @@ PR(\clGeneratorNode).clone {
 PR(\abstractClParseNode).clone {
 	~isPitch = false;
 	~parse = { |stream|
-		var str = String.new, ch, divider;
-		// stream.collection[stream.pos .. stream.pos + 10].debug(">> clPatStringNode");
-		if(stream.peek != $[) {
-			Error("Invalid bracketed source string").throw;
-		};
-		while {
-			ch = stream.next;
-			ch.notNil and: { ch != $] }
-		} {
-			divider = PR(\clDividerNode).copy
-			.putAll((bpKey: ~bpKey, isPitch: ~isPitch, isMain: ~isMain, parm: ~parm, endChars: "|]"))
-			.prep(stream, currentEnvironment)
-		};
-		if(ch != $]) {
-			Error("Unterminated bracketed source string").throw;
-		};
-		~children.add(divider);
-		// stream.collection[~begin .. ~begin + 10].debug("<< clPatStringNode");
-	};
-	~streamCode = { |stream|
-		~setTime.(~time, ~dur);
-		stream << "PR(\\clGenSrc).copy.putAll((";
-		stream << "bpKey: " <<< ~bpKey;
-		stream << ", args: [ [ ";
-		~children.do { |child, i|
-			if(i > 0) { stream << ", " };
-			if(child.string == "") {
-				stream << "nil"
-			} {
-				child.streamCode(stream);
-			};
-		};
-		stream << " ] ], dur: " << ~dur << ", time: " << ~time;
-		stream << ", isPitch: " << (~isPitch ?? { false });
-		stream << ", isMain: " << (~isMain ?? { false });
-		stream << ", parm: " <<< ~parm;
-		stream << ")).prep";
-		currentEnvironment
-	};
-	~setTime = { |onset(0), dur(4)|
-		~time = onset;
-		~dur = dur;
-		~children.do { |item| item.setTime(onset, dur) };
-		currentEnvironment
-	};
-} => PR(\clSourceNode);
-
-PR(\abstractClParseNode).clone {
-	~isPitch = false;
-	~parse = { |stream|
 		var str = String.new, ch, didOpenQuote = false;
 		// stream.collection[stream.pos .. stream.pos + 10].debug(">> clPatStringNode");
 		while {
@@ -906,6 +856,53 @@ PR(\abstractClParseNode).clone {
 		currentEnvironment
 	};
 } => PR(\clPatStringNode);
+
+PR(\abstractClParseNode).clone {
+	~isPitch = false;
+	~parse = { |stream|
+		var str = String.new, ch;
+		// stream.collection[stream.pos .. stream.pos + 10].debug(">> clPatStringNode");
+		if(stream.peek != $[) {
+			Error("Invalid bracketed source string").throw;
+		};
+		while {
+			ch = stream.next;
+			ch.notNil and: { ch != $] }
+		} {
+			~children = ~children.add(PR(\clDividerNode).copy
+				.putAll((bpKey: ~bpKey, isPitch: ~isPitch, isMain: ~isMain, parm: ~parm, endChars: "|]"))
+				.prep(stream, currentEnvironment)
+			);
+		};
+		if(ch != $]) {
+			Error("Unterminated bracketed source string").throw;
+		};
+		// stream.collection[~begin .. ~begin + 10].debug("<< clPatStringNode");
+	};
+	~streamCode = { |stream|
+		var needComma = false;
+		~setTime.(~time, ~dur);
+		stream << "PR(\\clGenSrc).copy.putAll((";
+		stream << "bpKey: " <<< ~bpKey;
+		stream << ", args: [ [ ";
+		~children.do { |child, i|
+			if(child.hasItems) /*{
+				stream << "nil"
+			}*/ {
+				if(needComma) { stream << ", " };
+				child.streamCode(stream);
+				needComma = true;
+			};
+		};
+		stream << " ] ], dur: " << ~dur << ", time: " << ~time;
+		stream << ", isPitch: " << (~isPitch ?? { false });
+		stream << ", isMain: " << (~isMain ?? { false });
+		stream << ", parm: " <<< ~parm;
+		stream << ")).prep";
+		currentEnvironment
+	};
+	~setTime = PR(\clPatStringNode).v[\setTime];
+} => PR(\clSourceNode);
 
 PR(\abstractClParseNode).clone {
 	~clClass = BP;
