@@ -1429,9 +1429,9 @@ protect {
 	PR(\clGen).clone {
 		~poolArgs = { [~args[0]] };
 		~prep = {
-			// ~srcParm = ~args[0];
-			~pool = ~args[0].asArray;
-			~srcBP = ~args[1] ?? { ~bpKey };
+			~srcParm = ~args[0];
+			~pool = ~args[1].asArray;
+			~srcBP = ~args[2] ?? { ~bpKey };
 			if(BP.exists(~srcBP)) {
 				// will throw DoesNotUnderstand if there's no defaultParm
 				if(~srcParm.isNil) { ~srcParm = BP(~srcBP).defaultParm };
