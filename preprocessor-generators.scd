@@ -394,7 +394,7 @@ protect {
 		};
 		~canBePool = true;
 		~helpString = "\\seq(\"items\")";
-		~snippet.("seq", "\\seq(##src, items, wildcards, reset##)");
+		~snippet.("seq", "\\seq(##items, wildcards, reset##)");
 	} => PR(\clGenSeq);
 
 	PR(\clGenSeq).clone {
@@ -406,7 +406,7 @@ protect {
 			Prand(~pool, ~repeats).embedInStream(inval)
 		};
 		~helpString = "\\rand(\"timing\", \"items\")";
-		~snippet.("rand", "\\rand(##src, items, wildcards##)");
+		~snippet.("rand", "\\rand(##items, wildcards##)");
 	} => PR(\clGenRand);
 
 	PR(\clGenSeq).clone {
@@ -417,7 +417,7 @@ protect {
 			Pxrand(~pool, ~repeats).embedInStream(inval)
 		};
 		~helpString = "\\xrand(\"items\")";
-		~snippet.("xrand", "\\xrand(##src, items, wildcards, reset##)");
+		~snippet.("xrand", "\\xrand(##items, wildcards, reset##)");
 	} => PR(\clGenXrand);
 
 	PR(\clGenSeq).clone {
@@ -461,7 +461,7 @@ protect {
 			};
 		};
 		~helpString = "\\gdefn(, `key)";
-		~snippet.("gdefn", "\\gdefn(, `##key##, \"wildcards\", reset)");
+		~snippet.("gdefn", "\\gdefn(`##key##, \"wildcards\", reset)");
 	} => PR(\clGenGdefn);
 
 	// similar, but each BP has its own stream repository
@@ -480,7 +480,7 @@ protect {
 				};
 			};
 		};
-		~snippet.("pdefn", "\\pdefn(, `##key##, \"wildcards\", reset)");
+		~snippet.("pdefn", "\\pdefn(`##key##, \"wildcards\", reset)");
 	} => PR(\clGenPdefn);
 
 	PR(\clGenSeq).clone {
@@ -508,7 +508,7 @@ protect {
 			};
 		};
 		~helpString = "\\wrand(\"items\", weight0, weight1...)";
-		~snippet.("wrand", "\\wrand(##src, items, wildcards, weights...##)");
+		~snippet.("wrand", "\\wrand(##items, wildcards, weights...##)");
 	} => PR(\clGenWrand);
 
 	PR(\clGenSeq).clone {
@@ -519,7 +519,7 @@ protect {
 			Pn(Pshuf(~pool, 1), ~repeats).embedInStream(inval)
 		};
 		~helpString = "\\shuf(\"items\")";
-		~snippet.("shuf", "\\shuf(##src, items, wildcards, reset##)");
+		~snippet.("shuf", "\\shuf(##items, wildcards, reset##)");
 	} => PR(\clGenShuf);
 
 	PR(\clGenSeq).clone {
@@ -564,7 +564,7 @@ protect {
 				new
 			}.asStream;
 		};
-		~snippet.("pitch", "\\pitch(##src, replaceItems, intervalPool, fallbackMin, fallbackMax, articPool##)");
+		~snippet.("pitch", "\\pitch(##replaceItems, intervalPool, fallbackMin, fallbackMax, articPool##)");
 	} => PR(\clGenPitch);
 
 	PR(\clGenPitch).clone {
@@ -599,7 +599,7 @@ protect {
 				}
 			}
 		};
-		~snippet.("pitch2", "\\pitch2(##src, replaceItems, intervalPool, fallbackMin, fallbackMax, articPool, connect##)");
+		~snippet.("pitch2", "\\pitch2(##replaceItems, intervalPool, fallbackMin, fallbackMax, articPool, connect##)");
 	} => PR(\clGenPitch2);
 
 	// transposition: choose interval from pool.
@@ -640,13 +640,13 @@ protect {
 				.put(\item, item.item.copy.freq_(item.item.asFloat + interval));
 			} { item };
 		};
-		~snippet.("xpose", "\\xpose(##src, intervalPool, wildcards##)");
+		~snippet.("xpose", "\\xpose(##intervalPool, wildcards##)");
 	} => PR(\clGenXpose);
 
 	PR(\clGenSeq).clone {
 		~poolArgs = { [~args[0]] };
 		~canBePool = false;
-		~snippet.("prev", "\\prev(##src, pool, replaceItems, staccDur##)");
+		~snippet.("prev", "\\prev(##pool, replaceItems, staccDur##)");
 		~prep = {
 			~pool = ~args[0] ?? { [] };
 			// empty pool = ignored
@@ -794,7 +794,7 @@ protect {
 			};
 			avail + ~time
 		};
-		~snippet.("ins", "\\ins(##src, pool, numToAdd, quant##)");
+		~snippet.("ins", "\\ins(##pool, numToAdd, quant##)");
 	} => PR(\clGenIns);
 
 	// quant is minimum duration to divide
@@ -904,7 +904,7 @@ protect {
 				~items.first.item
 			}
 		};
-		~snippet.("div", "\\div(##src, pool, replaceItems, numToAdd, quant, divisor, divisible##)");
+		~snippet.("div", "\\div(##pool, replaceItems, numToAdd, quant, divisor, divisible##)");
 	} => PR(\clGenDiv);
 
 	// \stutt(source, match, numToAdd, quant, prob, insItem "-")
@@ -1008,7 +1008,7 @@ protect {
 			~items.sort { |a, b| a.time < b.time }
 		};
 		~makeStream = 0;  // ~seqStream is not used here
-		~snippet.("stutt", "\\stutt(##src, match, numToAdd, quant, prob, insItem \"-\", wildcards##)");
+		~snippet.("stutt", "\\stutt(##match, numToAdd, quant, prob, insItem \"-\", wildcards##)");
 	}.import((clGenPitch: #[artic])) => PR(\clGenStutt);
 
 	PR(\clGenStutt).clone {
@@ -1036,7 +1036,7 @@ protect {
 			~items
 		};
 		~protoID = \clGenChoke;
-		~snippet.("choke", "\\choke(##src, maxDur, pool, wildcards##)");
+		~snippet.("choke", "\\choke(##maxDur, pool, wildcards##)");
 	}.import((clGenIns: #[insertItem])) => PR(\clGenChoke);
 
 	PR(\clGenIns).clone {
@@ -1102,7 +1102,7 @@ protect {
 			};
 			currentEnvironment
 		};
-		~snippet.("delta", "\\delta(##src, pool, quant, weights...##)");
+		~snippet.("delta", "\\delta(##pool, quant, weights...##)");
 	} => PR(\clGenDelta);
 
 	// non-metric generators
@@ -1217,7 +1217,7 @@ protect {
 			avail
 		};
 
-		~snippet.("rDelta", "\\rDelta(##src, pool, maxDelta, factor, minNotes, maxNotes, distribution, parameters##)");
+		~snippet.("rDelta", "\\rDelta(##pool, maxDelta, factor, minNotes, maxNotes, distribution, parameters##)");
 		~protoID = \clGenRDelta;
 	} => PR(\clGenRDelta);
 
@@ -1256,7 +1256,7 @@ protect {
 			~checkDups.(avail * (~dur / now), times, tolerance) + ~time
 		};
 
-		~snippet.("ramp", "\\ramp(##src, pool, initDelta, midDelta, midpoint, curve##)");
+		~snippet.("ramp", "\\ramp(##pool, initDelta, midDelta, midpoint, curve##)");
 		~protoID = \clGenRamp;
 	} => PR(\clGenRamp);
 
@@ -1335,7 +1335,7 @@ protect {
 				true  // calling this with numToShift == 0 --> do nothing, success
 			}
 		};
-		~snippet.("shift", "\\shift(##src, match, numToShift, quant##)");
+		~snippet.("shift", "\\shift(##match, numToShift, quant##)");
 	} => PR(\clGenShift);
 
 	PR(\clGen).clone {
@@ -1382,7 +1382,7 @@ protect {
 			};
 			~items = newItems.sort { |a, b| a[\time] < b[\time] };
 		};
-		~snippet.("rot", "\\rot(##src, quant, match##)");
+		~snippet.("rot", "\\rot(##quant, match##)");
 	} => PR(\clGenRot);
 
 	PR(\clGen).clone {
@@ -1423,7 +1423,7 @@ protect {
 				item
 			};
 		};
-		~snippet.("artic", "\\artic(##src, articPool, wildcards##)");
+		~snippet.("artic", "\\artic(##articPool, wildcards##)");
 	}.import((clGenPitch: #[artic])) => PR(\clGenArtic);
 
 	PR(\clGen).clone {
@@ -1534,7 +1534,7 @@ protect {
 			~generators.do(~checkOne);
 		};
 
-		~snippet.("fork", "\\fork(##src, genString##)");
+		~snippet.("fork", "\\fork(##genString##)");
 	} => PR(\clGenFork);
 
 	PR(\clGen).clone {
@@ -1579,7 +1579,7 @@ protect {
 			};
 			~items = str.flatten(1);
 		};
-		~snippet.("oneof", "\\oneof(##src, genStrings/probs##)");
+		~snippet.("oneof", "\\oneof(##genStrings/probs##)");
 	} => PR(\clGenOneof);
 
 	// \gen1(...)::\gen2(...)::\gen3(...)
