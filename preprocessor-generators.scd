@@ -953,7 +953,7 @@ protect {
 		~defaultNames = #[/*baseItems,*/ match, numToAdd, quant, prob, insPool, wildcards];
 		~defaults = [/*nil,*/ nil, 1, 0.25, 0.75, nil, nil];
 		// expand this later
-		~validation = [nil, nil, \isNumProxy, \isNumProxy, \isNumProxy, nil, nil];
+		~validation = [/*nil,*/ nil, \isNumProxy, \isNumProxy, \isNumProxy, nil, nil];
 		~isNumProxy = { |thing, key|
 			if(thing.tryPerform(\isNumProxy) != true) {
 				"BP(%): %'s % input expected number"
@@ -1015,7 +1015,7 @@ protect {
 		~poolArgs = { [~args[1]] };
 		~defaultNames = #[/*baseItems,*/ maxDur, insPool, wildcards];
 		~defaults = [/*nil,*/ 0.5, [(item: $x, time: 0)], nil];
-		~validation = [nil, \isNumProxy, nil, nil];
+		~validation = [/*nil,*/ \isNumProxy, nil, nil];
 		~process = {
 			var lastEvent, localItems, new, maxDur;
 			~items = ~getUpstreamItems.();
@@ -1043,7 +1043,7 @@ protect {
 		~prep = {
 			~pool = ~args[0];
 			~quant = ~args[1] ?? { 0.25 };
-			~weights = ~args[3..];
+			~weights = ~args[2..];
 			if(~weights.last.isSymbol) {
 				~initRest = true;
 				~weights = ~weights.drop(-1);
