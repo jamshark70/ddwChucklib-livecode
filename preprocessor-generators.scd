@@ -1232,7 +1232,11 @@ protect {
 			~midpoint = ~args[3] ?? { 1 };
 			~curve = ~args[4] ?? { 0 };
 
-			#[initDelta, midDelta, midpoint, curve].do { |key|
+			if(~isNumProxy.(~curve).not and: { Env.shapeNames[~curve].isNil }) {
+				Error("%: curve '%' is invalid".format(~protoID, ~curve)).throw;
+			};
+
+			#[initDelta, midDelta, midpoint].do { |key|
 				var value = key.envirGet;
 				if(~isNumProxy.(value).not) {
 					Error("%: % '%' is not a number".format(~protoID, key, value)).throw;
