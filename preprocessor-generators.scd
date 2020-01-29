@@ -422,6 +422,15 @@ protect {
 
 	PR(\clGenSeq).clone {
 		~poolArgs = nil;
+		~superprep = ~prep;
+		~prep = {
+			~superprep.();
+			~pool = ~args[0];  // 'super' wrapped this in an array
+			if(Pdefn.all[~pool].isNil) {
+				Error("'%': gdefn can't find Pdefn key '%'".format(~bpKey, ~args[0])).throw;
+			};
+			currentEnvironment
+		};
 		// The whole point of a "reference" generator is:
 		// Every instance should share the same stream.
 		// Pdefn(key).asStream follows SC convention and makes
