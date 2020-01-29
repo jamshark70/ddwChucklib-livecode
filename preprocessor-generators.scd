@@ -1066,12 +1066,9 @@ protect {
 		~modifySource = {
 			var avail, didInsertFirst = false,
 			quant = ~quant.next, weights = ~weights.next;
-			~availPat = Pseries(
-				~time,
-				Pconst(~dur, Pwrand(Array.series(weights.size, quant, quant), weights, inf)),
-				inf
-			);
-			avail = ~getAvail.(~items, quant);
+			~deltaPool = Array.series(weights.size, quant, quant);
+			~deltaStream = Pwrand(~deltaPool, Pfunc { |w| w }, inf).asStream;
+			avail = ~getAvail.(~items, quant, weights);
 			avail.size.do { |i|
 				var newTime = avail[i],
 				new;
@@ -1093,10 +1090,37 @@ protect {
 			};
 			~items
 		};
-		~getAvail = { |items, quant|
-			// for now, just blow away existing items
-			// future: recursive testing to avoid existing items
-			~availPat.asStream.all;
+		~getAvail = { |items, quant, weights|
+			var now = ~time, end = ~time + ~dur,
+			avail = Array.new, tolerance = 0.001,
+			delta, tempWeights, next = 0, i, deleted;
+			while { now < (end - tolerance) } {
+				if(items.every { |item| (next absdif: item[\time]) > tolerance }) {
+					avail = avail.add(now);
+				};
+				delta = ~deltaStream.next(weights);
+				next = now + delta;
+				if(items.any { |item| (next absdif: item[\time]) < tolerance }) {
+					// there was already something there; try other options
+					tempWeights = weights.copy;
+					deleted = 0;
+					while { deleted < (weights.size - 1) } {
+						i = ~deltaPool.indexOf(delta);
+						// tried this one and failed, so delete its probability
+						tempWeights = tempWeights.put(i, 0).normalizeSum;
+						deleted = deleted + 1;
+						delta = ~deltaStream.next(tempWeights);
+						next = now + delta;
+						if(items.every { |item| (next absdif: item[\time]) < tolerance }) {
+							deleted = inf;  // got one, drop out
+						};
+					};
+					// if succeeded, then the slot at 'next' is empty
+					// 'next' may have failed, but no matter, check for the next one
+				};
+				now = next;
+			};
+			avail
 		};
 		~insertItem = { |new|
 			var insertI = ~items.detectIndex { |item| new[\time] <= item[\time] };
