@@ -552,7 +552,7 @@ PR(\abstractClParseNode).clone {
 	~isPitch = false;
 	~types = [
 		(type: \clRhythmGenNode, regexp: "^:[a-zA-Z0-9_]+\\(.*\\)"),
-		(type: \clGeneratorNode, regexp: "^\\\\[a-zA-Z0-9_]+(\\*[0-9]+( *\\.\\. *[0-9]+)?)?\\(.*\\)"),
+		(type: \clGeneratorNode, regexp: "^\\\\[a-zA-Z0-9_]+"),
 		(type: \clPassthruNumberNode, regexp: "^\{.*\}"),
 		// more specific "" test must come first
 		(type: \clArticPoolNode, regexp: "^\"[._~>]+\"",
