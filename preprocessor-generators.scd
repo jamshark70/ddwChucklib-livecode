@@ -696,7 +696,7 @@ protect {
 				};
 				if(prevIndex < 0) {
 					// if none, choose from pool
-					new = ~pool.next;
+					new = ~poolStream.next;
 					if(new.notNil) {
 						new = new.item.copy;
 					} {
