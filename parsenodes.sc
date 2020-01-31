@@ -192,19 +192,19 @@ ClAbstractParseNode {
 }
 
 ClStringNode : ClAbstractParseNode {
-	var <>openDelimiter = "", <>closeDelimiter = "";
+	var <>openDelimiter = "", <>closeDelimiter = "", <>endTest;
 	// assumes you've skipped the opening delimiter
 	parse { |stream|
 		var str = String.new, ch;
+		if(endTest.isNil) { endTest = { |ch| ch == $\" } };
 		while {
 			ch = stream.next;
-			ch.notNil and: { this.endTest(ch).not }
+			ch.notNil and: { endTest.value(ch).not }
 		} {
 			str = str.add(ch);
 		};
 		if(ch.notNil) { stream.pos = stream.pos - 1 };
 	}
-	endTest { |ch| ^(ch == $\") }
 	symbol { ^string.asSymbol }
 	streamCode { |stream|
 		stream << openDelimiter << string << closeDelimiter
@@ -303,9 +303,10 @@ ClArticNode : ClStringNode {
 ClArticPoolNode : ClStringNode {
 	parse { |stream|
 		var ch;
+		if(endTest.isNil) { endTest = { |ch| ch == $\" } };
 		while {
 			ch = stream.peek;
-			ch.notNil and: { this.endTest(ch).not }
+			ch.notNil and: { endTest.value(ch).not }
 		} {
 			children = children.add(ClArticNode(stream));
 		};
