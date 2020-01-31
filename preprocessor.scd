@@ -532,7 +532,7 @@ Proto {
 	};
 
 	~patternString = { |rightHand, code|  // ~patternString *does* need the full statement
-		var parsed = PR(\clPatternSetNode).copy.prep(CollStream(code)),
+		var parsed = ClPatternSetNode(CollStream(code)),
 		id, objKey, phrase, parm, bpb, stream, yieldsKeys, wrapArray = false,
 		streamOne = { |stream, i|
 			var phraseSym = if(i.notNil) { (phrase ++ i).asSymbol } { phrase };
@@ -565,17 +565,17 @@ Proto {
 				bpb = 4;  // lame default
 			};
 		};
-		if(parsed.patStringNode.nodeType == \clPatStringNode) {
+		if(parsed.patStringNode.isKindOf(ClPatStringNode)) {
 			// wrap the clPatString in the abstract generator
 			// this is necessary to massage the event list into a playable stream
-			parsed.patStringNode = PR(\clGeneratorNode).copy.putAll((
+			parsed.patStringNode = ClGeneratorNode.newEmpty.putAll((
 				bpKey: objKey,
 				phrase: phrase,
 				parm: parm,
 				isMain: parsed.isMain,
 				isPitch: parsed.isPitch,
 				children: [
-					PR(\clStringNode).copy.put(\string, ""),
+					ClStringNode.newEmpty.string_(""),
 					parsed.patStringNode  // patString is the abstract generator's only argument
 				],
 				name: ""
@@ -2640,6 +2640,6 @@ Proto {
 }.import((abstractProcess: #[makeStreamForKey])) => PR(\abstractLiveCode);
 );
 
-["parsenodes.scd", "preprocessor-generators.scd"].do { |name|
+["preprocessor-generators.scd"].do { |name|
 	(thisProcess.nowExecutingPath.dirname +/+ name).loadPath;
 };
