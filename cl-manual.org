@@ -2087,8 +2087,8 @@ generator's duration. If @@latex:\texttt{"|||"}@@ at the outermost
 layer produces four divisions of one beat each, the same inside
 example 3's =\ins()= generator would divide 2.75 beats by 4, whereupon
 each division would consist of 11 64th-notes. These examples avoid the
-problem by supplying empty source strings. Otherwise, be careful (or,
-structure your music to take advantage of the resulting
+problem by omitting the bracketed source strings. Otherwise, be
+careful (or, structure your music to take advantage of the resulting
 Nancarrow-esque polyrhythms).
 #+END_boxnote
 
@@ -2099,19 +2099,9 @@ require arguments, an empty pair of parentheses is currently still
 required. I may remove this requirement later, but for now, it's not
 optional.)
 
-Arguments are separated by commas. Each argument should be one of the following:
+Arguments are separated by commas.
 
-- A /quoted/ string containing items to use for subsequent events. An
-  "item" may be a single character or a generator; if the pattern
-  string is for a pitch parameter, the item may consist of more than
-  one character (including octave, accidental and articulation
-  modifiers). Quotes for these strings should /not/ be escaped with
-  backslashes, even though these quoted strings appear within
-  quotes. The set pattern parser reads the pattern string up to a
-  closing quote that appears /outside/ generator expressions.
-
-- A subordinate generator expression (which must begin with a
-  backslash and end with a closing parenthesis).
+Simple arguments are as follows;
 
 - A number, which may be written as follows:
   - An integer (=12=) or floating-point number (=1.5=).
@@ -2126,16 +2116,67 @@ Arguments are separated by commas. Each argument should be one of the following:
   symbol literal syntax.
   #+END_boxnote
 
-- A Symbol, written in LISP-influenced style with an opening backtick:
-  =`name=.
+- A Symbol, written in LISP style with an opening backtick: =`name=.
+
+#+name: genSequencers
+#+caption: Complex sequencing with sub-generators.
+#+BEGIN_SRC SuperCollider -i
+(
+BP(\y).free;
+PR(\abstractLiveCode).chuck(BP(\y), nil, (
+	event: (eventKey: \default),
+	defaultParm: \degree,
+	parmMap: (degree: (isPitch: true))
+));
+)
+
+TempoClock.tempo = 140/60;
+
+/y = "\ins("*", 8, 0.5)::\seq("123")";
+
+/y+
+
+// can repeat (like Prand)
+/y = "\ins("*", 8, 0.5)::\rand("\seq("123")\seq("7854")\seq("26,")")";
+
+// no repeats (like Pxrand)
+/y = "\ins("*", 8, 0.5)::\xrand("\seq("123")\seq("7854")\seq("26,")")";
+
+// 2-5random notes after 6,
+// note here that articulation/transposition applies to sub-choices
+/y = "\ins("*", 8, 0.5)::\xrand("\seq("123")\seq("7854")\seq("26,\xrand*2..5("34567")::\xpose("1'")::\artic(".")")")";
+
+// also, articulations and transposition can be streamed this way
+/y = "\ins("*", 8, 0.5)::\seq("123")::\artic(\seq("\seq*3("_")\seq*7(".")"))";
+
+/y-
+#+END_SRC
+
+/Pool/ arguments provide collections of items. Currently, pools are used in two ways:
+
+- A list of wildcards for matching. For instance, the source string
+  may include wildcards =*= and =@=. A wildcard string ="*"= means
+  that the generator will apply only to asterisks. (="*@"= would match
+  both.)
+
+- A sequence of items with which to replace a wildcard (or, for rhythm
+  generators, to insert directly). This type of pool may be written as
+  an item string (where each item has equal probability of being
+  chosen, as in =Prand=) or as a subset of certain sequencing
+  generators:
+  - =\seq()=
+  - =\rand()=
+  - =\wrand()=
+  - =\xrand()=
+  - =\shuf()=
+  See [[genSequencers]] for examples of complex sequences produced by nested generators.
+
+Quotes for pool strings should /not/ be escaped with backslashes, even
+though these quoted strings appear within quotes. The set pattern
+parser reads the pattern string up to a closing quote that appears
+/outside/ generator expressions.
 
 # See Listing [[genRhythm1]] for examples.
-
-By convention, the first argument to any generator should be its
-source: a pattern string or generator. Generators may be freely
-composed if they follow this rule. Breaking the rule will result in
-combinations of generators that cannot be made to work. Other
-arguments are free for each generator to define.
 
 ** Generators and rhythm
 
