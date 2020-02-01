@@ -138,9 +138,17 @@ Proto {
 	~textProperties = #[font, background, stringColor];
 	~str = "";
 	~displayBookmarks = false;
+	~autoSave = true;
+	~autoSavePath = Platform.userAppSupportDir +/+ "cll-sketches";
 
 	~prep = { |parentView(~parentView), bounds(~bounds)|
-		var currentEnv = currentEnvironment;
+		var currentEnv = currentEnvironment,
+		shutdownFunc = inEnvir {
+			if(~autoSave == true) { ~doAutoSave.() };
+		};
+		if(File.exists(~autoSavePath).not) {
+			File.mkdir(~autoSavePath);
+		};
 		~parentView = parentView;
 		~bounds = bounds;
 		~view = TextView(parentView, bounds)
@@ -150,7 +158,12 @@ Proto {
 		.mouseUpAction_(inEnvir { |... args| ~prMouseUpAction.(*args) })
 		.focusGainedAction_({ currentEnv.changed(\focused, true) })
 		.focusLostAction_({ currentEnv.changed(\focused, false) })
-		.onClose_({ currentEnv.changed(\didFree) });
+		.onClose_({
+			ShutDown.remove(shutdownFunc);
+			shutdownFunc.value;
+			currentEnv.changed(\didFree)
+		});
+		ShutDown.add(shutdownFunc);
 		~textProperties.().do { |key|
 			~view.tryPerform(key.asSetter, key.envirGet);
 		};
@@ -218,6 +231,22 @@ Proto {
 			}) {
 				ddwSnippets.makeGui(view);  // changes focus to GUI window
 			}
+		};
+	};
+	~doAutoSave = {
+		var path = ~autoSavePath +/+ "cll_" ++ Date.getDate.stamp ++ ".scd";
+		var file;
+		if(~str.size > 0) {
+			file = File(path, "w");
+			if(file.isOpen) {
+				protect {
+					file << ~str;
+				} {
+					file.close;
+				}
+			} {
+				"Cll editor autosave could not write to %".format(path).warn;
+			};
 		};
 	};
 	// DO NOT OVERRIDE
