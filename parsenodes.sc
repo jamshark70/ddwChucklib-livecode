@@ -39,6 +39,7 @@ ClNumProxy {
 			valStream.next(inval)
 		};
 	}
+	value { |inval| ^this.next(inval) }
 
 	// acts as its own stream
 	// it's not a pattern, so it doesn't need stream independence
