@@ -2055,22 +2055,22 @@ begins on the second of those.
 #+name: genRhythm
 #+caption: Interaction between generator syntax and "set pattern" rhythmic notation.
 #+BEGIN_SRC {SuperCollider} -i
-// 1. \rand starts on the downbeat and occupies the whole bar.
+// 1. Chain starts on the downbeat and occupies the whole bar.
 /y = "[1,]::\ins("*", 3, 0.5)::\rand("13467", "*")";
 
 /y+;
 
-// 2. \ins and \rand start on beat 2
+// 2. Chain starts on beat 2
 // Note that a generator source can appear
 // anywhere within the bar!
 /y = "1,|[6,]::\ins("*", 3, 0.5)::\rand("13467", "*")||";
 
-// 3. \ins and \rand start on the 2nd 16th-note of beat 2
+// 3. Chain starts on the 2nd 16th-note of beat 2
 // Here, '6,' occupies time and is not a generator source.
 // So it is not bracketed.
 /y = "1,|6,\ins("*", 3, 0.5)::\rand("13467", "*")  ||";
 
-// 4. \ins and \rand starts on the 2nd 16th-note of beat 2
+// 4. Chain starts on the 2nd 16th-note of beat 2
 // and stop on the 'and' of 4
 /y = "1,|6,\ins("*", 3, 0.5)::\rand("13467", "*")  || x";
 
@@ -2082,14 +2082,12 @@ begins on the second of those.
 points /quant/ beats apart. These time points are measured from the
 beginning of the generator. In Listing [[genRhythm]], examples 3 and 4
 offset the generator by one 16th-note---so =\ins()= will syncopate by
-a 16th. Further, source strings will be compressed to fit into the
-generator's duration. If @@latex:\texttt{"|||"}@@ at the outermost
-layer produces four divisions of one beat each, the same inside
-example 3's =\ins()= generator would divide 2.75 beats by 4, whereupon
-each division would consist of 11 64th-notes. These examples avoid the
-problem by omitting the bracketed source strings. Otherwise, be
-careful (or, structure your music to take advantage of the resulting
-Nancarrow-esque polyrhythms).
+a 16th.
+
+Source strings will be compressed to fit into the available
+duration. In example 2, from the source =[6,]= to the end of the bar
+is 3 beats, so =[6,||7]= would be correct. =[6,|||7]= would divide
+the 3 beats into 4 subdivisions.
 #+END_boxnote
 
 *** Generator arguments
@@ -2118,40 +2116,6 @@ Simple arguments are as follows;
 
 - A Symbol, written in LISP style with an opening backtick: =`name=.
 
-#+name: genSequencers
-#+caption: Complex sequencing with sub-generators.
-#+BEGIN_SRC SuperCollider -i
-(
-BP(\y).free;
-PR(\abstractLiveCode).chuck(BP(\y), nil, (
-	event: (eventKey: \default),
-	defaultParm: \degree,
-	parmMap: (degree: (isPitch: true))
-));
-)
-
-TempoClock.tempo = 140/60;
-
-/y = "\ins("*", 8, 0.5)::\seq("123")";
-
-/y+
-
-// can repeat (like Prand)
-/y = "\ins("*", 8, 0.5)::\rand("\seq("123")\seq("7854")\seq("26,")")";
-
-// no repeats (like Pxrand)
-/y = "\ins("*", 8, 0.5)::\xrand("\seq("123")\seq("7854")\seq("26,")")";
-
-// 2-5random notes after 6,
-// note here that articulation/transposition applies to sub-choices
-/y = "\ins("*", 8, 0.5)::\xrand("\seq("123")\seq("7854")\seq("26,\xrand*2..5("34567")::\xpose("1'")::\artic(".")")")";
-
-// also, articulations and transposition can be streamed this way
-/y = "\ins("*", 8, 0.5)::\seq("123")::\artic(\seq("\seq*3("_")\seq*7(".")"))";
-
-/y-
-#+END_SRC
-
 /Pool/ arguments provide collections of items. Currently, pools are used in two ways:
 
 - A list of wildcards for matching. For instance, the source string
@@ -2169,7 +2133,8 @@ TempoClock.tempo = 140/60;
   - =\wrand()=
   - =\xrand()=
   - =\shuf()=
-  See [[genSequencers]] for examples of complex sequences produced by nested generators.
+  See Listing [[genSequencers]] for examples of complex sequences produced
+  by nested generators.
 
 Quotes for pool strings should /not/ be escaped with backslashes, even
 though these quoted strings appear within quotes. The set pattern
@@ -2178,7 +2143,7 @@ parser reads the pattern string up to a closing quote that appears
 
 # See Listing [[genRhythm1]] for examples.
 
-** Generators and rhythm
+** +Generators and rhythm+                                         :noexport:
 
 Previous /cll/ versions used a "rhythm generator" to supply timing,
 when a generator was used for the default parameter. (As discussed in
@@ -2214,7 +2179,7 @@ non-default parameters.
 # /beep = "^\rand("-.")  |||";
 # #+END_SRC
 
-** Built-in generators
+** Wildcard matching
 Many generators include a /wildcards/ argument. If omitted, the
 generator will apply to all items with its timespan. Otherwise, it
 will operate only on items that were produced by that generator. For
@@ -2224,27 +2189,28 @@ leave closed hi-hats alone, I can specify ="-"= for /wildcards/.
 #+BEGIN_SRC SuperCollider -i
 TempoClock.tempo = 124/60;
 /hh.(\synthhh);
-/shh = "\ins(, "-", 2, 0.5)::\ins(, ".", 8, 0.5)::\choke(, 0.25, ".", "-")";
+/shh = "\ins("-", 2, 0.5)::\ins(".", 8, 0.5)::\choke(0.25, ".", "-")";
 /shh+
 
 /shh-
 #+END_SRC
 
+** Built-in generators
 *** Rhythm generators
 
-- =\ins("source", "new items", numToAdd, quant)= :: Locates unoccupied
+- =\ins("new items", numToAdd, quant)= :: Locates unoccupied
      metric positions within the bar, every /quant/ beats apart
      beginning with the generator's onset time, chooses /numToAdd/ of
      them randomly, and inserts new items at those positions.
 
-- =\shift("source", "shiftable items", numToShift, quant)= :: Locates
+- =\shift("shiftable items", numToShift, quant)= :: Locates
      /numToShift/ occurrences of the /shiftable items/ within the
      source (they must already exist), and moves them forward or back
      by /quant/ beats. A good way to get syncopation is to insert
      items on a strong beat, and then shift them by a smaller
      subdivision.
 
-- =\rot("source", quant)= :: Add /quant/ to every item's onset time,
+- =\rot(quant)= :: Add /quant/ to every item's onset time,
      and wrap all the times into the generator's boundaries:
      basically, a strict canon.
      #+BEGIN_SRC SuperCollider
@@ -2253,38 +2219,38 @@ TempoClock.tempo = 124/60;
      (
      BP(\y).free;
      PR(\abstractLiveCode).chuck(BP(\y), nil, (
-     	event: (eventKey: \default, pan: -0.6),
-     	defaultParm: \degree,
-     	parmMap: (degree: (isPitch: true))
+        event: (eventKey: \default, pan: -0.6),
+        defaultParm: \degree,
+        parmMap: (degree: (isPitch: true))
      ));
      
      BP(\z).free;
      PR(\abstractLiveCode).chuck(BP(\z), nil, (
-     	event: (eventKey: \default, pan: 0.6),
-     	defaultParm: \degree,
-     	parmMap: (degree: (isPitch: true))
+        event: (eventKey: \default, pan: 0.6),
+        defaultParm: \degree,
+        parmMap: (degree: (isPitch: true))
      ));
      )
-
+     
      TempoClock.setMeterAtBeat(3, TempoClock.nextBar);
      TempoClock.tempo = 112/60;
      
-     /y = "\seq("*^*^*^*^*^*^", "268", "*")::\seq(, "37", "^")";
+     /y = "[*^*^*^*^*^*^]::\seq("268", "*")::\seq("37", "^")";
      
-     /z = "\seq("*^*^*^*^*^*^", "268", "*")::\seq(, "37", "^")";
+     /z = "[*^*^*^*^*^*^]::\seq("268", "*")::\seq("37", "^")";
      
      /y/z+;
      
-     /z = "\seq("*^*^*^*^*^*^", "268", "*")::\seq(, "37", "^")::\rot(, -0.25)";
+     /z = "[*^*^*^*^*^*^]::\seq("268", "*")::\seq("37", "^")::\rot(-0.25)";
      
-     /z = "\seq("*^*^*^*^*^*^", "268", "*")::\seq(, "37", "^")::\rot(, -0.5)";
+     /z = "[*^*^*^*^*^*^]::\seq("268", "*")::\seq("37", "^")::\rot(-0.5)";
      
-     /z = "\seq("*^*^*^*^*^*^", "268", "*")::\seq(, "37", "^")::\rot(, -0.75)";
+     /z = "[*^*^*^*^*^*^]::\seq("268", "*")::\seq("37", "^")::\rot(-0.75)";
      
      /y/z-;
      #+END_SRC
 
-- =\delta("source", "new items", quant, weights...)= :: Add items into the source
+- =\delta("new items", quant, weights...)= :: Add items into the source
      based on random selection of event deltas, as multiples of
      /quant/. If /quant/ is 0.25, then the first /weight/ is for 0.25,
      the second for 0.5 and so on; =\delta(, "*", 0.25, 3, 1, 2)=
@@ -2293,7 +2259,7 @@ TempoClock.tempo = 124/60;
      position to find the position for the next item, until reaching
      the end of the timespan.
 
-- =\choke("source", maxDur, "new items", "wildcards")= :: For every
+- =\choke(maxDur, "new items", "wildcards")= :: For every
      item within the time span, insert an item /maxDur/ beats later
      (unless the next item comes at that time point or
      earlier). =\choke("-||-.|", 1, ".")= will insert a =.= at beat 2,
@@ -2302,7 +2268,7 @@ TempoClock.tempo = 124/60;
      does not receive an extra item, because the =-= on beat 3 is
      already choked off a half beat later.
 
-- =\stutt("source", "new items", numToAdd, quant, prob, "insItem", "wildcards")= :: Choose
+- =\stutt("new items", numToAdd, quant, prob, "insItem", "wildcards")= :: Choose
      up to /numToAdd/ matching items and stutter them according to
      /quant/. /New items/ determines the items to match (if omitted,
      it matches any items, also taking /wildcards/ into account). At
@@ -2310,7 +2276,7 @@ TempoClock.tempo = 124/60;
      true. /insItem/ specifies the item to insert; if omitted, it will
      insert a copy of the existing item.
 
-- =\div("source", "new items", "replaceItems", numToAdd, quant, divisor, divisible)= :: Choose
+- =\div("new items", "replaceItems", numToAdd, quant, divisor, divisible)= :: Choose
      up to /numToAdd/ matching items (taken from /replaceItems/, which
      must be at least /quant/ beats long, and divide their duration by
      /divisor/, inserting items from /new items/. /Divisible/ can
@@ -2338,13 +2304,13 @@ TempoClock.tempo = 124/60;
 TempoClock.tempo = 124/60;
 /make(anapadVC:pad/chordBP:ch(chords:\bigch));
 /ch(leadTime = 0.01);
-/ch = "\delta(, "*", 0.5, 0, 1, 2, 2)::\shuf(, "0976")";
+/ch = "\delta("*", 0.5, 0, 1, 2, 2)::\shuf("0976")";
 /ch+
 
 /make(pulseLeadVC:pl/arpegBP:arp(chords:\bigch));
-/arp = "\unis(`note, "1", `ch)::\ins(, "*", 16, 0.25)::\seq(, "23456")::\artic(, ".")";
+/arp = "\unis(`note, "1", `ch)::\ins("*", 16, 0.25)::\seq("23456")::\artic(".")";
 /arp..top = "\unis(`note, , `ch)";
-/arp..acc = "\unis(`top, ">", `arp)::\choke(, 0.25, "-")";
+/arp..acc = "\unis(`top, ">", `arp)::\choke(0.25, "-")";
 /arp+
 
 VC(\pad).v.gui; VC(\pl).v.gui;  // adjust filters
@@ -2352,16 +2318,16 @@ VC(\pad).v.gui; VC(\pl).v.gui;  // adjust filters
 
 *** Wildcard-replacement generators
 
-- =\seq("source", "items", "wildcards", reset)= :: Replaces
+- =\seq("items", "wildcards", reset)= :: Replaces
      /wildcards/ in the source with /items/, one by one, preserving
      order. /Reset/ is optional; if it's a number greater than 0, the
      item sequence will reset on every bar.
 
-- =\rand("source", "items", "wildcards")= :: Like =\seq()=, but
+- =\rand("items", "wildcards")= :: Like =\seq()=, but
      chooses from /items/ randomly. (/Reset/ is not relevant, as there
      is no order to preserve.)
 
-- =\wrand("source", "items", "wildcards", weight0, weight1, weight2...)= :: Weighted
+- =\wrand("items", "wildcards", weight0, weight1, weight2...)= :: Weighted
      random selection, like =Pwrand=. /Weight0/ is associated with the
      first element of /items/; /weight1/ with the second, and so
      on. The generator automatically does =normalizeSum= on the
@@ -2369,15 +2335,15 @@ VC(\pad).v.gui; VC(\pl).v.gui;  // adjust filters
      1.0. Do not enclose the weights in array brackets. (As in
      =\rand()=, /reset/ is irrelevant.)
 
-- =\xrand("source", "items", "wildcards", reset)= :: Reads the items
+- =\xrand("items", "wildcards", reset)= :: Reads the items
      in random order without repeating the same item twice in a row,
      like =Pxrand=.
 
-- =\shuf("source", "items", "wildcards", reset)= :: Shuffles the items
+- =\shuf("items", "wildcards", reset)= :: Shuffles the items
      into random order, and returns each one before choosing a new
      order, like =Pn(Pshuf(items, 1), inf)=.
 
-- =\pdefn("source", `pdefnKey, "wildcards")= :: Like =\seq()=,
+- =\pdefn(`pdefnKey, "wildcards")= :: Like =\seq()=,
      but obtaining replacement items from a =Pdefn=. For non-pitched
      parameters, the =Pdefn= should yield characters corresponding to
      =parmMap= items. For pitched parameters, it should yield
@@ -2391,12 +2357,12 @@ VC(\pad).v.gui; VC(\pl).v.gui;  // adjust filters
   #+BEGIN_SRC SuperCollider
   Pdefn(\y, Pn(Pseries(0, 1, 8), inf).collect { |d| SequenceNote(d, nil, 0.9) });
      
-  /y.a0 = "*\ins("*", "*", 2, 0.5)::\pdefn(, `y, "*")";
-  /y.a1 = "\ins("*", "*", 3, 0.5)::\pdefn(, `y, "*")";
+  /y.a0 = "[*]::\ins("*", 2, 0.5)::\pdefn(`y, "*")";
+  /y.a1 = "\ins("*", 3, 0.5)::\pdefn(`y, "*")";
   /y = (a**2);
   #+END_SRC
 
-- =\gdefn("source", `pdefnKey, "wildcards")= :: Like =\pdefn()=, with
+- =\gdefn(`pdefnKey, "wildcards")= :: Like =\pdefn()=, with
      a difference: =\pdefn()= keeps an independent repository of
      streams for every BP, while =\gdefn()= keeps a global repository
      shared among all BPs. /However/... be careful; this does not work
@@ -2429,10 +2395,10 @@ VC(\pad).v.gui; VC(\pl).v.gui;  // adjust filters
    Pdefn(\x, Pseq("01234", inf).trace(prefix: "pdefn: "));
    )
    
-   /x = "\gdefn("****", `x, "*", 1)";
-   /y = "\gdefn("****", `x, "*", 1)";
+   /x = "[****]::\gdefn(`x, "*", 1)";
+   /y = "[****]::\gdefn(`x, "*", 1)";
    /x/y+
-   /x/y-  // when finished
+   /x/y-
    #+END_SRC
    
    #+ATTR_LATEX: :align |c|c|c|c|
@@ -2445,7 +2411,7 @@ VC(\pad).v.gui; VC(\pl).v.gui;  // adjust filters
    |          1 |          2 |        3 |        2 |
    |------------+------------+----------+----------|
 
-- =\prev("source", "items", "wildcards", staccDur)= :: Replaces any
+- =\prev("items", "wildcards", staccDur)= :: Replaces any
      /wildcards/ with either: one of the /items/ (which is equivalent
      to =\rand()=; generally, you should leave /items/ empty), or the
      previous item found in the bar. Useful for repeating notes. For
@@ -2487,17 +2453,54 @@ Mode(\cphr) => Mode(\default);
 /make(pulseLeadVC:pl/melBP:pl);
 
 // Every "6,7," descending pattern starts at the previous given note
-/pl = "\ins("5'>| 3'>|4'>  2'>|", "*", 5..10, 0.25)::\pitch(, "*", "6,7,", 8, 10, ".")";
+/pl = "[5'>| 3'>|4'>  2'>|]::\ins("*", 5..10, 0.25)::\pitch("*", "6,7,", 8, 10, ".")";
 /pl+
 
 // The first descent starts from "5'" and keeps going down through the bar
-/pl = "\ins("5'>| 3'>|4'>  2'>|", "*", 5..10, 0.25)::\pitch2(, "*", "6,7,", 8, 10, ".")";
+/pl = "[5'>| 3'>|4'>  2'>|]::\ins("*", 5..10, 0.25)::\pitch2("*", "6,7,", 8, 10, ".")";
 
 // One \pitch() stream;
 // another interlocking \pitch2() stream in a higher register
-/pl = "\ins("5'>| 3'>|4'>  2'>|", "*", 3..7, 0.25)::\ins(, "@", 3..8, 0.25)::\pitch(, "*", "6,7,", 8, 10, ".")::\pitch2(, "@", "6,7,23", 14, 18, ".", 0)";
+/pl = "[5'>| 3'>|4'>  2'>|]::\ins("*", 3..7, 0.25)::\ins("@", 3..8, 0.25)::\pitch("*", "6,7,", 8, 10, ".")::\pitch2("@", "6,7,23", 14, 18, ".", 0)";
 
 /pl-
+#+END_SRC
+
+Note also that =\seq()=, =\rand()=, =\wrand()=, =\xrand()= and =\shuf()=
+may be used in (or as!) pool strings (Listing [[genSequencers]]).
+
+#+name: genSequencers
+#+caption: Complex sequencing with sub-generators.
+#+BEGIN_SRC SuperCollider -i
+(
+BP(\y).free;
+PR(\abstractLiveCode).chuck(BP(\y), nil, (
+	event: (eventKey: \default),
+	defaultParm: \degree,
+	parmMap: (degree: (isPitch: true))
+));
+)
+
+TempoClock.tempo = 140/60;
+
+/y = "\ins("*", 8, 0.5)::\seq("123")";
+
+/y+
+
+// can repeat (like Prand)
+/y = "\ins("*", 8, 0.5)::\rand("\seq("123")\seq("7854")\seq("26,")")";
+
+// no repeats (like Pxrand)
+/y = "\ins("*", 8, 0.5)::\xrand("\seq("123")\seq("7854")\seq("26,")")";
+
+// 2-5random notes after 6,
+// note here that articulation/transposition applies to sub-choices
+/y = "\ins("*", 8, 0.5)::\xrand("\seq("123")\seq("7854")\seq("26,\xrand*2..5("34567")::\xpose("1'")::\artic(".")")")";
+
+// also, articulations and transposition can be streamed this way
+/y = "\ins("*", 8, 0.5)::\seq("123")::\artic(\seq("\seq*3("_")\seq*7(".")"))";
+
+/y-
 #+END_SRC
 
 **** TODO Maybe fix \prev to support this case later		   :noexport:
@@ -2506,20 +2509,23 @@ TempoClock.tempo = 140/60;
 Mode(\cphr) => Mode(\default);
 
 /make(pulseLeadVC:pl/melBP:pl);
-/pl = "\ins(, "*", 2..3, 0.5)::\seq(, "134")";
+/pl = "\ins("*", 2..3, 0.5)::\seq("134")";
 /pl+
 
-/pl = "\ins(, "*", 2..3, 0.5)::\seq(, "134")::\ins(, "@", 16, 0.25)::\prev(, "", "@", 0.25)";
+/pl = "\ins("*", 2..3, 0.5)::\seq("134")::\ins("@", 16, 0.25)::\prev("", "@", 0.25)";
 
 // oh, that's unfortunate, prev doesn't skip over wildcards while searching
-/pl = "\ins(, "*", 2..3, 0.5)::\seq(, "134")::\ins(, "!", 2..5, 0.25)::\ins(, "@", 16, 0.25)::\prev(, "", "@", 0.25)::\seq(, "2'>4'>7'>6'>", "!")";
+/pl = "\ins("*", 2..3, 0.5)::\seq("134")::\ins("!", 2..5, 0.25)::\ins("@", 16, 0.25)::\prev("", "@", 0.25)::\seq("2'>4'>7'>6'>", "!")";
 
 /pl-
 #+END_SRC
 
 *** Modifier generators
 
-- =\artic("source", "articPool", "wildcards")= :: Replaces matching
+Modifiers may be part of the main generator chain, or included in
+subsequences (Listing [[genSequencers]]).
+
+- =\artic("articPool", "wildcards")= :: Replaces matching
      notes' articulation with one of the items randomly chosen from
      /articPool/. If no /wildcards/ are given, all notes
      match. Otherwise, only those notes with an association to one of
@@ -2531,24 +2537,24 @@ Mode(\cphr) => Mode(\default);
 /make(pulseLeadVC:pl/melBP:pl);
 
 // No wildcards, all notes match: All are staccato
-/pl = "\artic("1574", ".")";
+/pl = "[1574]::\artic(".")";
 /pl+
 
 // Wildcard, but none of the notes came from a
 // wildcard operation, so none of them match.
-/pl = "\artic("1574", ".", "*")";
+/pl = "[1574]::\artic(".", "*")";
 
 // Notes were inserted by \seq operating on "*";
 // all notes match.
-/pl = "\seq("****", "1574")::\artic(, ".", "*")";
+/pl = "[****]::\seq("1574")::\artic(".", "*")";
 
 // Two layers of notes with different articulations
-/pl = "\seq("****", "1574")::\ins(, "@", 4..8, 0.25)::\shuf(, "1'2'3'4'5'6'", "@")::\artic(, ">.", "*")::\artic(, "~", "@")";
+/pl = "[****]::\seq("1574")::\ins("@", 4..8, 0.25)::\shuf("1'2'3'4'5'6'", "@")::\artic(">.", "*")::\artic("~", "@")";
 
 /pl-
 #+END_SRC
 
-- =\xpose("source", "intervalPool", "wildcards")= :: Transposition. For
+- =\xpose("intervalPool", "wildcards")= :: Transposition. For
      each /wildcard/-matching note, choose an interval from
      /intervalPool/ and transpose the note accordingly.
 
@@ -2557,17 +2563,17 @@ TempoClock.tempo = 140/60;
 Mode(\cphr) => Mode(\default);
 /make(pulseLeadVC:pl/melBP:pl);
 
-/pl = "\ins(, "*", 16, 0.25)::\seq(, "12345432")";
+/pl = "\ins("*", 16, 0.25)::\seq("12345432")";
 /pl+
 
 // Easy octave displacement.
-/pl = "\ins(, "*", 16, 0.25)::\seq(, "12345432")::\xpose(, "1111,1'1''")";
+/pl = "\ins("*", 16, 0.25)::\seq("12345432")::\xpose("1111,1'1''")";
 /pl-
 #+END_SRC
 
 *** Filter generators
 
-- =\fork("source", "timed generators")= :: Applies different
+- =\fork("timed generators")= :: Applies different
      generators to different segments of the bar. For instance, the
      /source/ could insert /n/ wildcards throughout the bar, while
      /timed generators/ could replace wildcards in the first half of
@@ -2577,12 +2583,12 @@ Mode(\cphr) => Mode(\default);
      bar. Source items in any portions of the bar not covered by one
      of the /timed generators/ will pass through unchanged.
      #+BEGIN_SRC SuperCollider
-     /y = "\ins("", "*", 10, 0.25)::\fork(, "\seq(, "13", "*")\seq(, "14", "*")")";
-
-     /y = "\ins("", "1,", 10, 0.25)::\fork(, " \seq(, "13", "1,")x\seq(, "14", "1,")")";
+     /y = "\ins("*", 10, 0.25)::\fork("\seq("13", "*")\seq("14", "*")")";
+     
+     /y = "\ins("1,", 10, 0.25)::\fork(" \seq("13", "1,")x\seq("14", "1,")")";
      #+END_SRC
 
-- =\chain("source", generator, generator...)= :: For internal use only.
+- =\chain(generator, generator...)= :: For internal use only.
 
 # - =\oneof()= :: Currently broken
 
