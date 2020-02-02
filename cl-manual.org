@@ -2259,6 +2259,89 @@ TempoClock.tempo = 124/60;
      position to find the position for the next item, until reaching
      the end of the timespan.
 
+- =\rDelta("new items", maxDelta, factor, minNotes, maxNotes, distribution, parameters)= :: Like
+     =\delta()=, but generates deltas from one of six random functions
+     (whereas =\delta()= corresponds only to =Pwrand()=). It is, then,
+     non-metric.
+  - ="new items"=: A pool string supplying items to insert.
+  - =maxDelta=: The largest duration allowed.
+  - =factor=: Calculates the shortest duration = =maxDelta / factor=.
+  - =minNotes=: Require a certain minimum number of notes.
+  - =maxNotes=: Constrain to a certain maximum number of notes.
+  - =distribution=: A symbol =`lin=, =`exp=, =`hp=, =`lp=, =`beta=,
+    =`expb=. See the example.
+  - =parameters=: Numbers supplied as additional arguments to the
+    delta pattern. Currently used only by =`beta= (supply /alpha/ and
+    /beta/) and =`expb= (supply /spread/).
+  
+  #+BEGIN_SRC SuperCollider -i
+  // equal distribution
+  // but more total time spent on longer notes
+  /y = "\rDelta("*", 1, 8, , , `lin)::\wrand("\xrand("12345")\xrand("3'4'5'6'")", 2, 1)";
+  
+  /y+
+  
+  // equal total time spent on longer notes vs shorter
+  /y = "\rDelta("*", 1, 8, , , `exp)::\wrand("\xrand("12345")\xrand("3'4'5'6'")", 2, 1)";
+  
+  // Phprand
+  /y = "\rDelta("*", 1, 8, , , `hp)::\wrand("\xrand("12345")\xrand("3'4'5'6'")", 2, 1)";
+  
+  // Plprand
+  /y = "\rDelta("*", 1, 8, , , `lp)::\wrand("\xrand("12345")\xrand("3'4'5'6'")", 2, 1)";
+  
+  // beta distribution: similar problem as `lin
+  /y = "\rDelta("*", 1, 8, , , `beta, 0.2, 0.2)::\wrand("\xrand("12345")\xrand("3'4'5'6'")", 2, 1)";
+  
+  // expb: "exponentialized" beta distribution
+  /y = "\rDelta("*", 1, 8, , , `expb, 0.2)::\wrand("\xrand("12345")\xrand("3'4'5'6'")", 2, 1)";
+  
+  /y-
+  #+END_SRC
+
+- =\ramp("new items", initDelta, midDelta, midpoint, curve)= :: Generates
+     accelerating and decelerating rhythms. To use this effectively,
+     think of the =\ramp()= generator's time span as being normalized:
+     0 is the beginning of the span and 1 is the end. Within that
+     span, the generator will ramp from an initial duration to a
+     target, and back to the start duration.
+  - ="new items"=: A pool string supplying items to insert.
+  - =initDelta=: The duration at the beginning of the time span.
+  - =midDelta=: The target duration.
+  - =midpoint=: Where, between 0 and 1, to arrive at =midDelta=. If 1,
+    =midDelta= is placed at the end, and the ramp will go from
+    =initDelta= to =midDelta= (the most common use case). If 0,
+    =midDelta= is at the beginning, and the ramp goes in the opposite
+    direction (so, you can choose randomly between acceleration and
+    deceleration by writing ={2.rand}= here). =0 < midpoint < 1=
+    creates a two-segment curve.
+  - =curve=: Curvature types from =Env= are supported: numbers, or
+    =`lin=, =`exp= etc. A curvature number applies to the first
+    segment, and will be negated for the second.
+  
+  #+BEGIN_SRC SuperCollider -i
+  /y = "\ramp("*", 1, 0.2, 1, `exp)::\pitch("*", "2", 0, 0)";
+  /y+
+  
+  // randomly choose accel or decel
+  /y = "\ramp("*", 1, 0.2, {2.rand}, `exp)::\pitch("*", "2", 0, 0)";
+  
+  // alternate between accel and decel
+  /y = "\ramp("*", 1, 0.2, {Pseq([0, 1], inf)}, `exp)::\pitch("*", "2", 0, 0)";
+  
+  /y = "\ramp("*", 1, 0.2, 0.5, `exp)::\pitch("*", "2", 0, 0)";
+  
+  // pulls 1 -> 0.2 curve to the right, biasing long durations
+  /y = "\ramp("*", 1, 0.2, 0.5, 2)::\pitch("*", "2", 0, 0)";
+  
+  // pulls 1 -> 0.2 curve to the left, biasing short durations
+  /y = "\ramp("*", 1, 0.2, 0.5, -2)::\pitch("*", "2", 0, 0)";
+  
+  /y = "\ramp("*", 1, 0.2, 0.5, -4)::\pitch("*", "2", 0, 0)";
+  
+  /y-
+  #+END_SRC
+
 - =\choke(maxDur, "new items", "wildcards")= :: For every
      item within the time span, insert an item /maxDur/ beats later
      (unless the next item comes at that time point or
