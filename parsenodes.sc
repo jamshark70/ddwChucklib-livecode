@@ -1011,7 +1011,7 @@ ClIDNode : ClAbstractParseNode {
 			parm = test.string;
 			false;
 		};
-		if(phrase.size == 0) {
+		if(phrase.isNil or: { phrase == '' }) {
 			phrase = \main;
 		};
 		if(parm.size == 0) {
