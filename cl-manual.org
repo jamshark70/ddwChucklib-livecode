@@ -332,25 +332,25 @@ directly from the ASCII notation.
 /hhh/tsn/dk+
 
 // A
-/tsn = "\ins(" - -", ".", 2, 0.25)";
+/tsn = "[ - -]::\ins(".", 2, 0.25)";
 
 // B
-/tsn = "\ins(" - -", ".", 2, 0.5)";
+/tsn = "[ - -]::\ins(".", 2, 0.5)";
 
 // C
-/tsn = "\ins(" - -", ".", 2, 0.5)::\shift(, ".", 2, 0.25)";
+/tsn = "[ - -]::\ins(".", 2, 0.5)::\shift(".", 2, 0.25)";
 
-// D
-/hhh = "\ins("", "-", 1, 0.5)::\ins(, ".", 7, 0.5)";
+// D (empty source, so, omitted)
+/hhh = "\ins("-", 1, 0.5)::\ins(".", 7, 0.5)";
 
-// E
-/hhh = "\ins(".", "-", 1, 0.5)::\ins(, ".", 6, 0.5)";
+// E (one closed HH to fill start of bar)
+/hhh = "[.]::\ins("-", 1, 0.5)::\ins(".", 6, 0.5)";
 
 // F
-/hhh = "\ins(".", "-", 1, 0.5)::\ins(, ".", 6, 0.5)::\ins(, ".", 2, 0.25)";
+/hhh = "[.]::\ins("-", 1, 0.5)::\ins(".", 6, 0.5)::\ins(".", 2, 0.25)";
 
 // G
-/hhh = "\fork("", "|\ins(, "-", 1, 0.5)||x")::\ins(, ".", 7, 0.5)::\ins(, ".", 2, 0.25)";
+/hhh = "\fork("|\ins("-", 1, 0.5)||x")::\ins(".", 7, 0.5)::\ins(".", 2, 0.25)";
 
 /hhh/tsn/dk-
 #+END_SRC
@@ -360,14 +360,15 @@ directly from the ASCII notation.
 can provide only a brief demonstration, not complete
 documentation. See Section [[Generators]] for more detail.)
 
-Generators take a given pattern string as their initial input, and
-modify it by inserting, deleting or replacing entries. (The initial
-pattern string can be empty, by the way.) A few basic functions are:
+Generators take a given pattern string as their initial input,
+enclosed in brackets, and modify it by inserting, deleting or
+replacing entries. (The initial pattern string can be empty, in which
+case it may be omitted.) A few basic functions are:
 
-- =\ins("string", "item pool", number, quant)=: Insert /number/ new
+- =\ins("item pool", number, quant)=: Insert /number/ new
   items, randomly chosen from the /item pool/, at rhythmic intervals
   given by /quant/ (e.g. 0.25 = quarter beats = 16th-notes).
-- =\shift("string", "item pool", number, quant)=: Locate /number/ of
+- =\shift("item pool", number, quant)=: Locate /number/ of
   the items in /item pool/, and shift them earlier or later by the
   rhythmic value given by /quant/.
 - I will expand this list later.
@@ -670,16 +671,16 @@ Articulations (including slur!) are valid.
 
 // Add some lower notes as a second layer.
 // Accent articulates the start of the bar.
-/arp = "\ins("1>234", "456", 6, 0.25)";
+/arp = "[1>234]::\ins("456", 6, 0.25)";
 
 // Extend the second layer higher.
-/arp = "\ins("1>234", "23456", 7, 0.25)";
+/arp = "[1>234]::\ins("23456", 7, 0.25)";
 
 // Use wildcards to substitute a sequential pattern.
-/arp = "\ins("1>234", "*", 7, 0.25)::\seq(, "65432")";
+/arp = "[1>234]::\ins("*", 7, 0.25)::\seq("65432")";
 
 // Change the harmony's top note every bar.
-/arp..top = "\seq("*", "5'6'3'2'")";
+/arp..top = "[*]::\seq("5'6'3'2'")";
 
 // Skip: Play dyads instead of single notes.
 /arp..skip = "2";
@@ -688,14 +689,14 @@ Articulations (including slur!) are valid.
 /arp..skip = "20  |20  |20  |20  ";
 
 // same, but algorithmic
-/arp..skip = "\choke("2222", 0.25, "0")";
+/arp..skip = "[2222]::\choke(0.25, "0")";
 
 // Add a second process to change the chord root.
 // After this, you should hear tonic, dominant
 // and subdominant functions.
 // No instrument -- this is for data only.
 /make(melBP:root(bassID:\bass));
-/root = "\seq("*", "154")";
+/root = "[*]::\seq("154")";
 /root+
 
 /arp/root-
@@ -765,12 +766,15 @@ TempoClock.tempo = 124/60;
 
 /tk = "oooo";
 /tsn = " - -";
-/thh = "\ins(".", "-", 1, 0.5)::\ins(, ".", 6, 0.5)";
+/thh = "[.]::\ins("-", 1, 0.5)::\ins(".", 6, 0.5)";
 
 /tk/tsn/thh+
 
 /tk.fill = "o||   _|o __";
-/tsn.fill = "|-| \ins(" - ", ".", 4, 0.25)|";
+
+// mid-bar source string:
+// in this position, it fills 3 eighth-notes
+/tsn.fill = "|-| [ - ]::\ins(".", 4, 0.25)|";
 
 /tk = (main*3.fill); /tsn = (main*3.fill);
 
