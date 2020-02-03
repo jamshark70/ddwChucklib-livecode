@@ -206,7 +206,9 @@ Proto {
 		var end = start + length;
 		~view.setString(string, start, length);
 		~str = ~view.string;
-		~updateBookmarks.(start, string.size - length, ~str, (length > 0).asInteger, stringObj);
+		if(stringObj.notNil) {
+			~updateBookmarks.(start, string.size - length, ~str, (length > 0).asInteger, stringObj);
+		};
 	};
 	~string = { ~view.string };
 	~focus = { |bool| ~view.focus(bool) };
