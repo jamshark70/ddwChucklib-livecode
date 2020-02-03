@@ -398,6 +398,13 @@ protect {
 	} => PR(\clGenSeq);
 
 	PR(\clGenSeq).clone {
+		~embedInStream = { |inval|
+			Pser(~pool, ~repeats).embedInStream(inval)
+		};
+		~snippet.("ser", "\\ser(##items, wildcards, reset##)");
+	} => PR(\clGenSer);
+
+	PR(\clGenSeq).clone {
 		// ~asPattern = { Prand(~args[0], inf) };
 		~makeStream = {
 			~seqStream = Prand(~pool.asArray, inf).collect(_.item).asStream;
