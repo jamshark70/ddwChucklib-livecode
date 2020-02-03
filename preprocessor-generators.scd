@@ -270,6 +270,10 @@ protect {
 		// accent: if nil, no change; otherwise, should be boolean
 		~applyArtic = { |artic, note, accent|
 			var didCopy = false, item;
+			// there is a really spectacularly stupid feature of Association
+			// where it creates an array when embedded into a stream
+			// so I have to check for that and un-array it
+			if(artic.isArray) { artic = artic[0] };
 			if(note.isKindOf(SequenceNote)) {
 				item = artic.tryPerform(\key);
 				if(item.notNil) {
@@ -555,6 +559,7 @@ protect {
 			~replaceItems = ~replaceItems.collect { |item| item.item };
 			~intervalStream = Prand(~intervalPool, inf).asStream.collect { |item| item.item.asFloat };
 			~articPool = ~articPool.reject(_ == $");
+			~articStream = Prand(~articPool.asArray, inf).asStream;
 			currentEnvironment
 		};
 		~makeStream = {
@@ -576,7 +581,7 @@ protect {
 					pitch = prev.item.asFloat + ~intervalStream.next;
 				};
 				new = SequenceNote(pitch);
-				new = ~applyArtic.(~articPool.choose, new);
+				new = ~applyArtic.(~articStream.next, new);
 				new
 			}.asStream;
 		};
@@ -610,7 +615,7 @@ protect {
 					pitch = prev.asFloat + ~intervalStream.next;
 					prev = pitch;  // loop is always going forward
 					new = SequenceNote(pitch);
-					new = ~applyArtic.(~articPool.choose, new);
+					new = ~applyArtic.(~articStream.next, new);
 					new.yield
 				}
 			}
