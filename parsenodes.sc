@@ -326,7 +326,7 @@ ClArticPoolNode : ClStringNode {
 
 ClNumberNode : ClAbstractParseNode {
 	classvar types;
-	var string, <>value;
+	var <>value;
 
 	*initClass {
 		types = [
@@ -380,7 +380,7 @@ ClNumberNode : ClAbstractParseNode {
 ClRangeNode : ClNumberNode {
 	parse { |stream|
 		var low, hi;
-		low = ClNumberNode(stream);
+		low = ClNumberNode(stream, this);
 		if(low.value.notNil) {
 			this.skipSpaces(stream);
 			2.do {
@@ -389,7 +389,7 @@ ClRangeNode : ClNumberNode {
 				}
 			};
 			this.skipSpaces(stream);
-			hi = ClNumberNode(stream);
+			hi = ClNumberNode(stream, this);
 			if(hi.value.isNil) {
 				Error("No upper bound found in range").throw;
 			};
