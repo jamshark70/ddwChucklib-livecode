@@ -379,7 +379,7 @@ Proto {
 Proto {
 	~bgColors = [QtGUI.palette.color(\base), QtGUI.palette.color(\base).copy.green_(0.25)];
 	~statementMap = IdentityDictionary[
-		\clPatternSet -> \clPatternSetNode
+		\clPatternSet -> { |stream| ClPatternSetNode(stream) }
 	];
 
 	~prep = { |viewWrapper|
@@ -391,7 +391,8 @@ Proto {
 		match = ~findStatement.();
 		if(match.notNil) {
 			~stmtPos = match[0];
-			~stmtKey = match[1];
+			~endPos = match[1];
+			~stmtKey = match[2];
 			~statement = ~getStatement.();
 			if(~statement.notNil) {
 				~selectUnit.();
@@ -411,32 +412,49 @@ Proto {
 		currentEnvironment.changed(\didFree);
 	};
 	~findStatement = { |str(~string), pos(~pos)|
-		var looking = true, cl = PR(\chucklibLiveCode), substr, match;
-		while { looking and: { pos >= 0 } } {
-			if(str[pos] == $/) {
+		var looking = true, cl = PR(\chucklibLiveCode), substr, match, endMatch;
+		var startPos = pos, endPos = pos;
+		while { looking and: { startPos >= 0 } } {
+			if(str[startPos] == $/) {
 				match = cl.statements.detect { |assn|
-					str.findRegexpAt(cl.replaceRegexpMacros(assn.value), pos + 1).notNil
+					str.findRegexpAt(cl.replaceRegexpMacros(assn.value), startPos + 1).notNil
 				};
 				if(match.notNil) {
 					looking = false;
 				} {
-					pos = pos - 1;
+					startPos = startPos - 1;
 				};
 			} {
-				pos = pos - 1
+				startPos = startPos - 1;
 			}
 		};
-		if(match.notNil) { [pos, match.key] } { nil }
+		if(match.notNil) {
+			looking = true;
+			while { looking and: { endPos < str.size } } {
+				if(str[endPos] == $/) {
+					endMatch = cl.statements.detect { |assn|
+						str.findRegexpAt(cl.replaceRegexpMacros(assn.value), startPos + 1).notNil
+					};
+					if(endMatch.notNil) {
+						looking = false;
+					} {
+						endPos = endPos + 1;
+					};
+				} {
+					endPos = endPos + 1;
+				}
+			};
+			if(match.notNil) { [startPos, endPos - 1, match.key] } { nil }
+		}
 	};
-	~getStatement = { |pos(~stmtPos), key(~stmtKey)|
+	~getStatement = { |pos(~stmtPos), endPos(~endPos), key(~stmtKey)|
 		var stream, statement;
 		if(~statementMap[key].notNil) {
-			stream = CollStream(~view.string);
+			stream = CollStream(~view.string[ .. endPos]);
 			stream.pos = pos;
-			statement = PR(~statementMap[key]).copy;
-			try { statement.prep(stream) } { |error|
-
-			};
+			// try {
+				statement = ~statementMap[key].value(stream);
+		// } { |error| error.reportError; nil };
 		};  // else nil
 	};
 	~selectUnit = { |pos(~pos)|
@@ -475,7 +493,7 @@ Proto {
 			}
 			{ keycode == 65364 } {
 				if(~current.children.size > 0) {
-					if(~current[\lastSelected].notNil) {
+					if(~current.lastSelected.notNil) {
 						~current = ~current.children[~current.lastSelected];
 					} {
 						~current = ~current.children.middle;

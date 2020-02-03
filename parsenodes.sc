@@ -52,6 +52,7 @@ ClAbstractParseNode {
 	var <>begin, <>end, <>string, <>parentNode, <>children;
 	var <time, <dur;
 	var <>bpKey, <>isPitch = false, <>isMain = false, <>phrase, <>parm;
+	var <>lastSelected;  // for GUI, not used for parsing
 
 	*new { |stream, parentNode, properties|
 		var new = super.new;
