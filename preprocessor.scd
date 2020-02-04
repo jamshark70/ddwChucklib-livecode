@@ -273,7 +273,12 @@ this.preProcessor = { |code|
 	var savePos = code.pos;
 	// ["[a-zA-Z0-9_]+\\(", code.collection[code.pos ..]].debug("check gen");
 	if("[a-zA-Z0-9_]+\\(".matchRegexp(code.collection, code.pos)) {
-		while { (ch = code.next) != $( };
+		while {
+			ch = code.next;
+			// generators may now have a {} pair before the arg list
+			// e.g. \ser*{Pwhite(1,4,inf)}(...)
+			"({".includes(ch).not
+		};
 		ch = \clParseBracketed.eval(code, ch, patString);
 	} {
 		Error("Backslash in cl pattern string must introduce a generator").throw;
