@@ -58,7 +58,7 @@ PstepDurPair : Pstep {
 			"preprocessor.scd", "preprocessor-generators.scd",
 			"helper-funcs.scd"
 		]);
-		Library.put(\cl, \extras, ["edit-gui.scd", "mobile-objects.scd"]);
+		Library.put(\cl, \extras, ["edit-gui.scd", "mobile-objects.scd", "nanoktl-objects.scd"]);
 		if(File.exists(Quarks.folder +/+ "ddwLivecodeInstruments")) {
 			Library.put(\cl, \instr, (Quarks.folder +/+ "ddwLivecodeInstruments/*.scd").pathMatch);
 			{

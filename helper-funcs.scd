@@ -176,3 +176,163 @@ Library.put(\clLivecode, \setupbars, \guiIsFront, false);
 		};
 	};
 } => Func(\stopRecord);
+
+
+// finally publish my GUI functions
+{ |controller(\nanoTouch)|  // or \mix16Touch
+	var sBounds = Window.screenBounds, touchExtent, w, lay, touchParent, v, left,
+	midiIndex,
+	path = Platform.userAppSupportDir +/+ "cll-cheatsheet.txt",
+	file, str;
+
+	if(File.exists(path)) {
+		file = File(path, "r");
+		if(file.isOpen) {
+			protect {
+				str = file.readAllString;
+			} { file.close }
+		} {
+			"can't open cheatsheet.txt".warn;
+		};
+	};
+
+	if(MBM.exists(0).not) {
+		MIDIClient.init;
+		midiIndex = MIDIClient.sources.detectIndex { |endpt|
+			endpt.device.containsi("remote")
+		};
+		MIDIPort.init(midiIndex.asArray);
+		MIDIBufManager(nil, 0) => MBM.prNew(0);
+	};
+	if(controller == \nanoTouch) { MIDIIn.connectAll };
+
+	BP(#[touchGui, touch]).free;
+	PR(controller).chuck(BP(\touch), nil, (pingDebug: false));
+
+	touchExtent = PR(\abstractTouchGUI).calcExtent(BP(\touch).v);
+	w = Window("control panel",
+		Rect(sBounds.width - touchExtent.x, 0, touchExtent.x, sBounds.height)
+	);
+	lay = VLayout(
+		touchParent = View().fixedSize_(touchExtent + Point(-4, 4)),
+		StaticText().fixedHeight_(3),  // spacer
+		PR(\controlList) => BP(\clist),
+	).margins_(2).spacing_(4);
+	if(str.notNil) {
+		lay.add(StaticText().fixedHeight_(3));  // spacer
+		v = TextView().string_(str)
+		// for some stupid reason, I have to set the text before colors
+		.background_(Color.black).stringColor_(Color.white);
+		lay.add(v);
+		lay.add(Button(/*w, Rect(2, 2, w.view.bounds.width - 4, 20)*/)
+			.states_([["save"]])
+			.action_({
+				var file = File(path, "w");
+				protect {
+					if(file.isOpen) {
+						file.putString(v.string);
+					} {
+						"can't open cheatsheet.txt for writing".warn;
+					};
+				} { file.close };
+			})
+		);
+	};
+
+	w.layout = lay;
+
+	PR(\abstractTouchGUI).chuck(BP(\touchGui), nil, (
+		model: BP(\touch).v,
+		parentView: touchParent
+	));
+	PR(\chuckOSC) => BP(\chuckOSC);
+	t = BP(\chuckOSC).v;  // must chuck into the proto, not the BP
+	w.front;
+
+	~cleanup = {
+		var dontFree = #[chuckOSC, touchGui, touch, clist];
+		VC.all.free;
+		BP.all.do { |bp|
+			if(dontFree.includes(bp.collIndex).not) {
+				bp.free;
+			};
+		};
+	};
+
+	NotificationCenter.notify(\clInterface, \ready);
+	t
+} => Func(\makeController);
+
+{
+	var sBounds = Window.screenBounds, touchExtent = PR(\abstractTouchGUI).calcExtent(BP(\touch).v),
+	left;
+
+	PR(\clGuiString).doHighlighting = false;  // like setting a classvar
+	left = max(180, 0.5 * (sBounds.width - 800));
+	~editWindow = Window("code editor",
+		// Rect.aboutPoint(sBounds.center, min(400, sBounds.width * 0.5), sBounds.height * 0.5)
+		// -8? Apparently border is extra
+		Rect(left, 0, sBounds.width - touchExtent.x - left - 8, sBounds.height)
+	);
+	~editWindow.layout = VLayout(
+		HLayout(
+			nil,
+			Button().fixedSize_(Size(80, 20))
+			.states_([
+				["autosave"],
+				["autosave", Color.white, Color.green(0.45)]
+			])
+			.action_(inEnvir { |view|
+				~editor.view.autoSave = view.value > 0;
+			}),
+			Button().fixedSize_(Size(80, 20))
+			.states_([["load"]])
+			.action_(inEnvir {
+				~editor.view.doAutoSave;  // if window is not currently empty
+				FileDialog(inEnvir { |path|
+					var file, str;
+					file = File(path, "r");
+					if(file.isOpen) {
+						protect {
+							str = file.readAllString;
+						} {
+							file.close;
+						};
+						~editor.view.setString(str, 0, ~editor.view.str.size);
+					} {
+						"Error opening '%'".format(path).warn;
+					};
+				}, fileMode: 1, acceptMode: 0, stripResult: true,
+				path: ~editor.view.autoSavePath
+				);
+			})
+		)
+	);
+	// I don't really need a model, but the GUI needs it
+	~editModel = PR(\clGuiSection).copy
+	.defaultString_("")
+	.putAll(PR(\clEditGui).v.getTextProperties)
+	.prep;
+	~editor = PR(\clGuiSectionView).copy.prep(~editModel, ~editWindow.layout, nil);
+	~editor.view.autoSave = false;
+	// experimental hack: watch for focus -- must do this before .front!
+	~focusWatcher = SimpleController(~editor.view)
+	// this should be OK for multiple views
+	// because the sequence is always a/ lose old focus, then b/ gain new focus
+	.put(\focused, { |view, what, bool|
+		if(bool) {
+			PR(\clPatternToDoc).activeView = view.view;
+		} {
+			PR(\clPatternToDoc).activeView = nil;  // clear to revert to Document
+		};
+	})
+	.put(\didFree, inEnvir { ~focusWatcher.remove });
+	~editWindow.onClose_(inEnvir { ~editModel.free }).front;
+	Library.put(\clLivecode, \setupbars, \addToDoc, false);
+	~editor
+} => Func(\makeCodeWindow);
+
+{ |controller(\nanoTouch)|
+	\makeController.eval(controller);
+	\makeCodeWindow.eval;
+} => Func(\cllGui);
