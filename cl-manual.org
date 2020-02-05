@@ -2133,12 +2133,20 @@ Simple arguments are as follows;
   chosen, as in =Prand=) or as a subset of certain sequencing
   generators:
   - =\seq()=
+  - =\ser()=
   - =\rand()=
   - =\wrand()=
   - =\xrand()=
   - =\shuf()=
-  See Listing [[genSequencers]] for examples of complex sequences produced
-  by nested generators.
+  - See Listing [[genSequencers]] for examples of complex sequences produced
+    by nested generators.
+  - When used in a pool argument, a number of repeats may be specified
+    as follows: =\seq*n(args)= where =n= is any of the numeric
+    expressions described above. For example, if you want to embed a
+    sequence of six notes, always starting from the beginning but
+    randomly embedding 3 to 6 steps, write =\ins(\ser*3..6("123456"),
+    ...)= (where =\ins()= or another one of the [[Rhythm generators]]
+    determines the rhythm).
 
 Quotes for pool strings should /not/ be escaped with backslashes, even
 though these quoted strings appear within quotes. The set pattern
@@ -2404,11 +2412,30 @@ VC(\pad).v.gui; VC(\pl).v.gui;  // adjust filters
 #+END_SRC
 
 *** Wildcard-replacement generators
+Note that =\seq()=, =\ser()=, =\rand()=, =\wrand()=, =\xrand()=, and
+=\shuf()= are based on the corresponding SuperCollider patterns
+=Pseq=, =Pser=, =Prand= etc., particularly for the number of repeats
+(generally a number of single values to return, except for =\seq()=).
 
 - =\seq("items", "wildcards", reset)= :: Replaces
      /wildcards/ in the source with /items/, one by one, preserving
      order. /Reset/ is optional; if it's a number greater than 0, the
      item sequence will reset on every bar.
+
+- =\ser("items", "wildcards", reset)= :: Like =\seq()=, but the number
+     of repeats determines how many notes will be output, not how many
+     repetitions of the entire phrase. When used for
+     wildcard-replacement, it is indistinguishable from =\seq()=. Used
+     in a pool argument, however, compare the following (using =\y=
+     defined in Listing [[gencycle]]):
+     #+BEGIN_SRC SuperCollider -i
+     /y = "\ins("*", 8, 0.5)::\seq("\seq*2..4("1234")\seq("875")")";
+     /y+
+     
+     /y = "\ins("*", 8, 0.5)::\seq("\ser*2..4("1234")\seq("875")")";
+     
+     /y-
+     #+END_SRC
 
 - =\rand("items", "wildcards")= :: Like =\seq()=, but
      chooses from /items/ randomly. (/Reset/ is not relevant, as there
