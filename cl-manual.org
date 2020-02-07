@@ -187,8 +187,6 @@ quark, please do so now. Without these, you will have to learn the
 mechanics of creating a live-coding process before playing any
 music. See section [[Installation]] for installation details.
 
-When starting a new session, run =\loadAllCl.eval= first.
-
 =ddwLivecodeInstruments= provides a set of standard electronic drums
 (Section [[Drums]]), and several synthesizers for pitched notes (Section
 [[Pitched notes]]).
@@ -225,7 +223,7 @@ yet. Don't hesitate to raise an issue if something is confusing.)
 When you launch SuperCollider, /cll/ is not active. (For normal usage,
 you want to use the standard parser as is.) To use /cll/, you need to
 load the environment. Optionally, you can open a graphical environment
-with some additional features (see [[Graphical interface windows]])..
+with some additional features (see Section [[Graphical interface windows]]).
 
 ** Drums
 #+begin_figure
@@ -2801,7 +2799,56 @@ also that, at present, the set pattern statement must be complete and
 free of syntax errors.)
 
 ** Controller window features
+The controller window divides into two or three parts: controls, a
+list of processes and instruments, and an optional cheatsheet.
 
+*** Controls
+The default layout is based on a Korg Nanoktl. (If a Nanoktl is
+plugged in and configured with the default controller numbers, the
+hardware knobs and sliders are connected automatically.) You may also
+call =/cllGui.(\mix16Touch)= for a layout based on TouchOSC's Mix16
+preset.
+
+Buttons behave as toggles. Sliders and knobs should be
+self-explanatory.
+
+Note the slight shading at the top of each control. This is to overlay
+a text label. Unfortunately, I cannot find a way to add a label and
+make the widget respond over its entire area. So, be careful to click
+in the unshaded area at the bottom.
+
+*** Process list
+The process list collects all playable BPs ("bound processes") and VCs
+("voicers").
+
+Any item in the list can be controlled-dragged into buttons:
+
+- BPs: the toggle button is for play/stop and the associated
+  fader/knob is for mixing.
+
+- VCs: the toggle button is for mute and the fader is for mixing.
+
+If a BP defines global controls, it will have a =+= to the left of its
+name. Right-arrow expands to show the controls that belong to it;
+left-arrow hides them. Individual controls can be dragged into a
+button, where they will be attached to the associated fader.
+
+You can use the keyboard to "throw" a list entry up into the GUI. Both
+=\nanoTouch= and =\mix16Touch= have 16 button/fader pairs, identified
+as 0-9 and A-F. To "throw," type =^= and the index character
+(e.g. =^0= for the first one).
+
+\ks{Backspace} in the list will delete an entry if possible. A BP can
+be deleted only if it is not playing; a VC, only if it is not attached
+to an existing BP player.
+
+*** Cheatsheet
+You can write notes to yourself about available instruments and
+players and save them under =Platform.userAppSupportDir +/+
+"cll-cheatsheet.txt"=. If this file exists, its contents will be
+displayed at the bottom of the controller window. (You can edit the
+text here and save as well.) This is free text, only for your
+convenience.
 
 * Extending cll
 /cll/ is designed to be extensible: adding new statements is
