@@ -210,6 +210,23 @@ tracker.[fn:147fd1c7c7020707] (Also note that this is the first
 version of the tutorial. Many things may be badly explained as
 yet. Don't hesitate to raise an issue if something is confusing.)
 
+** Starting a session
+#+begin_figure
+#+name: startup1
+#+caption: Launching chucklib-livecode.
+#+BEGIN_SRC {SuperCollider} -i
+\loadAllCl.eval;
+
+// optional
+\cllGui.eval;
+#+END_SRC
+#+end_figure
+
+When you launch SuperCollider, /cll/ is not active. (For normal usage,
+you want to use the standard parser as is.) To use /cll/, you need to
+load the environment. Optionally, you can open a graphical environment
+with some additional features (see [[Graphical interface windows]])..
+
 ** Drums
 #+begin_figure
 #+name: drums1
@@ -2742,6 +2759,50 @@ this time span. See the definition of =PR(\clGenRot)= for an example.
 
 This documentation may be expanded at a later date.
 
+* Graphical interface windows
+** Code window features
+The GUI code window has two advantages for /cll/ over the
+SuperCollider IDE:
+
+- The IDE's syntax highlighter doesn't understand /cll/. You may get
+  incorrect highlighting or indentation with /cll/ statements.
+
+- The default font size is larger, for projection in performance.
+
+One limitation: Because of a SuperCollider bug,[fn:83528c3905d7163]
+this window can evaluate single lines only. If you select a block of
+code to evaluate at once, the selection is ignored and only the line
+containing the cursor will be executed.
+
+The "autosave" button at the top will save the contents to disk
+automatically when the window is closed. The file location is
+=Platform.userAppSupportDir +/+ "cll-sketches"= and files are
+automatically named by date and time. (I preferred autosave over a
+standard save dialog specifically because it's a GUI window rather
+than a code document.) The "load" button allows you to choose a file
+from =cll-sketches=.
+
+If the cursor is on a [[Set pattern statement]], pressing alt-shift enters
+an intelligent navigation mode, where arrow keys move through
+syntactic elements rather than characters:
+
+- Left and right arrows move to the previous or next sibling.
+- The up arrow expands the selection to the syntactic unit containing
+  the current element.
+- The down arrow contracts the selection to one of the units contained
+  within the current element.
+
+Press alt-shift again when the selection is what you want, to exit
+navigation mode and retain the selection.
+
+It takes a little time to learn to use this fluently, but it's very
+effective, especially for selecting entire generators at once. (Note
+also that, at present, the set pattern statement must be complete and
+free of syntax errors.)
+
+** Controller window features
+
+
 * Extending cll
 /cll/ is designed to be extensible: adding new statements is
 relatively straightforward.
@@ -2859,6 +2920,8 @@ PR(\chucklibLiveCode).clMyNewStatement = { |code|
 * Typesetting
 
 * Footnotes
+
+[fn:83528c3905d7163] https://github.com/supercollider/supercollider/issues/3279
 
 [fn:1f8bf7e10eedb13b] I present the =PmonoArtic= example only to
 demonstrate that it is possible. This way, however, is not as powerful
