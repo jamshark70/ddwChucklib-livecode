@@ -107,7 +107,7 @@ Thanks are due to:
 - Canton Becker of http://sampleswap.org for granting permission to
   redistribute some audio files from sampleswap's online collection.
   These are used in the =ddwLivecodeInstruments= quark, referenced
-  in the Tutorial (section [[Tutorial]]).
+  in the Tutorial (Section [[Tutorial]]).
 
 * Installation
 /cll/ requires SuperCollider 3.7 or later, and recommends v3.9+. (It
@@ -168,13 +168,18 @@ After downloading these quarks, do the following:
 
 ** Running /cll/ in a session
 
-/cll/ adds three convenience functions to load the environment:
+/cll/ adds convenience functions to load the environment:
 
 - =\loadCl.eval=: Load the /cll/ preprocessor and a few helper functions.
 - =\loadClExtras.eval=: Load extra user-interface components:mobile
   control with TouchOSC, and interactive code editor, and
   ddwLivecodeInstruments if you have installed the quark.
 - =\loadAllCl.eval=: Load both of these at once.
+- =\makeController.eval=: Open a graphical window with reusable mixing
+  and parameter controls. (See Section [[Graphical interface windows]].)
+- =\makeCodeWindow.eval=: Open a code editor window with
+  /cll/-specific features.
+- =\cllGui.eval=: Open both the controller and code windows.
 
 These are /not/ executed by default at SC startup, because you may not
 want the preprocessor in every SC session. Once you load the
@@ -273,7 +278,7 @@ Kicks and snares are created by the convenience function
   - =\snr80=: =BP(\s8)=
   - =\clap=: =BP(\clp)=
 
-#+LaTeX: \newpage  % HACK to keep /hh heading with its children
+# #+LaTeX: \newpage  % HACK to keep /hh heading with its children
 
 - =/hh.(name)=
   - =\thickhh=: =BP(\hh)=
@@ -300,15 +305,16 @@ Note the pattern to use an instrument:
   (=BP(\name).beatsPerBar=). You can override this by putting a number
   of beats after the =+= or =-=: =/dk+8= for the next even bar line.
 
-*Mixing:* =loadAllCl= creates a few =MixerChannel= objects: =~master=
-(main output), =~rvbmc= (long-tail reverb) and =~shortrvbmc=
-(short-tail reverb). If you want to adjust the mix, first run
-=/makeEmptyMixer8.()=. After that, you can "chuck" mixers, processes
-or Voicers into mixing board slots: =~master => MCG(7)=, e.g., for the
-rightmost slot. Later, when you create playing objects, you can chuck
-them in as well. For instance, where Listing [[drums1]] creates a
-=tightsnr= player, you can do =/tsn => MCG(0)= and its mixer will
-appear.
+*Mixing:* =loadAllCl= creates a few =MixerChannel= objects: =~hwOut=
+(hardware output), =~master= (main output), =~rvbmc= (long-tail
+reverb), =~longrvbmc= (long-tail reverb), and =~shortrvbmc=
+(short-tail reverb).[fn:1234667500a0202f] If you want to adjust the
+mix, first run =/makeEmptyMixer8.()=. After that, you can "chuck"
+mixers, processes or Voicers into mixing board slots: =~master =>
+MCG(7)=, e.g., for the rightmost slot. Later, when you create playing
+objects, you can chuck them in as well. For instance, where Listing
+[[drums1]] creates a =tightsnr= player, you can do =/tsn => MCG(0)= and
+its mixer will appear.
 
 ** Pattern strings
 
@@ -390,15 +396,15 @@ case it may be omitted.) A few basic functions are:
 
 For example, the snare drum would benefit from some ghost notes, and
 it's more fun if they change from bar to bar. We could insert them
-into any open 16th-note (Listing [[drums2]], example A). But if you
-play this long enough, eventually you will hear some bars with too
-many 8th-notes. This sounds stilted. It would be better to force the
-ghost notes onto off-beat 16ths. An easy way to do that is to place
-the ghost notes onto 8th-notes (B), and then shift them (C). Note the
-=::= syntax. This creates a /generator chain/, where the result of the
-first generator feeds into the first input of the second. (Because the
-chain provides the source string for =\shift()=, you don't need to
-write a source---but you still need the comma.)
+into any open 16th-note (Listing [[drums2]], example A). But if you play
+this long enough, eventually you will hear some bars with too many
+8th-notes. This sounds stilted. It would be better to force the ghost
+notes onto off-beat 16ths. An easy way to do that is to place the
+ghost notes onto 8th-notes (B), and then shift them (C). Note the =::=
+syntax. This creates a /generator chain/, where the result of the a
+generator (or source) feeds into the the next. (Because the chain
+provides the source string for =\shift()=, you don't need to write a
+source---but you still need the comma.)
 
 For hi-hats, a musically sensible way to operate is to place one or
 more open hats, and then fill the remaining spaces with closed hats
@@ -538,12 +544,12 @@ Using pitch in /cll/ requires a little preparation.
 
 1. Set the tempo. (You should do this in every performance, as already
    demonstrated in Listing [[drums1]].)
-2. Set the /mode/. /ddwLivecodeInstruments/ defines a =Mode= object
-   for all seven classical Western modes, for all 12 chromatic
-   steps. Modes are identified by the root pitch (=c=, =cs= = c-sharp,
-   =db= = d-flat, and so on) plus a modal identifier (Table
-   [[modes]]). B-flat lydian is =Mode(\bblyd)=; F-sharp minor is
-   =Mode(\fsmin)=.
+2. Set the /mode/ by =/changeKey.(\name)=. /ddwLivecodeInstruments/
+   defines a =Mode= object for all seven classical Western modes, for
+   all 12 chromatic steps. Modes are identified by the root pitch
+   (=c=, =cs= = c-sharp, =db= = d-flat, and so on) plus a modal
+   identifier (Table [[modes]]). B-flat lydian is =Mode(\bblyd)=; F-sharp
+   minor is =Mode(\fsmin)=.
 
    #+Name: modes
    #+caption: Modal identifiers.
@@ -611,7 +617,7 @@ affects timing only).
 #+NAME: bass1
 #+caption: Bassline template.
 #+BEGIN_SRC {SuperCollider} -i
-Mode(\dmixo) => Mode(\default);
+/changeKey.(\dmixo);
 /make(pbsVC:pbs/melBP:bs(octave:3));
 
 /bs = "1_| 1.|  7~4|x";
@@ -755,9 +761,8 @@ event parameters.
 Global controls act like knobs on conventional synthesizers, by
 affecting all playing notes. These can be displayed automatically in a
 GUI window by running =VC(\name).gui=. Alternately, you could load
-Chucklib's performance GUI (=BP.loadGui=) and "chuck" (or drag)
-Voicers into the control slots at the right: =VC(\name) => VP(0)= to
-put the instrument into the topmost space, and so on.
+Chucklib's performance GUI (=\cllGui.eval=); for details, see Section
+[[Graphical interface windows]].
 
 Event parameters should normally take care of themselves. If you need
 to override, use the form =/processName(setDefault(\parameter,
@@ -1881,6 +1886,10 @@ A few "helper functions" are defined, to simplify common tasks:
   and the next barline). This is mainly to simplify group performances
   using the Utopia quark's =BeaconClock=.
 
+- =/changeKey.(\modeName)=: Assign the named Mode object to
+  =Mode(\default)=. All processes using the default mode will switch
+  to the new key immediately.
+
 - =/globalSwing.(array)=: Set an array defining swing subdivisions. To
   swing 16th-notes, the array's values should add up to 0.5
   (eighth-note), e.g. =[0.3, 0.2]=. (Individual processes may override
@@ -2071,6 +2080,7 @@ Listing [[genRhythm]] provides some playable examples. In Example 3, beat
 space. Thus beat 2 is subdivided into 16th-notes, and the generator
 begins on the second of those.
 
+#+begin_figure
 #+name: genRhythm
 #+caption: Interaction between generator syntax and "set pattern" rhythmic notation.
 #+BEGIN_SRC {SuperCollider} -i
@@ -2095,6 +2105,7 @@ begins on the second of those.
 
 /y-;
 #+END_SRC
+#+end_figure
 
 #+BEGIN_boxnote
 =\ins("new", num, quant)= inserts /num/ new items at possible time
@@ -2240,42 +2251,44 @@ TempoClock.tempo = 124/60;
 - =\rot(quant)= :: Add /quant/ to every item's onset time,
      and wrap all the times into the generator's boundaries:
      basically, a strict canon.
-     #+BEGIN_SRC SuperCollider
-     // Reich, "Piano Phase"-ish
-     
-     (
-     BP(\y).free;
-     PR(\abstractLiveCode).chuck(BP(\y), nil, (
-        event: (eventKey: \default, pan: -0.6),
-        defaultParm: \degree,
-        parmMap: (degree: (isPitch: true))
-     ));
-     
-     BP(\z).free;
-     PR(\abstractLiveCode).chuck(BP(\z), nil, (
-        event: (eventKey: \default, pan: 0.6),
-        defaultParm: \degree,
-        parmMap: (degree: (isPitch: true))
-     ));
-     )
-     
-     TempoClock.setMeterAtBeat(3, TempoClock.nextBar);
-     TempoClock.tempo = 112/60;
-     
-     /y = "[*^*^*^*^*^*^]::\seq("268", "*")::\seq("37", "^")";
-     
-     /z = "[*^*^*^*^*^*^]::\seq("268", "*")::\seq("37", "^")";
-     
-     /y/z+;
-     
-     /z = "[*^*^*^*^*^*^]::\seq("268", "*")::\seq("37", "^")::\rot(-0.25)";
-     
-     /z = "[*^*^*^*^*^*^]::\seq("268", "*")::\seq("37", "^")::\rot(-0.5)";
-     
-     /z = "[*^*^*^*^*^*^]::\seq("268", "*")::\seq("37", "^")::\rot(-0.75)";
-     
-     /y/z-;
-     #+END_SRC
+   #+name: rotExample
+   #+caption: Usage of \textbackslash rot() generator.
+   #+BEGIN_SRC SuperCollider
+// Reich, "Piano Phase"-ish
+
+(
+BP(\y).free;
+PR(\abstractLiveCode).chuck(BP(\y), nil, (
+   event: (eventKey: \default, pan: -0.6),
+   defaultParm: \degree,
+   parmMap: (degree: (isPitch: true))
+));
+
+BP(\z).free;
+PR(\abstractLiveCode).chuck(BP(\z), nil, (
+   event: (eventKey: \default, pan: 0.6),
+   defaultParm: \degree,
+   parmMap: (degree: (isPitch: true))
+));
+)
+
+TempoClock.setMeterAtBeat(3, TempoClock.nextBar);
+TempoClock.tempo = 112/60;
+
+/y = "[*^*^*^*^*^*^]::\seq("268", "*")::\seq("37", "^")";
+
+/z = "[*^*^*^*^*^*^]::\seq("268", "*")::\seq("37", "^")";
+
+/y/z+;
+
+/z = "[*^*^*^*^*^*^]::\seq("268", "*")::\seq("37", "^")::\rot(-0.25)";
+
+/z = "[*^*^*^*^*^*^]::\seq("268", "*")::\seq("37", "^")::\rot(-0.5)";
+
+/z = "[*^*^*^*^*^*^]::\seq("268", "*")::\seq("37", "^")::\rot(-0.75)";
+
+/y/z-;
+  #+END_SRC
 
 - =\delta("new items", quant, weights...)= :: Add items into the source
      based on random selection of event deltas, as multiples of
@@ -2301,29 +2314,31 @@ TempoClock.tempo = 124/60;
     delta pattern. Currently used only by =`beta= (supply /alpha/ and
     /beta/) and =`expb= (supply /spread/).
   
+  #+name: rDeltaExample
+  #+caption: Usage of \textbackslash rDelta() generator.
   #+BEGIN_SRC SuperCollider -i
-  // equal distribution
-  // but more total time spent on longer notes
-  /y = "\rDelta("*", 1, 8, , , `lin)::\wrand("\xrand("12345")\xrand("3'4'5'6'")", 2, 1)";
-  
-  /y+
-  
-  // equal total time spent on longer notes vs shorter
-  /y = "\rDelta("*", 1, 8, , , `exp)::\wrand("\xrand("12345")\xrand("3'4'5'6'")", 2, 1)";
-  
-  // Phprand
-  /y = "\rDelta("*", 1, 8, , , `hp)::\wrand("\xrand("12345")\xrand("3'4'5'6'")", 2, 1)";
-  
-  // Plprand
-  /y = "\rDelta("*", 1, 8, , , `lp)::\wrand("\xrand("12345")\xrand("3'4'5'6'")", 2, 1)";
-  
-  // beta distribution: similar problem as `lin
-  /y = "\rDelta("*", 1, 8, , , `beta, 0.2, 0.2)::\wrand("\xrand("12345")\xrand("3'4'5'6'")", 2, 1)";
-  
-  // expb: "exponentialized" beta distribution
-  /y = "\rDelta("*", 1, 8, , , `expb, 0.2)::\wrand("\xrand("12345")\xrand("3'4'5'6'")", 2, 1)";
-  
-  /y-
+// equal distribution
+// but more total time spent on longer notes
+/y = "\rDelta("*", 1, 8, , , `lin)::\wrand("\xrand("12345")\xrand("3'4'5'6'")", 2, 1)";
+
+/y+
+
+// equal total time spent on longer notes vs shorter
+/y = "\rDelta("*", 1, 8, , , `exp)::\wrand("\xrand("12345")\xrand("3'4'5'6'")", 2, 1)";
+
+// Phprand
+/y = "\rDelta("*", 1, 8, , , `hp)::\wrand("\xrand("12345")\xrand("3'4'5'6'")", 2, 1)";
+
+// Plprand
+/y = "\rDelta("*", 1, 8, , , `lp)::\wrand("\xrand("12345")\xrand("3'4'5'6'")", 2, 1)";
+
+// beta distribution: similar problem as `lin
+/y = "\rDelta("*", 1, 8, , , `beta, 0.2, 0.2)::\wrand("\xrand("12345")\xrand("3'4'5'6'")", 2, 1)";
+
+// expb: "exponentialized" beta distribution
+/y = "\rDelta("*", 1, 8, , , `expb, 0.2)::\wrand("\xrand("12345")\xrand("3'4'5'6'")", 2, 1)";
+
+/y-
   #+END_SRC
 
 - =\ramp("new items", initDelta, midDelta, midpoint, curve)= :: Generates
@@ -2346,27 +2361,29 @@ TempoClock.tempo = 124/60;
     =`lin=, =`exp= etc. A curvature number applies to the first
     segment, and will be negated for the second.
   
+  #+name: rampExample
+  #+caption: Usage of \textbackslash ramp() generator.
   #+BEGIN_SRC SuperCollider -i
-  /y = "\ramp("*", 1, 0.2, 1, `exp)::\pitch("*", "2", 0, 0)";
-  /y+
-  
-  // randomly choose accel or decel
-  /y = "\ramp("*", 1, 0.2, {2.rand}, `exp)::\pitch("*", "2", 0, 0)";
-  
-  // alternate between accel and decel
-  /y = "\ramp("*", 1, 0.2, {Pseq([0, 1], inf)}, `exp)::\pitch("*", "2", 0, 0)";
-  
-  /y = "\ramp("*", 1, 0.2, 0.5, `exp)::\pitch("*", "2", 0, 0)";
-  
-  // pulls 1 -> 0.2 curve to the right, biasing long durations
-  /y = "\ramp("*", 1, 0.2, 0.5, 2)::\pitch("*", "2", 0, 0)";
-  
-  // pulls 1 -> 0.2 curve to the left, biasing short durations
-  /y = "\ramp("*", 1, 0.2, 0.5, -2)::\pitch("*", "2", 0, 0)";
-  
-  /y = "\ramp("*", 1, 0.2, 0.5, -4)::\pitch("*", "2", 0, 0)";
-  
-  /y-
+/y = "\ramp("*", 1, 0.2, 1, `exp)::\pitch("*", "2", 0, 0)";
+/y+
+
+// randomly choose accel or decel
+/y = "\ramp("*", 1, 0.2, {2.rand}, `exp)::\pitch("*", "2", 0, 0)";
+
+// alternate between accel and decel
+/y = "\ramp("*", 1, 0.2, {Pseq([0, 1], inf)}, `exp)::\pitch("*", "2", 0, 0)";
+
+/y = "\ramp("*", 1, 0.2, 0.5, `exp)::\pitch("*", "2", 0, 0)";
+
+// pulls 1 -> 0.2 curve to the right, biasing long durations
+/y = "\ramp("*", 1, 0.2, 0.5, 2)::\pitch("*", "2", 0, 0)";
+
+// pulls 1 -> 0.2 curve to the left, biasing short durations
+/y = "\ramp("*", 1, 0.2, 0.5, -2)::\pitch("*", "2", 0, 0)";
+
+/y = "\ramp("*", 1, 0.2, 0.5, -4)::\pitch("*", "2", 0, 0)";
+
+/y-
   #+END_SRC
 
 - =\choke(maxDur, "new items", "wildcards")= :: For every
@@ -2408,9 +2425,9 @@ TempoClock.tempo = 124/60;
      moves to another chord. In =/arp..top=, the =\unis()= follows the
      top note's rhythm and pitch, and in =/arp..acc=, it adds an
      accent to the top notes only.
-#+name: unisGen
-#+caption: Using the unis() generator to coordinate two harmony processes.
-#+BEGIN_SRC SuperCollider -i
+  #+name: unisGen
+  #+caption: Using the unis() generator to coordinate two harmony processes.
+  #+BEGIN_SRC SuperCollider -i
 TempoClock.tempo = 124/60;
 /make(anapadVC:pad/chordBP:ch(chords:\bigch));
 /ch(leadTime = 0.01);
@@ -2424,7 +2441,7 @@ TempoClock.tempo = 124/60;
 /arp+
 
 VC(\pad).v.gui; VC(\pl).v.gui;  // adjust filters
-#+END_SRC
+  #+END_SRC
 
 *** Wildcard-replacement generators
 Note that =\seq()=, =\ser()=, =\rand()=, =\wrand()=, =\xrand()=, and
@@ -2443,14 +2460,16 @@ Note that =\seq()=, =\ser()=, =\rand()=, =\wrand()=, =\xrand()=, and
      wildcard-replacement, it is indistinguishable from =\seq()=. Used
      in a pool argument, however, compare the following (using =\y=
      defined in Listing [[gencycle]]):
-     #+BEGIN_SRC SuperCollider -i
-     /y = "\ins("*", 8, 0.5)::\seq("\seq*2..4("1234")\seq("875")")";
-     /y+
-     
-     /y = "\ins("*", 8, 0.5)::\seq("\ser*2..4("1234")\seq("875")")";
-     
-     /y-
-     #+END_SRC
+  #+name: serExample
+  #+caption: Usage of \textbackslash ser() generator.
+  #+BEGIN_SRC SuperCollider -i
+/y = "\ins("*", 8, 0.5)::\seq("\seq*2..4("1234")\seq("875")")";
+/y+
+
+/y = "\ins("*", 8, 0.5)::\seq("\ser*2..4("1234")\seq("875")")";
+
+/y-
+  #+END_SRC
 
 - =\rand("items", "wildcards")= :: Like =\seq()=, but
      chooses from /items/ randomly. (/Reset/ is not relevant, as there
@@ -2483,12 +2502,14 @@ Note that =\seq()=, =\ser()=, =\rand()=, =\wrand()=, =\xrand()=, and
     generator /for this process/. With care, you can create sequential
     patterns spanning barlines.
   - The behavior of =reset > 0= is undefined.
+  #+name: pdefnExample
+  #+caption: Usage of \textbackslash pdefn() generator.
   #+BEGIN_SRC SuperCollider
-  Pdefn(\y, Pn(Pseries(0, 1, 8), inf).collect { |d| SequenceNote(d, nil, 0.9) });
-     
-  /y.a0 = "[*]::\ins("*", 2, 0.5)::\pdefn(`y, "*")";
-  /y.a1 = "\ins("*", 3, 0.5)::\pdefn(`y, "*")";
-  /y = (a**2);
+Pdefn(\y, Pn(Pseries(0, 1, 8), inf).collect { |d| SequenceNote(d, nil, 0.9) });
+   
+/y.a0 = "[*]::\ins("*", 2, 0.5)::\pdefn(`y, "*")";
+/y.a1 = "\ins("*", 3, 0.5)::\pdefn(`y, "*")";
+/y = (a**2);
   #+END_SRC
 
 - =\gdefn(`pdefnKey, "wildcards")= :: Like =\pdefn()=, with
@@ -2500,45 +2521,47 @@ Note that =\seq()=, =\ser()=, =\rand()=, =\wrand()=, =\xrand()=, and
      values to alternate between =/x= and =/y=. Instead, four values
      are assigned to =/x= first, and then four to =/y=, and these are
      streamed out over the course of one bar.
-   #+BEGIN_SRC SuperCollider -i
-   (
-   BP(\x).free;
-   PR(\abstractLiveCode).chuck(BP(\x), nil, (
-      event: (play: { ~x.debug(~collIndex) }),
-      defaultParm: \x,
-      parmMap: (
-         x: ($0: 0, $1: 1, $2: 2, $3: 3, $4: 4)
-      ),
-   ));
-   
-   BP(\y).free;
-   PR(\abstractLiveCode).chuck(BP(\y), nil, (
-      event: (play: { ~x.debug(~collIndex) }),
-      defaultParm: \x,
-      parmMap: (
-         x: ($0: 0, $1: 1, $2: 2, $3: 3, $4: 4)
-      ),
-   ));
-   
-   BP(\x).leadTime = 0.01;
-   Pdefn(\x, Pseq("01234", inf).trace(prefix: "pdefn: "));
-   )
-   
-   /x = "[****]::\gdefn(`x, "*", 1)";
-   /y = "[****]::\gdefn(`x, "*", 1)";
-   /x/y+
-   /x/y-
-   #+END_SRC
-   
-   #+ATTR_LATEX: :align |c|c|c|c|
-   |------------+------------+----------+----------|
-   | Expected x | Expected y | Actual x | Actual y |
-   |------------+------------+----------+----------|
-   |          0 |          1 |        0 |        4 |
-   |          2 |          3 |        1 |        0 |
-   |          4 |          0 |        2 |        1 |
-   |          1 |          2 |        3 |        2 |
-   |------------+------------+----------+----------|
+  #+name: gdefnExample
+  #+caption: Usage of \textbackslash gdefn() generator.
+  #+BEGIN_SRC SuperCollider -i
+(
+BP(\x).free;
+PR(\abstractLiveCode).chuck(BP(\x), nil, (
+   event: (play: { ~x.debug(~collIndex) }),
+   defaultParm: \x,
+   parmMap: (
+      x: ($0: 0, $1: 1, $2: 2, $3: 3, $4: 4)
+   ),
+));
+
+BP(\y).free;
+PR(\abstractLiveCode).chuck(BP(\y), nil, (
+   event: (play: { ~x.debug(~collIndex) }),
+   defaultParm: \x,
+   parmMap: (
+      x: ($0: 0, $1: 1, $2: 2, $3: 3, $4: 4)
+   ),
+));
+
+BP(\x).leadTime = 0.01;
+Pdefn(\x, Pseq("01234", inf).trace(prefix: "pdefn: "));
+)
+
+/x = "[****]::\gdefn(`x, "*", 1)";
+/y = "[****]::\gdefn(`x, "*", 1)";
+/x/y+
+/x/y-
+  #+END_SRC
+  
+  #+ATTR_LATEX: :align |c|c|c|c|
+  |------------+------------+----------+----------|
+  | Expected x | Expected y | Actual x | Actual y |
+  |------------+------------+----------+----------|
+  |          0 |          1 |        0 |        4 |
+  |          2 |          3 |        1 |        0 |
+  |          4 |          0 |        2 |        1 |
+  |          1 |          2 |        3 |        2 |
+  |------------+------------+----------+----------|
 
 - =\prev("items", "wildcards", staccDur)= :: Replaces any
      /wildcards/ with either: one of the /items/ (which is equivalent
@@ -2575,7 +2598,9 @@ Note that =\seq()=, =\ser()=, =\rand()=, =\wrand()=, =\xrand()=, and
      generator resets every bar; unconstrained Brownian motion is
      risky.
 
-#+BEGIN_SRC SuperCollider -i
+  #+name: pitchExamples
+  #+caption: Usage of \textbackslash pitch() and \textbackslash pitch2() generators.
+  #+BEGIN_SRC SuperCollider -i
 TempoClock.tempo = 140/60;
 Mode(\cphr) => Mode(\default);
 
@@ -2593,14 +2618,14 @@ Mode(\cphr) => Mode(\default);
 /pl = "[5'>| 3'>|4'>  2'>|]::\ins("*", 3..7, 0.25)::\ins("@", 3..8, 0.25)::\pitch("*", "6,7,", 8, 10, ".")::\pitch2("@", "6,7,23", 14, 18, ".", 0)";
 
 /pl-
-#+END_SRC
+  #+END_SRC
 
 Note also that =\seq()=, =\rand()=, =\wrand()=, =\xrand()= and =\shuf()=
 may be used in (or as!) pool strings (Listing [[genSequencers]]).
 
-#+name: genSequencers
-#+caption: Complex sequencing with sub-generators.
-#+BEGIN_SRC SuperCollider -i
+  #+name: genSequencers
+  #+caption: Complex sequencing with sub-generators.
+  #+BEGIN_SRC SuperCollider -i
 (
 BP(\y).free;
 PR(\abstractLiveCode).chuck(BP(\y), nil, (
@@ -2630,7 +2655,7 @@ TempoClock.tempo = 140/60;
 /y = "\ins("*", 8, 0.5)::\seq("123")::\artic(\seq("\seq*3("_")\seq*7(".")"))";
 
 /y-
-#+END_SRC
+  #+END_SRC
 
 **** TODO Maybe fix \prev to support this case later		   :noexport:
 #+BEGIN_SRC SuperCollider
@@ -2660,7 +2685,9 @@ subsequences (Listing [[genSequencers]]).
      match. Otherwise, only those notes with an association to one of
      the given /wildcards/ will match.
 
-#+BEGIN_SRC SuperCollider -i
+  #+name: articExample
+  #+caption: Usage of \textbackslash artic() generator.
+  #+BEGIN_SRC SuperCollider -i
 TempoClock.tempo = 140/60;
 Mode(\cphr) => Mode(\default);
 /make(pulseLeadVC:pl/melBP:pl);
@@ -2681,13 +2708,15 @@ Mode(\cphr) => Mode(\default);
 /pl = "[****]::\seq("1574")::\ins("@", 4..8, 0.25)::\shuf("1'2'3'4'5'6'", "@")::\artic(">.", "*")::\artic("~", "@")";
 
 /pl-
-#+END_SRC
+  #+END_SRC
 
 - =\xpose("intervalPool", "wildcards")= :: Transposition. For
      each /wildcard/-matching note, choose an interval from
      /intervalPool/ and transpose the note accordingly.
 
-#+BEGIN_SRC SuperCollider -i
+  #+name: xposeExample
+  #+caption: Usage of \textbackslash xpose() generator.
+  #+BEGIN_SRC SuperCollider -i
 TempoClock.tempo = 140/60;
 Mode(\cphr) => Mode(\default);
 /make(pulseLeadVC:pl/melBP:pl);
@@ -2698,7 +2727,7 @@ Mode(\cphr) => Mode(\default);
 // Easy octave displacement.
 /pl = "\ins("*", 16, 0.25)::\seq("12345432")::\xpose("1111,1'1''")";
 /pl-
-#+END_SRC
+  #+END_SRC
 
 *** Filter generators
 
@@ -2711,11 +2740,13 @@ Mode(\cphr) => Mode(\default);
      occupies the entire bar. So both =\seq()= instances get half a
      bar. Source items in any portions of the bar not covered by one
      of the /timed generators/ will pass through unchanged.
-     #+BEGIN_SRC SuperCollider
-     /y = "\ins("*", 10, 0.25)::\fork("\seq("13", "*")\seq("14", "*")")";
-     
-     /y = "\ins("1,", 10, 0.25)::\fork(" \seq("13", "1,")x\seq("14", "1,")")";
-     #+END_SRC
+  #+name: forkExample
+  #+caption: Usage of \textbackslash fork() generator.
+  #+BEGIN_SRC SuperCollider
+/y = "\ins("*", 10, 0.25)::\fork("\seq("13", "*")\seq("14", "*")")";
+
+/y = "\ins("1,", 10, 0.25)::\fork(" \seq("13", "1,")x\seq("14", "1,")")";
+  #+END_SRC
 
 - =\chain(generator, generator...)= :: For internal use only.
 
@@ -2967,6 +2998,13 @@ PR(\chucklibLiveCode).clMyNewStatement = { |code|
 * Typesetting
 
 * Footnotes
+
+[fn:1234667500a0202f] The distinction between =~hwOut= and =~master=
+is for multitrack recording of live sets, where you may wish to record
+the main, dry mix (=~master=) separately from reverbs. In general,
+processes and instruments should direct their signal to =~master=;
+reverbs and other separate channels (e.g., microphones) may connect
+directly to =~hwOut=.
 
 [fn:83528c3905d7163] https://github.com/supercollider/supercollider/issues/3279
 
