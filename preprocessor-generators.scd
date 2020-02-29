@@ -829,7 +829,7 @@ protect {
 		~superprep = ~prep;
 		~prep = {
 			~pool = ~args[0];
-			~replaceItems = ~args[1] ?? { ~pool };
+			~replaceItems = ~args[1];  // should allow nil to match everything
 			~numToAdd = ~args[2] ?? { 1 };
 			if(~isNumProxy.(~numToAdd).not) {
 				Error("numToAdd '%' is not a number".format(~numToAdd)).throw;
@@ -839,7 +839,7 @@ protect {
 			// if(~divisor <= 1) {
 			// 	Error("\\clGenDiv divisor must be >= 1.0").throw;
 			// };
-			~divisible = ~args[5] ?? { Pfunc({ |quant| quant }) };
+			~divisible = ~args[5] ?? { Pfunc({ |quant| quant }).asStream };
 			~replaceItems = ~replaceItems.collect(_.item);
 			~poolItems = ~pool.collect(_.item);
 			if(~poolItems.size > 0) {
@@ -873,12 +873,16 @@ protect {
 			var durs = (items.collect(_.time) ++ ~dur).differentiate.drop(1),
 			avail, numToAdd,
 			blocks, testUnit = 0, blockDur, i, div;
-			avail = ~items.collect { |item|
-				~replaceItems.isEmpty or: { ~replaceItems.includesEqual(item.item) }
+			if(~replaceItems.size == 0) {
+				avail = Array.fill(~items.size, true);
+			} {
+				avail = ~items.collect { |item|
+					~replaceItems.isEmpty or: { ~replaceItems.includesEqual(item.item) }
+				};
 			};
 			numToAdd = min(~numToAdd.next, avail.count { |bool| bool });
 			blocks = Array(numToAdd);
-			blockDur = quant;
+			blockDur = quant.next;
 			div = ~divisible.next(quant);
 			while { numToAdd > 0 and: { blockDur < (~dur - tolerance) } } {
 				i = durs.collectIndices { |dur, i| avail[i] and: { dur == blockDur } };
@@ -897,13 +901,13 @@ protect {
 				};
 			};
 			// now get times for these indices
-			div = ~divisor.next;
-			if(div <= 1) {
-				"In BP(%), \\clGenDiv divisor must be >= 1.0, substituting 2.0"
-				.format(~bpKey.asCompileString).warn;
-			};
-			blockDur = (1 .. div - 1) / div;
 			blocks.collect { |i|
+				div = ~divisor.next;
+				if(div <= 1) {
+					"In BP(%), \\clGenDiv divisor must be >= 1.0, substituting 2.0"
+					.format(~bpKey.asCompileString).warn;
+				};
+				blockDur = (1 .. div - 1) / div;
 				~items[i].time + (~getIndexDur.(i) * blockDur)
 			}.flat;
 		};
@@ -1031,6 +1035,59 @@ protect {
 		~makeStream = 0;  // ~seqStream is not used here
 		~snippet.("stutt", "\\stutt(##match, numToAdd, quant, prob, insItem \"-\", wildcards##)");
 	}.import((clGenPitch: #[artic])) => PR(\clGenStutt);
+
+	PR(\clGenStutt).clone {
+		~modifySource = {
+			var nextTime, time, times, new, quant, prob, availIndices, added = 0, didAdd, index;
+			var toAdd = ~numToAdd.next,
+			attempts = toAdd * 3;
+			// later, we check index vs ~items.size
+			// but ~items.size changes as we add new items
+			// so, save the original input size
+			var inputSize = ~items.size;
+			availIndices = ~items.collectIndices { |item, index| ~canStutter.(item, index, 0.001) };
+			while {
+				attempts = attempts - 1;
+				attempts >= 0 and: {
+					added < toAdd and: { availIndices.notEmpty }
+				}
+			} {
+				didAdd = false;
+				quant = ~quant.next;
+				prob = ~prob.next;
+				index = availIndices.select { |i| ~getIndexDur.(i) >= (2 * quant) }.choose;
+				if(index.notNil) {
+					availIndices.remove(index);
+					time = ~items[index].time;
+					nextTime = if(index < (inputSize - 1)) {
+						~items[index + 1].time
+					} {
+						~time + ~dur  // this generator's ending time
+					};
+					while {
+						time = time + quant;
+						time - nextTime < 0.001  // tolerance
+					} {
+						if(prob.coin) {
+							times = times.add([time, index]);
+							didAdd = true;
+						};
+					};
+					if(didAdd and: { ~isPitch ?? { false } }) {
+						if(~items[index].item.isKindOf(SequenceNote)) {
+							~items[index].item = ~applyArtic.($., ~items[index].item);
+						};
+					};
+				};
+			};
+			times.do { |pair|
+				new = ~insStream.value(if(~passIndex) { pair[1] });  // else nil
+				~items = ~items.add((item: new, wildcard: new, src: \stutt, time: pair[0]));
+			};
+			~items.sort { |a, b| a.time < b.time }
+		};
+		~snippet.("stutt2", "\\stutt(##match, numToAdd, quant, prob, insItem \"-\", wildcards##)");
+	} => PR(\clGenStutt2);
 
 	PR(\clGenStutt).clone {
 		~poolArgs = { [~args[1]] };
