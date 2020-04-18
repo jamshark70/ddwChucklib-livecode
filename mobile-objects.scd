@@ -137,6 +137,8 @@ protect {
 
 	// this has GUI stuff in it -- maybe revisit
 	PR(\abstractTouch).clone {
+		var lightness;
+
 		~white = Color.white;
 		~black = Color.black;
 		~tabBackground = Color.gray(0.3);
@@ -164,7 +166,9 @@ protect {
 		~xyExtent = Point(140, 145);
 		~gap = Point(5, 5);
 
-		~labelBG = Color.grey(1.0 - ~tabBackground.lightness.round, 0.06);
+		// this is defined in wslib but I don't want a dependency on it
+		lightness = [~tabBackground.red, ~tabBackground.green, ~tabBackground.blue].mean;
+		~labelBG = Color.grey(1.0 - lightness.round, 0.06);
 
 		~sliders = { |n = 1, prefix = "/1", oneBound(Rect(0, 0, 400, 50)), buttonExtent(Point(50, 50)), gap = 10, bcolor, bltColor, scolor, sltColor, startI = 0, nameStartI = 1|
 			var out = Array(n * 5),
