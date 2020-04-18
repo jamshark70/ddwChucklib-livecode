@@ -41,7 +41,7 @@ protect {
 			if(~labels.isNil) { ~labels = IdentityDictionary.new };
 			~setDataKeys.();
 			if(~keepAlive) { ~startAliveThread.() };
-			Environment.current
+			currentEnvironment
 		};
 		~freeCleanup = {
 			~stopAliveThread.();
@@ -291,17 +291,17 @@ protect {
 			if(model.notNil) { ~model = model };
 			// ~parentView = parentView;
 			~font = ~font.value;
-			~notification = NotificationCenter.register(~model, \any, Environment.current, inEnvir { |msg|
+			~notification = NotificationCenter.register(~model, \any, currentEnvironment, inEnvir { |msg|
 				~respond.(~model, msg);  // args[0] == msg
 			});
-			~freeNotify = NotificationCenter.register(~model, \modelWasFreed, Environment.current, inEnvir {
+			~freeNotify = NotificationCenter.register(~model, \modelWasFreed, currentEnvironment, inEnvir {
 				~free.();
 			});
 			~tabSpecs = ~model.tabSpecs.deepCopy;
 			~makeWindow.();
 			~makeTabs.();
 			~window.front;
-			Environment.current;
+			currentEnvironment;
 		};
 		~free = {
 			~parentView.remove;
@@ -448,7 +448,7 @@ protect {
 		~sourceBP = \touch;
 		~prep = {
 			// why this? take advantage of address filtering in the BP
-			~resp = NotificationCenter.register(BP(~sourceBP).v, '/accxyz', Environment.current, inEnvir { |msg|
+			~resp = NotificationCenter.register(BP(~sourceBP).v, '/accxyz', currentEnvironment, inEnvir { |msg|
 				~smooth.(msg);
 			});
 			// ~resp = OSCFunc(inEnvir { |msg| ~smooth.(msg) }, '/accxyz');
@@ -471,7 +471,7 @@ protect {
 			~index = (~index + 1) % ~windowSize;
 			~movingBuf[~index] = msg[1..];
 			if((SystemClock.beats - ~lastSendTime) >= ~sendWait) {
-				NotificationCenter.notify(Environment.current, '/accxyz', [~avg]);
+				NotificationCenter.notify(currentEnvironment, '/accxyz', [~avg]);
 				~lastSendTime = SystemClock.beats;
 			};
 		};
@@ -488,7 +488,7 @@ protect {
 			~specs = specs;
 			~rdepth = 0;
 			~resp = ~path.collect { |path|
-				NotificationCenter.register(oscin, path, Environment.current, inEnvir {
+				NotificationCenter.register(oscin, path, currentEnvironment, inEnvir {
 					|msg, time, addr, recvPort|
 					if(~rdepth < 50) {
 						~rdepth = ~rdepth + 1;
@@ -501,7 +501,7 @@ protect {
 			};
 			~userprep.(~path, specs);
 			~setLabels.();
-			Environment.current
+			currentEnvironment
 		};
 		~free = { |wasReassigned(false)|
 			if(wasReassigned.not) {
@@ -524,7 +524,7 @@ protect {
 			var oscin = BP(~oscInKey).v, playing = 0;
 			~udepth = 0;
 			BP(~specs[\bp]).do { |bp|
-				bp.addDependant(Environment.current);
+				bp.addDependant(currentEnvironment);
 				// [path, bp, bp.isPlaying].debug("play check");
 				if(bp.isPlaying) { playing = 1 };
 			};
@@ -534,7 +534,7 @@ protect {
 		~userfree = { |wasReassigned|
 			var oscin = BP(~oscInKey).v;
 			BP(~specs[\bp]).do { |bp|
-				bp.removeDependant(Environment.current);
+				bp.removeDependant(currentEnvironment);
 			};
 			if(wasReassigned.not) {
 				~path.do { |p| oscin.setGUIValue(p, 0) };
@@ -579,7 +579,7 @@ protect {
 			if(~gc.isKindOf(GlobalControlBase).not) { ~gc = ~gc.value };
 			~cspec = (~specs[\spec] ?? { ~gc.spec }).asSpec;
 			BP(~oscInKey).setGUIValue(path[0], ~cspec.unmap(~gc.value));
-			~gc.addDependant(Environment.current);
+			~gc.addDependant(currentEnvironment);
 		};
 		~userfree = { |wasReassigned|
 			if(wasReassigned.not) {
@@ -587,7 +587,7 @@ protect {
 					BP(~oscInKey).setGUIValue(p, 0);
 				};
 			};
-			~gc.removeDependant(Environment.current);
+			~gc.removeDependant(currentEnvironment);
 		};
 		~prAction = { |msg|
 			~gc.set(~cspec.map(msg[1]));
@@ -610,8 +610,8 @@ protect {
 			if(~gc.notNil) {
 				~cspec = (~specs[\spec] ?? { ~gc.spec }).asSpec;
 				BP(~oscInKey).setGUIValue(path[0], ~cspec.unmap(~gc.value));
-				~gc.addDependant(Environment.current);
-				~gc.bus.addDependant(Environment.current);  // to sync with 'watch'... grr, bad hacks
+				~gc.addDependant(currentEnvironment);
+				~gc.bus.addDependant(currentEnvironment);  // to sync with 'watch'... grr, bad hacks
 				NotificationCenter.register(~gc, \setMixerGui, currentEnvironment, inEnvir { |mcgui|
 					if(mcgui.notNil) {
 						~gc.register(~specs[\ctl], mcgui);
@@ -633,8 +633,8 @@ protect {
 				};
 			};
 			if(~gcDidRegister) { ~gc.register(nil, nil, 1) };
-			~gc.bus.removeDependant(Environment.current);
-			~gc.removeDependant(Environment.current);
+			~gc.bus.removeDependant(currentEnvironment);
+			~gc.removeDependant(currentEnvironment);
 			NotificationCenter.unregister(~gc, \setMixerGui, currentEnvironment);
 		};
 		~prAction = { |msg|
