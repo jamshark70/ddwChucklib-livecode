@@ -28,6 +28,15 @@ protect {
 	PR(\mix16Touch).clone {
 		~uid = nil;
 		~chan = nil;
+		// jeez. asPaddedString isn't core. OK. fine. whatever.
+		~padString = { |string, size, padWithChar($0)|
+			string = string.asString;  // if it's, say, a number as below
+			if(string.size < size) {
+				String.fill(size - string.size, padWithChar) ++ string
+			} {
+				string
+			}
+		};
 		// flat array of pairs: ccnum, oscpath, ccnum, oscpath etc.
 		// for GUI definition below, zero-padding the index is important!
 		~pathTable = [
@@ -35,7 +44,7 @@ protect {
 			[(64..71), (32..39)].flat
 		].collect { |row, i|
 			var prefix = #["/1/fader", "/1/toggle"][i];
-			row.collect { |ccnum, j| [ccnum, (prefix ++ (j+1).asPaddedString(2)).asSymbol] }
+			row.collect { |ccnum, j| [ccnum, (prefix ++ ~padString.(j+1, 2)).asSymbol] }
 		}.flat;
 		~keepAlive = false;
 		~prep = {
@@ -184,7 +193,7 @@ protect {
 				ltAqua = ~ltAqua, aqua = ~aqua,
 				green = ~green, ltGreen = ~ltGreen;
 				8.do { |i|
-					out.add("/1/toggle%".format((i+1).asPaddedString(2)).asSymbol).add((
+					out.add("/1/toggle%".format(~padString.(i+1, 2)).asSymbol).add((
 						bounds: Rect.fromPoints(
 							origin + Point(gap.neg, 0),
 							origin + Point(buttonExtent.x - gap, buttonExtent.y)
@@ -200,7 +209,7 @@ protect {
 							})
 						},
 					))
-					.add("/1/fader%".format((i+1).asPaddedString(2)).asSymbol).add((
+					.add("/1/fader%".format(~padString.(i+1, 2)).asSymbol).add((
 						bounds: Rect.fromPoints(
 							origin + Point(buttonExtent.x, 0),
 							origin + oneBound.extent
@@ -210,7 +219,7 @@ protect {
 						init: { |view| view.knobColor_(green) },
 						spec: [0, 1]
 					))
-					.add("/1/toggle%".format((i+9).asPaddedString(2)).asSymbol).add((
+					.add("/1/toggle%".format(~padString.(i+9, 2)).asSymbol).add((
 						bounds: Rect.fromPoints(
 							origin + Point(gap + ~sliderWidth, 0),
 							origin + Point(buttonExtent.x + ~sliderWidth + gap, buttonExtent.y)
@@ -226,7 +235,7 @@ protect {
 							})
 						},
 					))
-					.add("/1/fader%".format((i+9).asPaddedString(2)).asSymbol).add((
+					.add("/1/fader%".format(~padString.(i+9, 2)).asSymbol).add((
 						bounds: Rect.fromPoints(
 							origin + Point(~fullWidth - buttonExtent.x, 0),
 							origin + Point(~fullWidth, buttonExtent.y)
