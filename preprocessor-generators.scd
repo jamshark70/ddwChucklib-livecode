@@ -420,6 +420,23 @@ protect {
 		~snippet.("rand", "\\rand(##items, wildcards##)");
 	} => PR(\clGenRand);
 
+	PR(\clGenRand).clone {
+		~modifySource = {
+			~items.do { |item, i|
+				if(~replaceItems.includesEqual(item[\wildcard])) {
+					// some replacers might need access to the state
+					~currentItem = item;
+					~currentIndex = i;
+					// copy is critical here!
+					// 18-1014: wildcard-replacers update the wildcard
+					~items[i] = item.copy.put(\wildcard, item[\item])
+					.put(\item, ~seqStream.next(item));
+				};
+			};
+		};
+		~snippet.("replace", "\\replace(##items, wildcards##)");
+	} => PR(\clGenReplace);
+
 	PR(\clGenSeq).clone {
 		~makeStream = {
 			~seqStream = Pxrand(~pool.asArray, inf).collect(_.item).asStream;
@@ -1548,7 +1565,7 @@ protect {
 			currentEnvironment
 		};
 		~process = {
-			var srcBP, i, endTime = ~time + ~dur, new;
+			var srcBP, i, endTime = ~time + ~dur, new, wildcard;
 			~items = ~getUpstreamItems.();
 			if(BP.exists(~srcBP)) {
 				srcBP = BP(~srcBP);
@@ -1565,8 +1582,9 @@ protect {
 						// if no item already at the source's time slot
 						if(~items.detect { |x| x.time == item.time }.isNil) {
 							new = ~poolStream.next ?? { item };
+							wildcard = item[\wildcard];
 							new = new.item;
-							~insertItem.((item: new, wildcard: new, src: \unis, time: item.time));
+							~insertItem.((item: new, wildcard: wildcard ?? { new }, src: \unis, time: item.time));
 						};
 					};
 				};
