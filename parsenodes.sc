@@ -217,6 +217,11 @@ ClStringNode : ClAbstractParseNode {
 ClEventStringNode : ClStringNode {
 	streamCode { |stream|
 		stream << "(time: " << time << ", dur: " << dur << ", item: ";
+		this.streamItem(stream);
+		stream << ")";
+	}
+
+	streamItem { |stream|
 		if(isPitch ?? { false }) {
 			stream <<< this.decodePitch(string);
 		} {
@@ -226,8 +231,11 @@ ClEventStringNode : ClStringNode {
 				stream <<< string;
 			};
 		};
-		stream << ")";
 	}
+
+	// whitespace placeholders and true rests end up being ClEventStringNodes
+	// and you may have to call this to get a SequenceNote to render
+	// so it has to be here, not in ClPitchEventNode
 	decodePitch { |pitchStr|
 		var degree, legato = 0.9, accent = false;
 		^case
@@ -261,6 +269,81 @@ ClEventStringNode : ClStringNode {
 		}
 		{ pitchStr == $  } { nil }
 		{ pitchStr }
+	}
+}
+
+ClPitchEventNode : ClEventStringNode {
+	parse { |stream|
+		// while loop assumes that the pitch number has already been eaten
+		var ch = stream.next, new = String.with(ch);
+		while { (ch = stream.next).notNil and: { "+-',~_.>".includes(ch) } } {
+			new = new.add(ch);
+		};
+		if(ch.notNil) { stream.pos = stream.pos - 1 };
+	}
+
+	streamItem { |stream|
+		stream <<< this.decodePitch(string);
+	}
+}
+
+ClChordNode : ClEventStringNode {
+	*new { |stream, parentNode, properties|
+		if(properties.isNil) {
+			properties = IdentityDictionary.new;
+		} {
+			properties = properties.copy;
+		};
+		properties.put(\openDelimiter, $().put(\closeDelimiter, $));
+		^super.new(stream, parentNode, properties)
+	}
+	// here, starts with first item (opening angle bracket is already skipped)
+	// 'begin' is already set
+	parse { |stream|
+		var ch, new;
+		var property = (isPitch: true);
+		begin = begin - 1;
+		while {
+			ch = stream.peek;
+			ch.notNil and: { ch != closeDelimiter }
+		} {
+			new = ClPitchEventNode(stream, this, property);
+			children = children.add(new);
+		};
+		if(ch != closeDelimiter) {
+			Error("Improperly closed (chord node)").throw;
+		} {
+			stream.next;  // used 'peek' above, have to advance past closing delimiter
+			ch = stream.peek;
+			if(".~>_".includes(ch)) {
+				new = ClArticNode(stream, this);
+				children = children.add(new);
+			};
+		}
+	}
+	streamItem { |stream|
+		var legato = 0.9, accent = false,
+		i = 0, size = children.size, note;
+		if(children.last.isMemberOf(ClArticNode)) {
+			switch(children.last.char)
+			{ $~ } { legato = inf /*1.01*/ }
+			{ $_ } { legato = 0.9 }
+			{ $. } { legato = 0.4 };
+			accent = children.last.accented;
+			size = size - 1;
+		};
+		stream << "SequenceNote(";
+		if(size > 1) { stream << "[" };
+		while { children[i].isMemberOf(ClPitchEventNode) } {
+			if(i > 0) { stream << ", " };
+			note = children[i].decodePitch(children[i].string);
+			stream << note.freq;
+			i = i + 1;
+		};
+		if(size > 1) { stream << "]" };
+		stream << ", nil, " << legato;
+		if(accent) { stream << ", \\accent" };
+		stream << ")";
 	}
 }
 
@@ -497,7 +580,12 @@ ClDividerNode : ClAbstractParseNode {
 			Error(":: chain syntax applies only to generators or [source]").throw;
 		}
 		{ isPitch } {
-			if(ch.isDecDigit) {
+			case { ch.isDecDigit } {
+				stream.pos = stream.pos - 1;
+				new = ClPitchEventNode(stream, this, (isPitch: true));
+				children = children.add(new);
+				new
+				/*
 				new = String.with(ch);
 				while { (ch = stream.next).notNil and: { "+-',~_.>".includes(ch) } } {
 					new = new.add(ch);
@@ -512,7 +600,16 @@ ClDividerNode : ClAbstractParseNode {
 					.end_(begin + new.size - 1);
 				);
 				new//.debug("<< parseItem");
-			} {
+				*/
+			}
+			{ ch == $( } {
+				// no, ClChordNode assumes '<' has been eaten already
+				// stream.pos = stream.pos - 1;
+				new = ClChordNode(stream, this/*, properties*/);
+				children = children.add(new);
+				new
+			}
+			{
 				new = String.with(ch);
 				children = children.add(
 					ClEventStringNode.newEmpty
