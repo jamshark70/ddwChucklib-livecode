@@ -486,10 +486,10 @@ Proto {
 	//   - has |
 	~cases = [
 		{ |code|
-			var i;
-			if(code[0] == $") { i = 1 } { i = 0 };
+			// var i;
+			// if(code[0] == $") { i = 1 } { i = 0 };
 			// ".(".includes(code[i])  // want to use '.' as a segment char too
-			code[i] == $(
+			code[0] == $(
 		} -> \compositePattern,
 		// { |code| code.includes($|) } -> \patternWithDividers,
 		true -> \patternString // \patternWithoutDividers
