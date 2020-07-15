@@ -103,6 +103,7 @@ Library.put(\clLivecode, \setupbars, \guiIsFront, false);
 
 { |mode = \default|
 	if(Mode.exists(mode)) {
+		"changeKey: Mode(%) => Mode('default')\n".postf(mode.asCompileString);
 		Mode(mode) => Mode(\default);
 	} {
 		"changeKey: Mode(%) does not exist".format(mode.asCompileString).warn;
