@@ -361,6 +361,12 @@ protect {
 			// 	~doReset = false;
 			// };
 			~doReset = ~args[2] ?? { 0 };
+			~offset = ~args[3] ?? { 0 };
+			#[doReset, offset].do { |key|
+				if(~isNumProxy.(key.envirGet).not) {
+					Error("%: % should be a number proxy".format(~protoID, key)).throw;
+				};
+			};
 			currentEnvironment
 		};
 
@@ -394,7 +400,7 @@ protect {
 		};
 		// embedInStream is for generators embedded in pools, should use repeats
 		~embedInStream = { |inval|
-			Pseq(~pool, ~repeats).embedInStream(inval)
+			Pseq(~pool, { ~repeats.next }, { ~offset.next }).embedInStream(inval)
 		};
 		~canBePool = true;
 		~helpString = "\\seq(\"items\")";
@@ -403,7 +409,7 @@ protect {
 
 	PR(\clGenSeq).clone {
 		~embedInStream = { |inval|
-			Pser(~pool, ~repeats).embedInStream(inval)
+			Pser(~pool, { ~repeats.next }, { ~offset.next }).embedInStream(inval)
 		};
 		~snippet.("ser", "\\ser(##items, wildcards, reset##)");
 	} => PR(\clGenSer);
@@ -834,6 +840,64 @@ protect {
 		};
 		~snippet.("ins", "\\ins(##pool, numToAdd, quant##)");
 	} => PR(\clGenIns);
+
+	// \euclid(pool, subdivision, increment, initial)
+	PR(\clGenIns).clone {
+		~numToAdd = 0x7FFFFFFF;  // always add all avail
+		~prep = {
+			~pool = ~args[0].asArray;
+			~checkEmpty.(~pool, "pool");
+			~quant = ~args[1] ?? { 0.25 };
+			~increment = ~args[2] ?? { 3 };
+			~initial = ~args[3] ?? { 0 };
+			#[quant, increment, initial].do { |key|
+				if(~isNumProxy.(key.envirGet).not) {
+					Error("clGenEuclid: '%' should be a number".format(key)).throw;
+				};
+			};
+			~poolStream = Prand(~pool, inf).asStream.collect(_.item);
+			currentEnvironment
+		};
+		~getAvail = { |items, quant, tolerance = 0.001|
+			var q = quant.next,
+			num = (~dur / q).asInteger,  // must round down
+			times = items.collect({ |item| item[\time] - ~time }) ++ [~dur],
+			counter = ~initial.next % num,
+			increment = ~increment.next % num,
+			avail = List.new,
+			j = 0;
+			num.do { |i|
+				// times, to reduce impact of rounding error
+				var now = q * i;
+
+				if(now absdif: times[j] < tolerance) {
+					if(items[j][\initialRest] == true and: { counter < increment }) {
+						avail.add(now)
+					};
+					// 'time' is matched at times[j], so we must advance by at least 1
+					j = j + 1;
+				} {
+					if(counter < increment) { avail.add(now) };
+					// times[j] is somewhere in the future; may not need to advance yet
+				};
+
+				// advance j if needed
+				now = q * (i+1);
+				while { times[j].notNil and: { now - times[j] >= tolerance } } {
+					j = j + 1;
+				};
+
+				// here's the Euclid part
+				counter = counter + increment;
+				// after this, counter should be less than increment,
+				// signaling to add the next slot
+				// this may be a slight deviation from the standard Euclidean rhythm technique
+				if(counter >= num) { counter = counter - num };
+			};
+			avail + ~time
+		};
+		~snippet.("euclid", "\\euclid(##pool##, quant, increment, initial)");
+	} => PR(\clGenEuclid);
 
 	// quant is minimum duration to divide
 	// divisor is how many to split into
