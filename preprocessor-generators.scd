@@ -1668,6 +1668,38 @@ protect {
 		~snippet.("unis", "\\unis(##srcParm, pool, srcBP##)");
 	}.import((clGenIns: #[insertItem])) => PR(\clGenUnis);
 
+	// extract (selected) wildcards: throw away "item" values
+	// if you supply wildcards, match only those; otherwise match all
+	// if an item has no wildcard, don't touch it
+	// useful pattern: \unis(...)::\wildcards(...)
+	PR(\clGen).clone {
+		~prep = {
+			~wildcards = ~args[0];
+			if(~wildcards.notNil) {
+				~wildcards = ~wildcards.collect(_.item);
+			};
+			currentEnvironment
+		};
+		~process = {
+			var end = ~time + ~dur;
+			~items = ~getUpstreamItems.();
+			~items.do { |item|
+				if(item[\time] >= ~time and: { item[\time] < end
+					and: {
+						item[\wildcard].notNil and: {
+							~wildcards.isNil or: {
+								~wildcards.includesEqual(item[\wildcard])
+							}
+						}
+					}
+				}) {
+					item[\item] = item[\wildcard];
+				};
+			};
+		};
+		~snippet.("wildcards", "\\wildcards(##wildcards##)");
+	} => PR(\clGenWildcards);
+
 	// PR(\clGen).clone {
 	//
 	// } => PR(\clGenLeadTo);
