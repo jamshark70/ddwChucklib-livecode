@@ -1287,6 +1287,66 @@ protect {
 		~snippet.("delta", "\\delta(##pool, quant, weights...##)");
 	} => PR(\clGenDelta);
 
+	PR(\clGenDelta).clone {
+		~prep = {
+			~pool = ~args[0];
+			~quant = ~args[1] ?? { 0.25 };
+			~dpool = ~args[2];
+			~poolStream = Prand(~pool.asArray, inf).collect(_.item).asStream;
+			~dpool = Prand(~dpool.asArray, inf);
+			~dpoolStream = ~dpool.asStream;
+			~resetCount = 0;  // see ~getAvail; trap infinite loops
+			~initRest = false;  // see superclass modifySource
+			currentEnvironment
+		};
+		// modifySource is inherited
+		// getAvail has the new logic
+		~getAvail = { |items|
+			var avail = List.new,
+			now = ~time,
+			end = ~time + ~dur,
+			tolerance = 0.001,
+			quant = ~quant.next,
+			item, delta;
+			while { now < (end - tolerance) } {
+				if(items.every { |item| (now absdif: item[\time]) > tolerance }) {
+					avail.add(now);
+				};
+				item = ~dpoolStream.next;
+				if(item.notNil) {
+					delta = ~deltaFromItem.(item[\item]);
+					if(delta.isNumber) {
+						now = now + (quant * delta);
+					} {
+						Error("pdelta: could not resolve delta pool").throw;
+					};
+				} {
+					if(~resetCount < 10) {
+						~resetCount = ~resetCount + 1;
+						~dpoolStream = ~dpool.asStream;
+					} {
+						Error("pdelta: delta pool failed too many times").throw;
+					}
+				};
+			};
+			avail
+		};
+		~deltaFromItem = { |item|
+			case
+			{ item.isKindOf(SequenceNote) } {
+				item.asFloat + 1
+			}
+			{ item.isKindOf(Char) } {
+				item.digit
+			}
+			{
+				"pdelta: invalid digit %".format(item.asCompileString).warn;
+				1
+			};
+		};
+		~snippet.("pdelta", "\\pdelta(##pool, quant, deltapool##)");
+	} => PR(\clGenPdelta);
+
 	// non-metric generators
 
 	// Pool
