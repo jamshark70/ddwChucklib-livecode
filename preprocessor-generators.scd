@@ -1214,11 +1214,8 @@ protect {
 			currentEnvironment
 		};
 		~modifySource = {
-			var avail, didInsertFirst = false,
-			quant = ~quant.next, weights = ~weights.next;
-			~deltaPool = Array.series(weights.size, quant, quant);
-			~deltaStream = Pwrand(~deltaPool, Pfunc { |w| w }, inf).asStream;
-			avail = ~getAvail.(~items, quant, weights);
+			var avail;
+			avail = ~getAvail.(~items);
 			avail.size.do { |i|
 				var newTime = avail[i],
 				new;
@@ -1233,17 +1230,19 @@ protect {
 						new = ~poolStream.next;
 						if(new.notNil) {
 							~insertItem.((item: new, wildcard: new, src: \delta, time: newTime));
-							if(newTime == ~time) { didInsertFirst = true };
 						};
 					};
 				};
 			};
 			~items
 		};
-		~getAvail = { |items, quant, weights|
-			var now = ~time, end = ~time + ~dur,
+		~getAvail = { |items|
+			var quant = ~quant.next, weights = ~weights.next,
+			now = ~time, end = ~time + ~dur,
 			avail = Array.new, tolerance = 0.001,
 			delta, tempWeights, next = 0, i, deleted;
+			~deltaPool = Array.series(weights.size, quant, quant);
+			~deltaStream = Pwrand(~deltaPool, Pfunc { |w| w }, inf).asStream;
 			while { now < (end - tolerance) } {
 				if(items.every { |item| (next absdif: item[\time]) > tolerance }) {
 					avail = avail.add(now);
