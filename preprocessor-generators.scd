@@ -1288,6 +1288,8 @@ protect {
 	} => PR(\clGenDelta);
 
 	PR(\clGenDelta).clone {
+		// can't use Char:digit because I want 0 in keyboard order, not logical order
+		~charMap = "1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 		~prep = {
 			~pool = ~args[0];
 			~quant = ~args[1] ?? { 0.25 };
@@ -1297,26 +1299,39 @@ protect {
 			~dpoolStream = ~dpool.asStream;
 			~resetCount = 0;  // see ~getAvail; trap infinite loops
 			~initRest = false;  // see superclass modifySource
+			~remainder = 0;
 			currentEnvironment
 		};
 		// modifySource is inherited
 		// getAvail has the new logic
 		~getAvail = { |items|
 			var avail = List.new,
-			now = ~time,
+			// also works if ~remainder > ~dur
+			// avail is empty in that case, and remainder is reduced the next time
+			now = ~time + ~remainder,
 			end = ~time + ~dur,
 			tolerance = 0.001,
 			quant = ~quant.next,
-			item, delta;
+			item, index;
+			if(quant != ~oldQuant) {
+				~oldQuant = quant;
+				if(quant.size > 0) {
+					~quantMap = quant;
+				} {
+					~quantMap = quant * (1..36);  // allow letters and numbers as digits
+				};
+			};
 			while { now < (end - tolerance) } {
 				if(items.every { |item| (now absdif: item[\time]) > tolerance }) {
 					avail.add(now);
 				};
 				item = ~dpoolStream.next;
 				if(item.notNil) {
-					delta = ~deltaFromItem.(item[\item]);
-					if(delta.isNumber) {
-						now = now + (quant * delta);
+					index = ~deltaIndexFromItem.(item[\item]);
+					if(index.isNumber) {
+						now = now + (~quantMap[index] ?? {
+							Error("pdelta: error accessing quantMap").throw;
+						});
 					} {
 						Error("pdelta: could not resolve delta pool").throw;
 					};
@@ -1329,15 +1344,18 @@ protect {
 					}
 				};
 			};
+			~remainder = now - end;
 			avail
 		};
-		~deltaFromItem = { |item|
+		~deltaIndexFromItem = { |item|
 			case
 			{ item.isKindOf(SequenceNote) } {
-				item.asFloat + 1
+				item.asFloat
 			}
 			{ item.isKindOf(Char) } {
-				item.digit
+				~charMap.indexOf(item.toUpper) ?? {
+					Error("pdelta: invalid character $" ++ item).throw;
+				}
 			}
 			{
 				"pdelta: invalid digit %".format(item.asCompileString).warn;
