@@ -548,11 +548,11 @@ ClDividerNode : ClAbstractParseNode {
 			items = items.add(this.parseItem(stream, ch));
 		};
 		if(ch.notNil) { stream.pos = stream.pos - 1 };
-		// stream.collection[~begin .. ~begin + 10].debug("<< clDividerNode");
+		// stream.collection[begin .. begin + 10].debug("<< clDividerNode");
 	}
 
 	parseItem { |stream, ch|
-		var new, begin;
+		var new, begin, test;
 		// [ch.asCompileString, stream.collection[stream.pos .. stream.pos + 10]].debug(">> parseItem");
 		if(ch.isNil) { ch = stream.next };
 		begin = stream.pos - 1;
@@ -576,7 +576,14 @@ ClDividerNode : ClAbstractParseNode {
 			new//.debug("<< parseItem");
 		}
 		// legit chains should be handled in one of the above branches
-		{ stream.collection[stream.pos .. stream.pos + 2] == "::\\" } {
+		// but if it's the start of a divider, we might already have swallowed one colon
+		// so match either :\ or ::\
+		// this does disallow : as a parmMap char in the following: "|::\ins() ||"
+		{
+			test = stream.collection.findRegexpAt(":*\\\\", stream.pos);
+			// test[1] is length of match, for this case should be either :\ or ::\
+			test.notNil and: { test[1] >= 2 and: { test[1] <= 3 } }
+		} {
 			Error(":: chain syntax applies only to generators or [source]").throw;
 		}
 		{ isPitch } {
