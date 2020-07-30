@@ -154,13 +154,19 @@ protect {
 			{ Library.at(\globalSwing).notNil } {
 				deltas = Library.at(\globalSwing).mapDeltaArray(deltas);
 			};
-			items.collect { |item, i| item.copy.put(key, deltas[i]) };
+			items.collect { |item, i|
+				var copy = item.copy.put(key, deltas[i]);
+				if(copy[\dur].isNil) {
+					copy.put(\dur, deltas[i])
+				};
+				copy
+			};
 		};
 		~asPattern = { |bp|  // the BP() object -- asPattern should be called @ top level only
 			var pat, rest, didProcess = false;
 			if(~items.isNil) {
 				~items = ~doProcess.(bp);
-				~items = ~updateDeltas.(~items);
+				~items = ~updateDeltas.(~items, \delta);
 				// "clGen items: ".post; ~items.postcs;
 				didProcess = true;
 			};
@@ -176,9 +182,9 @@ protect {
 					};
 					if(ev[\item].isNil) {
 						// incumbent on you to put the parm into ~defaults
-						[inEvent[~parm], ev[\dur]]
+						[inEvent[~parm], ev[\delta]]
 					} {
-						[ev[\item], ev[\dur]]
+						[ev[\item], ev[\delta]]
 					}
 				};
 			} {
@@ -186,7 +192,7 @@ protect {
 					if(ev[\initialRest] == true) {
 						inEvent.put(\initialRest, true);
 					};
-					[ev[\item], ev[\dur]]
+					[ev[\item], ev[\delta]]
 				};
 			};
 			if(~parm.notNil) {
@@ -1824,7 +1830,7 @@ protect {
 					gen.baseItems = partition;
 					newItems = newItems.add(gen.process);
 					lastGenTime = gen.time + gen.dur;
-				};
+				}
 			};
 			newItems = newItems.add(~items.select { |item|
 				item[\time] >= lastGenTime

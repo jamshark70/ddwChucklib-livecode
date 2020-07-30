@@ -556,7 +556,7 @@ Proto {
 		phrase = id.phrase;
 		parm = id.parm;
 		if(parsed.isMain) {
-			yieldsKeys = [parm, \dur];
+			yieldsKeys = [parm, \delta];
 		} {
 			yieldsKeys = parm;
 		};
@@ -1285,9 +1285,9 @@ Proto {
 	};
 
 	~copyPhraseStringCmd = { |key, objStr, srcPhrase, targetPhrase|
-		// default phrases have [\key, \dur]
+		// default phrases have [\key, \delta]
 		// aliases need not be considered here
-		if(key.isArray and: { key.last == \dur }) {
+		if(key.isArray and: { key.last == \delta }) {
 			key = key[0];
 		};
 		key = key.asCompileString;
@@ -2285,8 +2285,8 @@ Proto {
 	~prep = {
 		if(~phrases.isNil) {
 			~phrases = IdentityDictionary[
-				\main -> PbindProxy([~defaultParm, \dur], nil),
-				\rest -> PbindProxy(\dur, Pfuncn { Rest(~clock.beatsPerBar) })
+				\main -> PbindProxy([~defaultParm, \delta], nil),
+				\rest -> PbindProxy(\delta, Pfuncn { Rest(~clock.beatsPerBar) })
 			];
 			~phraseDurs = IdentityDictionary[
 				// function is allowed here b/c Pfindur will evaluate it
@@ -2323,7 +2323,7 @@ Proto {
 		var dict, result, convert;
 		if(~debug ?? { false }) { [event, parm, inEvent].debug(">> valueForParm") };
 		result = case
-		{ parm == \dur } { event }
+		{ parm == \delta } { event }
 		{ ~parmIsPitch.(parm) } {
 			dict = ~parmMap[parm];
 			convert = dict.tryPerform(\at, \convertFunc);
@@ -2448,7 +2448,7 @@ Proto {
 			storeParm = ~parmMap[inParm].tryPerform(\at, \alias) ?? { parm };
 		};
 		if(pat.isNil) {
-			pat = PbindProxy([~defaultParm, \dur], nil);
+			pat = PbindProxy([~defaultParm, \delta], nil);
 			~phrases[phrase] = pat;
 		};
 		if(parm.notNil) {
@@ -2462,7 +2462,7 @@ Proto {
 			~clock.schedAbs(time - 0.001, inEnvir {
 				case
 				// does this ever happen?
-				{ parm == \dur } {
+				{ parm == \delta } {
 					if(~debug ?? { false }) { "dur pattern".debug };
 					pat.set(parm, pattern);
 				}
@@ -2494,7 +2494,7 @@ Proto {
 					});
 				}
 				// arrayed *non-default* parm with alias
-				{ storeParm.size > 0 and: { parm.asArray.includes(\dur).not } } {
+				{ storeParm.size > 0 and: { parm.asArray.includes(\delta).not } } {
 					if(~debug ?? { false }) { "storeParm array without dur".debug };
 					pat.set(parm, pattern.collect { |valueID, event|
 						var result = ~valueForParm.(valueID, inParm, event);
