@@ -98,11 +98,12 @@ protect {
 			// "<< % getUpstreamItems".format(~protoID).debug;
 			// out.postcs
 		};
-		~updateDeltas = {
+		~updateDeltas = { |items, key = \dur|
+			var deltas;
 			var prevItem, default;
 			if(BP.exists(~bpKey) and: { ~parm != BP(~bpKey).defaultParm }) {
-				if(~items.isEmpty) {
-					~deltas = [~dur];
+				if(items.isEmpty) {
+					deltas = [~dur];
 					prevItem = ~repository[~parm];
 					if(prevItem.notNil) {
 						prevItem = prevItem.item
@@ -120,47 +121,46 @@ protect {
 							prevItem = \rest
 						};
 					};
-					~items = [(item: prevItem, time: 0)];
+					items = [(item: prevItem, time: 0)];
 				} {
-					~deltas = (~items.collect(_[\time]) ++ ~dur).differentiate;
-					if(~items[0][\time] == 0) {
-						~deltas = ~deltas.drop(1);
+					deltas = (items.collect(_[\time]) ++ ~dur).differentiate;
+					if(items[0][\time] == 0) {
+						deltas = deltas.drop(1);
 					} {
-						~deltas[0] = ~items[0][\time];
+						deltas[0] = items[0][\time];
 						prevItem = ~repository[~parm];
 						if(prevItem.notNil) { prevItem = prevItem.item };
-						~items = ~items.copy.insert(0, (item: prevItem, time: 0));
+						items = items.copy.insert(0, (item: prevItem, time: 0));
 					};
 				};
 			} {
-				if(~items.isEmpty) {
-					~deltas = [Rest(~dur)];
-					~items = [(item: \rest, time: 0, initialRest: true)];
+				if(items.isEmpty) {
+					deltas = [Rest(~dur)];
+					items = [(item: \rest, time: 0, initialRest: true)];
 				} {
-					~deltas = (~items.collect(_[\time]) ++ ~dur).differentiate;
-					if(~items[0][\time] == 0) {
-						~deltas = ~deltas.drop(1);
+					deltas = (items.collect(_[\time]) ++ ~dur).differentiate;
+					if(items[0][\time] == 0) {
+						deltas = deltas.drop(1);
 					} {
-						~deltas[0] = Rest(~items[0][\time]);
-						~items = ~items.copy.insert(0, (item: \rest, time: 0, initialRest: true));
+						deltas[0] = Rest(items[0][\time]);
+						items = items.copy.insert(0, (item: \rest, time: 0, initialRest: true));
 					};
 				};
 			};
 			case
 			{ BP.exists(~bpKey) and: { BP(~bpKey)[\swing].notNil } } {
-				~deltas = BP(~bpKey)[\swing].mapDeltaArray(~deltas);
+				deltas = BP(~bpKey)[\swing].mapDeltaArray(deltas);
 			}
 			{ Library.at(\globalSwing).notNil } {
-				~deltas = Library.at(\globalSwing).mapDeltaArray(~deltas);
+				deltas = Library.at(\globalSwing).mapDeltaArray(deltas);
 			};
-			~items = ~items.collect { |item, i| item.copy.put(\dur, ~deltas[i]) };
-			// ~items.do { |item, i| item[\dur] = ~deltas[i] };
+			items.collect { |item, i| item.copy.put(key, deltas[i]) };
 		};
 		~asPattern = { |bp|  // the BP() object -- asPattern should be called @ top level only
 			var pat, rest, didProcess = false;
 			if(~items.isNil) {
 				~items = ~doProcess.(bp);
-				~updateDeltas.();
+				~items = ~updateDeltas.(~items);
 				// "clGen items: ".post; ~items.postcs;
 				didProcess = true;
 			};
