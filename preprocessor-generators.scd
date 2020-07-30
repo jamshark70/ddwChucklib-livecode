@@ -1857,6 +1857,34 @@ protect {
 		~snippet.("fork", "\\fork(##genString##)");
 	} => PR(\clGenFork);
 
+	PR(\clGenFork).clone {
+		~prep = {
+			~source = ~args[0];
+			~strings = ~args[1..];
+			currentEnvironment
+		};
+		~process = {
+			var sourceItems = ~getUpstreamItems.();
+			var lookupSet = sourceItems.as(IdentitySet);
+			var items, new;
+			~strings.do { |patString|
+				items = sourceItems.copy;
+				items = ~processOne.(items, ~source);  // common source
+				items = ~processOne.(items, patString);
+				items = ~updateDeltas.(items, \dur);
+				items.do { |item|
+					if(lookupSet.includes(item).not) {
+						new = new.add(item);
+					};
+				};
+			};
+			// as in Ppar, delta may need to be different from dur
+			// dur was set above
+			~items = ~updateDeltas.((sourceItems ++ new).sort { |a, b| a[\time] < b[\time] }, \delta);
+		};
+		~snippet.("par", "\\par(##source, string0, string1...##)");
+	} => PR(\clGenPar);
+
 	PR(\clGen).clone {
 		~prep = {
 			var stream, thing;
