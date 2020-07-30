@@ -556,7 +556,7 @@ Proto {
 		phrase = id.phrase;
 		parm = id.parm;
 		if(parsed.isMain) {
-			yieldsKeys = [parm, \delta];
+			yieldsKeys = [parm, \delta, \dur];
 		} {
 			yieldsKeys = parm;
 		};
@@ -2285,7 +2285,7 @@ Proto {
 	~prep = {
 		if(~phrases.isNil) {
 			~phrases = IdentityDictionary[
-				\main -> PbindProxy([~defaultParm, \delta], nil),
+				\main -> PbindProxy([~defaultParm, \delta, \dur], nil),
 				\rest -> PbindProxy(\delta, Pfuncn { Rest(~clock.beatsPerBar) })
 			];
 			~phraseDurs = IdentityDictionary[
@@ -2324,6 +2324,7 @@ Proto {
 		if(~debug ?? { false }) { [event, parm, inEvent].debug(">> valueForParm") };
 		result = case
 		{ parm == \delta } { event }
+		{ parm == \dur } { event }
 		{ ~parmIsPitch.(parm) } {
 			dict = ~parmMap[parm];
 			convert = dict.tryPerform(\at, \convertFunc);
@@ -2448,7 +2449,7 @@ Proto {
 			storeParm = ~parmMap[inParm].tryPerform(\at, \alias) ?? { parm };
 		};
 		if(pat.isNil) {
-			pat = PbindProxy([~defaultParm, \delta], nil);
+			pat = PbindProxy([~defaultParm, \delta, \dur], nil);
 			~phrases[phrase] = pat;
 		};
 		if(parm.notNil) {

@@ -192,7 +192,7 @@ protect {
 					if(ev[\initialRest] == true) {
 						inEvent.put(\initialRest, true);
 					};
-					[ev[\item], ev[\delta]]
+					[ev[\item], ev[\delta], ev[\dur]]
 				};
 			};
 			if(~parm.notNil) {
