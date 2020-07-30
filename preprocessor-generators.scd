@@ -1801,32 +1801,35 @@ protect {
 			currentEnvironment
 		};
 		~process = {
-			var lastGenTime = 0;
 			~items = ~getUpstreamItems.();
-			~newItems = Array.new;
-			~generators.do { |gen, i|
+			~items = ~processOne.(~items, ~generators);
+		};
+		// factored out for subclass
+		~processOne = { |items, patternString|
+			var lastGenTime = 0, newItems = Array.new;
+			patternString.do { |gen, i|
 				var start, end, partition;
 				if(gen.tryPerform(\isClGen) ?? { false }) {
 					start = gen.time;
 					end = start + gen.dur;
 					// any stray items?
 					if(start - lastGenTime > 0.0001) {
-						~newItems = ~newItems.add(~items.select { |item|
+						newItems = newItems.add(items.select { |item|
 							item[\time] >= lastGenTime and: { item[\time] < start }
 						});
 					};
-					partition = ~items.select { |item|
+					partition = items.select { |item|
 						item[\time] >= start and: { item[\time] < end }
 					};
 					gen.baseItems = partition;
-					~newItems = ~newItems.add(gen.process);
+					newItems = newItems.add(gen.process);
 					lastGenTime = gen.time + gen.dur;
 				};
 			};
-			~newItems = ~newItems.add(~items.select { |item|
+			newItems = newItems.add(~items.select { |item|
 				item[\time] >= lastGenTime
 			});
-			~items = ~newItems.flatten(1);
+			newItems.flatten(1);
 		};
 
 		// pool validation: tricky because non-pool gens are allowed here
@@ -1838,9 +1841,11 @@ protect {
 				};
 			};
 			if(inPool) {
-				Error("\\fork may not be used in a pool").throw;
+				Error("%% may not be used in a pool".format(
+					$\\, ~protoID.asString.drop(5).toLower
+				)).throw;
 			};
-			~generators.do(checkOne);
+			~args.do { |a| a.do(checkOne) };  // ~args for subclass
 		};
 
 		~snippet.("fork", "\\fork(##genString##)");
