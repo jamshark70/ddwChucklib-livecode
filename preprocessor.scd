@@ -2401,6 +2401,33 @@ Proto {
 	~defaults = ();  // or Pbind
 	~postDefaults = ();
 
+	// non-patterns go into defaults
+	// patterns make a BPStream and get added to postDefaults (which is tricky)
+	~set = { |... pairs|
+		var envKey, keyExists;
+		pairs.pairsDo { |key, value|
+			if(key.envirGet.notNil) {
+				envKey = key;
+				keyExists = true;
+			} {
+				envKey = (key ++ "Default").asSymbol;
+				keyExists = envKey.envirGet.notNil;
+			};
+			if(keyExists or: { value.isPattern }) {
+				envKey.envirPut(value);
+				// if key exists, assume it's already been added into postDefaults
+				// no need to double wrap
+				// already using BPStream for postDefaults, so, just reassign
+				if(keyExists.not) {
+					~postDefaults = Pbindf(~postDefaults, key, BPStream(envKey));
+				};
+			} {
+				~defaults.put(key, value);
+			};
+		};
+		currentEnvironment
+	};
+
 	~phraseStringAt = { |phrase, parm(~defaultParm)|
 		~phraseStrings.at(phrase, parm);
 	};
