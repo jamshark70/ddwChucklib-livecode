@@ -950,6 +950,10 @@ protect {
 			};
 			~items
 		};
+		// for div, dur must match blockDur exactly
+		~testDur = { |dur, blockDur, quant, tolerance|
+			(dur absdif: blockDur) < tolerance
+		};
 		~getAvail = { |items, quant, tolerance = 0.001|
 			var durs = (items.collect(_.time) ++ ~dur).differentiate.drop(1),
 			avail, numToAdd,
@@ -966,7 +970,9 @@ protect {
 			blockDur = quant.next;
 			div = ~divisible.next(quant);
 			while { numToAdd > 0 and: { blockDur < (~dur - tolerance) } } {
-				i = durs.collectIndices { |dur, i| avail[i] and: { dur == blockDur } };
+				i = durs.collectIndices { |dur, i| avail[i] and: {
+					~testDur.(dur, blockDur, quant, tolerance)
+				} };
 				if(i.isEmpty) {
 					if(div == 0) {
 						blockDur = ~dur + 1;  // force stop: avoid infinite loop
@@ -1012,6 +1018,13 @@ protect {
 		};
 		~snippet.("div", "\\div(##pool, replaceItems, numToAdd, quant, divisor, divisible##)");
 	} => PR(\clGenDiv);
+
+	PR(\clGenDiv).clone {
+		~testDur = { |dur, blockDur, quant, tolerance|
+			dur.inclusivelyBetween(blockDur, blockDur + quant)
+		};
+		~snippet.("div", "\\div2(##pool, replaceItems, numToAdd, quant, divisor, divisible##)");
+	} => PR(\clGenDiv2);
 
 	// \stutt(source, match, numToAdd, quant, prob, insItem "-")
 	// choose numToAdd of "pool" items and of these, add more items after it
