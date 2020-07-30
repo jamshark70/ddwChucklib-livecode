@@ -1840,8 +1840,7 @@ protect {
 			if(inPool) {
 				Error("\\fork may not be used in a pool").throw;
 			};
-			~baseItems.do(~checkOne);
-			~generators.do(~checkOne);
+			~generators.do(checkOne);
 		};
 
 		~snippet.("fork", "\\fork(##genString##)");
