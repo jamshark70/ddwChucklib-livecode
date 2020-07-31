@@ -2537,7 +2537,7 @@ Proto {
 							.warn;
 						};
 						// valueID[1] should be the dur value -- necessary to be second return value
-						[result, valueID[1]]
+						[result, valueID[1], valueID[2]]
 					});
 				}
 				{
