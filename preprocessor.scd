@@ -2286,7 +2286,8 @@ Proto {
 		if(~phrases.isNil) {
 			~phrases = IdentityDictionary[
 				\main -> PbindProxy([~defaultParm, \delta, \dur], nil),
-				\rest -> PbindProxy(\delta, Pfuncn { Rest(~clock.beatsPerBar) })
+				// "delta, dur" is a workaround for a rather dumb Pfindur bug
+				\rest -> PbindProxy(#[delta, dur], Pfuncn { Rest(~clock.beatsPerBar).dup })
 			];
 			~phraseDurs = IdentityDictionary[
 				// function is allowed here b/c Pfindur will evaluate it
