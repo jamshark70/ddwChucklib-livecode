@@ -812,22 +812,9 @@ protect {
 		~insertItem = { |new|
 			var insertI = ~items.detectIndex { |item| new[\time] < item[\time] };
 			if(insertI.isNil) {
-				// must update ~items.last before adding -- otherwise, .last has changed
-				if(~items.size > 0) {
-					~items.last.dur = min(
-						~items.last[\dur] ?? { 10000 },
-						new.time - ~items.last.time
-					);
-				};
 				~items = ~items.add(new);
 			} {
 				~items = ~items.insert(insertI, new);
-				if(insertI > 0) {
-					~items[insertI - 1][\dur] = min(
-						~items[insertI - 1][\dur] ?? { 10000 },
-						new.time - ~items[insertI - 1].time
-					);
-				};
 			};
 			currentEnvironment
 		};
@@ -1131,13 +1118,6 @@ protect {
 				} {
 					if(prob.coin) {
 						times = times.add([time, index]);
-						// if this is the first new note for this existing note
-						if(didAdd.not) {
-							~items[index].dur = min(
-								~items[index].dur ?? { 10000 },
-								time - ~items[index].time
-							);
-						};
 						didAdd = true;
 					};
 				};
@@ -1314,22 +1294,10 @@ protect {
 		~insertItem = { |new|
 			var insertI = ~items.detectIndex { |item| new[\time] < item[\time] };
 			if(insertI.isNil) {
-				if(~items.size > 0) {
-					~items.last.dur = min(
-						~items.last[\dur] ?? { 10000 },
-						new.time - ~items.last.time
-					);
-				};
 				~items = ~items.add(new);
 			} {
 				if(new[\time] < ~items[insertI][\time]) {
 					~items = ~items.insert(insertI, new);
-					if(insertI > 0) {
-						~items[insertI - 1][\dur] = min(
-							~items[insertI - 1][\dur] ?? { 10000 },
-							new.time - ~items[insertI - 1].time
-						);
-					};
 				} {
 					~items[insertI] = new;
 				};

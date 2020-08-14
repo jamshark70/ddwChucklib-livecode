@@ -216,7 +216,7 @@ ClStringNode : ClAbstractParseNode {
 
 ClEventStringNode : ClStringNode {
 	streamCode { |stream|
-		stream << "(time: " << time << ", dur: " << dur << ", item: ";
+		stream << "(time: " << time << ", item: ";
 		this.streamItem(stream);
 		stream << ")";
 	}
