@@ -1859,9 +1859,16 @@ protect {
 	} => PR(\clGenFork);
 
 	PR(\clGenFork).clone {
+		~poolArgs = { ~strings };
 		~prep = {
 			~source = ~args[0];
 			~strings = ~args[1..];
+			if(~strings.any { |str|
+				not(str.every { |item| item.tryPerform(\isClGen) ?? { false } })
+			}) {
+				Error("\\par(): Invalid pool string").throw;
+			};
+			~checkPoolArgs.();
 			currentEnvironment
 		};
 		~process = {
