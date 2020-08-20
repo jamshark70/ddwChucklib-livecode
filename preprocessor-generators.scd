@@ -450,11 +450,14 @@ protect {
 	} => PR(\clGenReplace);
 
 	PR(\clGenSeq).clone {
+		// xrand is stateful so, if no repeats are given, it should go forever
+		// \xrand*n() will override
+		~repeats = inf;
 		~makeStream = {
 			~seqStream = Pxrand(~pool.asArray, inf).collect(_.item).asStream;
 		};
 		~embedInStream = { |inval|
-			Pxrand(~pool, ~repeats).embedInStream(inval)
+			Pxrand(~pool.asArray, ~repeats).embedInStream(inval)
 		};
 		~helpString = "\\xrand(\"items\")";
 		~snippet.("xrand", "\\xrand(##items, wildcards, reset##)");
