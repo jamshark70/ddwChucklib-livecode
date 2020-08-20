@@ -1865,11 +1865,23 @@ protect {
 		~poolArgs = { ~strings };
 		~prep = {
 			~source = ~args[0];
-			~strings = ~args[1..];
-			if(~strings.any { |str|
-				not(str.every { |item| item.tryPerform(\isClGen) ?? { false } })
-			}) {
-				Error("\\par(): Invalid pool string").throw;
+			~strings = ~args[1..].collect { |str|
+				if(str.every { |item| item.tryPerform(\isClGen) ?? { false } }) {
+					str  // all are clGens, pass through OK
+				} {
+					// replace with \rand() (compatible with other pool strings)
+					// the [] wrapper represents the "" string
+					[PR(\clGenRand).copy.putAll((
+						// str is already an array, but needs 'doReset' and 'offset'
+						args: [str, nil, ClNumProxy(0), ClNumProxy(0)],
+						bpKey: ~bpKey,
+						parm: ~parm,
+						time: ~time,
+						dur: ~dur,
+						isPitch: ~isPitch,
+						isMain: ~isMain
+					)).prep]
+				};
 			};
 			~checkPoolArgs.();
 			currentEnvironment
