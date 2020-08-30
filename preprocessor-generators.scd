@@ -345,8 +345,10 @@ protect {
 
 	PR(\clGen).clone {
 		~prep = {
-			~baseItems = ~args[0];  // getUpstreamItems looks here
 			currentEnvironment
+		};
+		~process = {
+			~items = ~args[0].copy;
 		};
 	} => PR(\clGenSrc);
 
