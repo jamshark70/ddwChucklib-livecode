@@ -876,11 +876,11 @@ ClChainNode : ClAbstractParseNode {
 		^new.init(stream, parentNode, leftNode)
 	}
 
-	init { |stream, parentNode, leftNode|
+	init { |stream, argParentNode, leftNode|
 		if(stream.peek != $\\) {
 			Error("'::' syntax is valid between two generators only").throw;
 		};
-		parentNode = parentNode;
+		parentNode = argParentNode;
 		leftNode.parentNode = this;
 		children = [leftNode];
 		// if(stream.peek == $/) { stream.next };
