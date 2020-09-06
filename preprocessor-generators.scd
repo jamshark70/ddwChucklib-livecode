@@ -452,6 +452,42 @@ protect {
 		~snippet.("replace", "\\replace(##items, wildcards##)");
 	} => PR(\clGenReplace);
 
+	PR(\clGen).clone {
+		~poolArgs = [];
+		~prep = {
+			if(~args[0].isSequenceableCollection) {
+				~replaceItems = ~args[0].collect { |item| item.item };
+			} {
+				~replaceItems = [$*];
+			};
+			~prob = ~args[1] ?? { 1.0 };
+			if(~isNumProxy.(~prob).not) {
+				Error("%: prob should be a number proxy".format(~protoID)).throw;
+			};
+			currentEnvironment
+		};
+		~process = {
+			var didDelete = false;
+			~items = ~getUpstreamItems.();
+			~items.do { |item, i|
+				if(~replaceItems.includesEqual(item[\wildcard]) and: {
+					// why '.not'? 0.75 should be 75% chance of keeping it
+					// (higher number -> more event density)
+					~prob.next.coin.not
+				}) {
+					didDelete = true;
+					~items[i] = nil;
+				};
+			};
+			if(didDelete) {
+				~items.reject(_.isNil)
+			} {
+				~items
+			};
+		};
+		~snippet.("delete", "\\delete(##wildcards, probability##)");
+	} => PR(\clGenDelete);
+
 	PR(\clGenSeq).clone {
 		// xrand is stateful so, if no repeats are given, it should go forever
 		// \xrand*n() will override
