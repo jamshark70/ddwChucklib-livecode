@@ -538,14 +538,17 @@ ClDividerNode : ClAbstractParseNode {
 	var <>endChars = "|\"";
 	var items;
 	parse { |stream|
-		var ch;
+		var ch, new;
 		// stream.collection[stream.pos .. stream.pos + 10].debug(">> clDividerNode");
 		items = Array.new;
 		while {
 			ch = stream.next;
 			ch.notNil and: { endChars.includes(ch).not }
 		} {
-			items = items.add(this.parseItem(stream, ch));
+			new = this.parseItem(stream, ch);
+			if(new.notNil) {
+				items = items.add(new);
+			};
 		};
 		if(ch.notNil) { stream.pos = stream.pos - 1 };
 		// stream.collection[begin .. begin + 10].debug("<< clDividerNode");
@@ -575,6 +578,8 @@ ClDividerNode : ClAbstractParseNode {
 			children = children.add(new);
 			new//.debug("<< parseItem");
 		}
+		// code formatting: skip over CR and tab
+		{ #[$\n, $\t].includes(ch) } { nil }
 		// legit chains should be handled in one of the above branches
 		// but if it's the start of a divider, we might already have swallowed one colon
 		// so match either :\ or ::\
