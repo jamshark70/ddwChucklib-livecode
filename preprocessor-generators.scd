@@ -429,7 +429,7 @@ protect {
 			~seqStream = Prand(~pool.asArray, inf).collect(_.item).asStream;
 		};
 		~embedInStream = { |inval|
-			Prand(~pool, ~repeats).embedInStream(inval)
+			Prand(~pool, { ~repeats.next }).embedInStream(inval)
 		};
 		~helpString = "\\rand(\"timing\", \"items\")";
 		~snippet.("rand", "\\rand(##items, wildcards##)");
@@ -460,7 +460,7 @@ protect {
 			} {
 				~replaceItems = [$*];
 			};
-			~prob = ~args[1] ?? { 1.0 };
+			~prob = ~args[1] ?? { 0.0 };
 			if(~isNumProxy.(~prob).not) {
 				Error("%: prob should be a number proxy".format(~protoID)).throw;
 			};
@@ -496,7 +496,7 @@ protect {
 			~seqStream = Pxrand(~pool.asArray, inf).collect(_.item).asStream;
 		};
 		~embedInStream = { |inval|
-			Pxrand(~pool.asArray, ~repeats).embedInStream(inval)
+			Pxrand(~pool.asArray, { ~repeats.next }).embedInStream(inval)
 		};
 		~helpString = "\\xrand(\"items\")";
 		~snippet.("xrand", "\\xrand(##items, wildcards, reset##)");
