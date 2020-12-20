@@ -1232,6 +1232,108 @@ protect {
 		~snippet.("stutt2", "\\stutt(##match, numToAdd, quant, prob, insItem \"-\", wildcards##)");
 	} => PR(\clGenStutt2);
 
+	// for each, add up to n-1 new things
+	// e.g. addLimit = 3 means a total of 3 events following from a source event
+	PR(\clGenStutt).clone {
+		~defaultNames = #[/*baseItems,*/ match, numToAdd, quant, prob, addLimit, insPool, wildcards];
+		~defaults = [/*nil,*/ nil, 1, 0.25, 0.75, 1000, nil, nil];
+		// expand this later
+		~validation = [/*nil,*/ nil, \isNumProxy, \isNumProxy, \isNumProxy, \isNumProxy, nil, nil];
+		~modifySource = {
+			var nextTime, time, times, new, quant, prob;
+			// later, we check index vs ~items.size
+			// but ~items.size changes as we add new items
+			// so, save the original input size
+			var inputSize = ~items.size;
+			quant = ~quant.next;
+			prob = ~prob.next;
+
+			// get source indices
+			~items.collectIndices { |item, index| ~canStutter.(item, index, quant) }
+			.scramble.keep(~numToAdd.next).do { |index|
+				var numAdded = 0;
+				var addLimit = max(0, ~addLimit.next - 1);
+				time = ~items[index].time;
+				nextTime = if(index < (inputSize - 1)) {
+					~items[index + 1].time
+				} {
+					~time + ~dur  // this generator's ending time
+				};
+				while {
+					time = time + quant;
+					time < nextTime and: { numAdded < addLimit }
+				} {
+					if(prob.coin) {
+						times = times.add([time, index]);
+						numAdded = numAdded + 1;
+					};
+				};
+				if(numAdded > 0 and: { ~isPitch ?? { false } }) {
+					if(~items[index].item.isKindOf(SequenceNote)) {
+						~items[index].item = ~applyArtic.($., ~items[index].item);
+					};
+				};
+			};
+			times.do { |pair|
+				new = ~insStream.value(if(~passIndex) { pair[1] });  // else nil
+				~items = ~items.add((item: new, wildcard: new, src: \stuttN, time: pair[0]));
+			};
+			~items.sort { |a, b| a.time < b.time }
+		};
+		~snippet.("stuttN", "\\stuttN(##match, numToAdd, quant, prob, addLimit, insItem \"-\", wildcards##)");
+	} => PR(\clGenStuttN);
+
+	// for each, add up to a total duration
+	PR(\clGenStutt).clone {
+		~defaultNames = #[/*baseItems,*/ match, numToAdd, quant, prob, addDur, insPool, wildcards];
+		~defaults = [/*nil,*/ nil, 1, 0.25, 0.75, 1000, nil, nil];
+		// expand this later
+		~validation = [/*nil,*/ nil, \isNumProxy, \isNumProxy, \isNumProxy, \isNumProxy, nil, nil];
+		~modifySource = {
+			var nextTime, time, times, new, quant, prob;
+			// later, we check index vs ~items.size
+			// but ~items.size changes as we add new items
+			// so, save the original input size
+			var inputSize = ~items.size;
+			quant = ~quant.next;
+			prob = ~prob.next;
+
+			// get source indices
+			~items.collectIndices { |item, index| ~canStutter.(item, index, quant) }
+			.scramble.keep(~numToAdd.next).do { |index|
+				var didAdd = false;
+				time = ~items[index].time;
+				nextTime = if(index < (inputSize - 1)) {
+					~items[index + 1].time
+				} {
+					~time + ~dur  // this generator's ending time
+				};
+				// lesser of available dur vs user limited dur
+				nextTime = min(nextTime, time + ~addDur.next);
+				while {
+					time = time + quant;
+					time < nextTime
+				} {
+					if(prob.coin) {
+						times = times.add([time, index]);
+						didAdd = true;
+					};
+				};
+				if(didAdd and: { ~isPitch ?? { false } }) {
+					if(~items[index].item.isKindOf(SequenceNote)) {
+						~items[index].item = ~applyArtic.($., ~items[index].item);
+					};
+				};
+			};
+			times.do { |pair|
+				new = ~insStream.value(if(~passIndex) { pair[1] });  // else nil
+				~items = ~items.add((item: new, wildcard: new, src: \stuttDur, time: pair[0]));
+			};
+			~items.sort { |a, b| a.time < b.time }
+		};
+		~snippet.("stuttDur", "\\stuttDur(##match, numToAdd, quant, prob, addDur, insItem \"-\", wildcards##)");
+	} => PR(\clGenStuttDur);
+
 	PR(\clGenStutt).clone {
 		~poolArgs = { [~args[1]] };
 		~defaultNames = #[/*baseItems,*/ maxDur, insPool, wildcards];
