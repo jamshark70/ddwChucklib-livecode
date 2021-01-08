@@ -424,6 +424,18 @@ protect {
 	} => PR(\clGenSer);
 
 	PR(\clGenSeq).clone {
+		// seq ~prep defines a numeric ~offset
+		// let's reuse that for the number of repeats
+		~makeStream = {
+			~seqStream = Pstutter({ ~offset.next }, Prand(~pool.asArray, inf)).collect(_.item).asStream;
+		};
+		~embedInStream = { |inval|
+			Pstutter({ ~offset.next }, Prand(~pool)).embedInStream(inval)
+		};
+		~snippet.("repeat1", "\\repeat1(##items, wildcards, reset, repeatseq##)");
+	} => PR(\clGenRepeat1);
+
+	PR(\clGenSeq).clone {
 		// ~asPattern = { Prand(~args[0], inf) };
 		~makeStream = {
 			~seqStream = Prand(~pool.asArray, inf).collect(_.item).asStream;
