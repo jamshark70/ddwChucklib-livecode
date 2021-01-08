@@ -270,6 +270,69 @@ protect {
 			};
 			true
 		};
+		// it's impossible for the parser to isolate an articpool containing a gen
+		// because the parser doesn't know which args are expected to be artic
+		// so, reconvert after the fact -- eventually maybe lose articpool nodes
+		// Accent+artic may render as two items with SequenceNotes... re-squish them too
+		~convertPoolToArtic = { |pool|
+			var in = pool.asArray;
+			var out = Array(in.size);
+			var str = CollStream(in);
+			var item, ch, ch2, j;
+			while {
+				item = str.next;
+				item.notNil
+			} {
+				case
+				{ item.isKindOf(Char) or: { item.isKindOf(Association) } } {
+					out.add(item);
+				}
+				{ item.tryPerform(\isClGen) ?? { false } } {
+					out.add(item.convertArticPools)  // returns self
+				}
+				{ item.isKindOf(Dictionary) and: { item[\item].isKindOf(SequenceNote) } } {
+					ch = item[\item].asFloat.asInteger.asAscii;
+					case { ch == $> } {
+						item = str.peek;
+						case { item.isKindOf(Dictionary) and: { item[\item].isKindOf(SequenceNote) } } {
+							ch2 = item[\item].asFloat.asInteger.asAscii;
+							if("~_.".includes(ch2)) {
+								out.add(\accent -> ch2);  // ">_" branch
+								str.next;
+							} {
+								Error("Wrong character in artic pool").throw;
+								// out.add(ch2);  // ">" branch... loop back and reprocess ch2
+							};
+						}
+						{ item.tryPerform(\isClGen) ?? { false } } {
+							out.add(item.convertArticPools);  // returns self
+							str.next;
+						}
+						{ Error("Wrong character in artic pool").throw }
+					}
+					{ "~_.".includes(ch) } {
+						out.add(\accent -> ch);  // ">_" branch
+						str.next;
+					}
+					{ Error("Wrong character in artic pool").throw }
+				}
+				{ Error("Wrong character in artic pool").throw }
+			};
+			if(pool.tryPerform(\isClGen) ?? { false }) {
+				out = out[0];
+			};
+			out
+		};
+		~convertArticPools = {
+			// I messed up the data structure here, didn't think I'd have to write back
+			~poolArgs.value.do { |pool|
+				var i = ~args.indexOf(pool);
+				pool = ~convertPoolToArtic.(pool);
+				~args.put(i, pool);
+				~pool = pool;  // currently all pool-able generators store the source here
+			};
+			currentEnvironment
+		};
 		// quite confusing interface.
 		// 'artic' may be a char (. _ ~) *or* an association (accent -> char or nil)
 		// but also, stutt may need to clear the accent flag, so...
@@ -1828,6 +1891,7 @@ protect {
 	PR(\clGen).clone {
 		~poolArgs = { [~args[0]] };
 		~prep = {
+			~convertArticPools.();
 			~pool = ~args[0] ?? { "_" };
 			~checkArticPool.(~pool);
 			~wildcards = ~args[1];
