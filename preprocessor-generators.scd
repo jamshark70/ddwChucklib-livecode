@@ -1071,7 +1071,7 @@ protect {
 		~testDur = { |dur, blockDur, quant, tolerance|
 			dur.inclusivelyBetween(blockDur, blockDur + quant)
 		};
-		~snippet.("div", "\\div2(##pool, replaceItems, numToAdd, quant, divisor, divisible##)");
+		~snippet.("div2", "\\div2(##pool, replaceItems, numToAdd, quant, divisor, divisible##)");
 	} => PR(\clGenDiv2);
 
 	// \stutt(source, match, numToAdd, quant, prob, insItem "-")
@@ -1229,7 +1229,7 @@ protect {
 			};
 			~items.sort { |a, b| a.time < b.time }
 		};
-		~snippet.("stutt2", "\\stutt(##match, numToAdd, quant, prob, insItem \"-\", wildcards##)");
+		~snippet.("stutt2", "\\stutt2(##match, numToAdd, quant, prob, insItem \"-\", wildcards##)");
 	} => PR(\clGenStutt2);
 
 	// for each, add up to n-1 new things
@@ -1280,7 +1280,7 @@ protect {
 			};
 			~items.sort { |a, b| a.time < b.time }
 		};
-		~snippet.("stuttN", "\\stuttN(##match, numToAdd, quant, prob, addLimit, insItem \"-\", wildcards##)");
+		~snippet.("stuttN", "\\stuttN(##match, numToAdd, quant, prob, numInclusive, insItem \"-\", wildcards##)");
 	} => PR(\clGenStuttN);
 
 	// for each, add up to a total duration
