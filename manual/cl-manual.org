@@ -2299,6 +2299,13 @@ TempoClock.tempo = 112/60;
      position to find the position for the next item, until reaching
      the end of the timespan.
 
+- =\pdelta("new items", quant, "deltapool")= :: Like =\delta()=,
+     except where =\delta()= always uses =Pwrand= to produce the
+     durations, =\pdelta()= allows you to sequence multiples of
+     /quant/. A =1= in the deltapool string is 1 times quant; =2= is 2
+     times quant and so on. A standard hi-hat pattern that could then
+     be written =\pdelta(\seq("..-"), 0.25, \seq("112"))=.
+
 - =\rDelta("new items", maxDelta, factor, minNotes, maxNotes, distribution, parameters)= :: Like
      =\delta()=, but generates deltas from one of six random functions
      (whereas =\delta()= corresponds only to =Pwrand()=). It is, then,
@@ -2403,6 +2410,15 @@ TempoClock.tempo = 112/60;
      true. /insItem/ specifies the item to insert; if omitted, it will
      insert a copy of the existing item.
 
+- =\stuttDur("new items", numToAdd, quant, prob, addDur, "insItem", "wildcards")= ::
+     Like =\stutt()=, except that /addDur/ is a maximum duration over
+     which to repeat/subdivide each item. This may produce jittery
+     patterns with empty space in between.
+
+- =\stuttN(("new items", numToAdd, quant, prob, numInclusive, "insItem", "wildcards")= ::
+     Like =\stutt()=, except that /addDur/ is a maximum number of new
+     items to add.
+
 - =\div("new items", "replaceItems", numToAdd, quant, divisor, divisible)= :: Choose
      up to /numToAdd/ matching items (taken from /replaceItems/, which
      must be at least /quant/ beats long, and divide their duration by
@@ -2410,6 +2426,24 @@ TempoClock.tempo = 112/60;
      further prevent short notes from being divided; if /quant/ is 0.5
      and /divisible/ is 2.5, notes of duration 2.0 will not be
      divided.
+
+- =\euclid("new items", quant, increment, initial)= :: Euclidean
+     rhythm generator. Operating on a grid defined by /quant/,
+     /increment/ is the step size and /initial/ is the shift
+     amount. Both of these are numeric proxies, so you can randomize
+     them using range numbers or curly-brace-enclosed passthrough
+     expressions.
+
+- =\golomb("new items", quant, minimum)= :: A Golomb ruler divides a
+     number into quantized steps, where each partition is unequal. The
+     total time to be partitioned comes from the generator's duration
+     and cannot be overridden. /quant/ is the rhythmic value to divide
+     into, and /minimum/ is the smallest integer number of /quant/
+     steps that will be permitted. If /quant/ = 0.25 (16th-note), then
+     /minimum/ = 2 means that nothing shorter than an eighth note will
+     be produced. NOTE: If /minimum/ is too high, there may not be a
+     valid partition; in that case, it will fall back to the previous
+     successful minimum, or to 1.
 
 - =\unis(`srcParm, "new items", srcBP)= :: Copy items, or rhythm, from
      another process ("unison"). The other process should have
@@ -2575,6 +2609,11 @@ Pdefn(\x, Pseq("01234", inf).trace(prefix: "pdefn: "));
      warning will be posted and the wildcard will become a rest
      (silent).
 
+- =\repeat1("items", "wildcards", reset, repeats)=: Repeats every
+  value from the ="items"= stream. =\repeat1(\seq("1234"), "*", , 2)=
+  would output 1, 1, 2, 2, 3, 3, 4, 4 etc. the number of repeats may
+  be randomized.
+
 - =\pitch(src, "wildcards", "intervalPool", fallbackMin, fallbackMax, "articPool")= :: Valid
      for pitched parameters only. Replaces /wildcards/ with "Brownian
      motion" melody. Each wildcard will search backward for the
@@ -2620,8 +2659,9 @@ Mode(\cphr) => Mode(\default);
 /pl-
   #+END_SRC
 
-Note also that =\seq()=, =\rand()=, =\wrand()=, =\xrand()= and =\shuf()=
-may be used in (or as!) pool strings (Listing [[genSequencers]]).
+Note also that =\seq()=, =\rand()=, =\wrand()=, =\xrand()=, =\shuf()=
+and =\repeat1()= may be used in (or as!) pool strings (Listing
+[[genSequencers]]).
 
   #+name: genSequencers
   #+caption: Complex sequencing with sub-generators.
@@ -2749,6 +2789,21 @@ Mode(\cphr) => Mode(\default);
   #+END_SRC
 
 - =\chain(generator, generator...)= :: For internal use only.
+
+- =\delete("wildcards", probability)= :: Find existing items produced
+     by a given wildcard, and keep those items based on
+     probability. 0.75 probability means a 3/4 chance of keeping the
+     item; I felt that a higher probability should result in a more
+     dense texture. If the coin toss determines that the note should
+     not be kept, it is removed and its timepoint will be empty.
+
+- =\wildcards("wildcards")= :: If an item had been produced by
+     wildcard replacement, "undo" this: replace the real value with
+     the original wildcard, so that a future wildcard replacement will
+     affect this item. This is especially useful when using =\unis()=
+     to copy data from another process: you can overwrite the other
+     process's data, but keep the wildcards, and then substitute new
+     information in its place.
 
 # - =\oneof()= :: Currently broken
 
