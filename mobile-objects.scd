@@ -823,7 +823,7 @@ protect {
 		};
 		~bindNil = { |aNil, adverb|
 			var index;
-			tryNoTrace {
+			try {
 				index = ~getIndexFromAdverb.(adverb, #[], \fader);
 			} { |err|
 				// catch and ignore 'bad index' errors
