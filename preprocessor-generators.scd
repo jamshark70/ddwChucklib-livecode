@@ -490,12 +490,15 @@ protect {
 		// seq ~prep defines a numeric ~offset
 		// let's reuse that for the number of repeats
 		~makeStream = {
-			~seqStream = Pstutter({ ~offset.next }, Prand(~pool.asArray, inf)).collect(_.item).asStream;
+			~seqStream = Pstutter(
+				Pfunc { ~offset.next },
+				Prand(~pool.asArray, inf)
+			).collect(_.item).asStream;
 		};
 		~embedInStream = { |inval|
-			Pstutter({ ~offset.next }, Prand(~pool)).embedInStream(inval)
+			Pstutter(Pfunc { ~offset.next }, Prand(~pool)).embedInStream(inval)
 		};
-		~snippet.("repeat1", "\\repeat1(##items, wildcards, reset, repeatseq##)");
+		~snippet.("repeat1", "\\repeat1(##items, wildcards, reset, repeats##)");
 	} => PR(\clGenRepeat1);
 
 	PR(\clGenSeq).clone {
@@ -1021,6 +1024,131 @@ protect {
 		};
 		~snippet.("euclid", "\\euclid(##pool##, quant, increment, initial)");
 	} => PR(\clGenEuclid);
+
+	PR(\clGenIns).clone {
+		~numToAdd = 0x7FFFFFFF;  // always add all avail
+		~prep = {
+			~pool = ~args[0].asArray;
+			~checkEmpty.(~pool, "pool");
+			~quant = ~args[1] ?? { 0.25 };
+			~minimum = ~args[2] ?? { 1 };
+			#[quant, minimum].do { |key|
+				if(~isNumProxy.(key.envirGet).not) {
+					Error("clGenGolomb: '%' should be a number".format(key)).throw;
+				};
+			};
+			~poolStream = Prand(~pool, inf).asStream.collect(_.item);
+			~lastMin = 1;
+			currentEnvironment
+		};
+		~getAvail = { |items, quant, tolerance = 0.001|
+			var num = (~dur / quant).round.asInteger;
+			var min = ~minimum.next.round.asInteger;
+			var deltas = ~getGolombDeltas.(num, min);
+			var times = items.collect({ |item| item[\time] - ~time }) ++ [~dur];
+			var timeIncr = 0, j = 0;
+			var avail = List.new;
+
+			if(deltas.isNil) {
+				"Golomb deltas failed for min = %, retrying with %"
+				.format(min, ~lastMin)
+				.warn;
+				deltas = ~getGolombDeltas.(num, ~lastMin);
+				if(deltas.isNil) {
+					deltas = ~getGolombDeltas.(num, 1);  // should always succeed
+				};
+			} {
+				~lastMin = min;
+			};
+			deltas.scramble.do { |d|
+				var now = quant * timeIncr;
+
+				if(now absdif: times[j] < tolerance) {
+					if(items[j][\initialRest] == true) {
+						avail.add(now)
+					};
+					// 'time' is matched at times[j], so we must advance by at least 1
+					j = j + 1;
+				} {
+					avail.add(now);
+					// times[j] is somewhere in the future; may not need to advance yet
+				};
+
+				// advance j if needed
+				timeIncr = timeIncr + d;
+				now = quant * timeIncr;
+				while { times[j].notNil and: { now - times[j] >= tolerance } } {
+					j = j + 1;
+				};
+			};
+			avail + ~time
+		};
+
+		~getGolombDeltas = { |num, min|
+			var try = ~cache.at(num, min);
+			if(try.notNil) {
+				try
+			} {
+				try = ~calcGolombDeltas.(num, min);
+				if(try.notNil) {
+					~cache.put(num, min, try);
+					try
+				};
+			};
+		};
+		~calcGolombDeltas = { |n, m = 1|  // m = minimum delta
+			var root = ((sqrt(1 - (4 * (m - m.squared - (2*n)))) - 1) / 2);
+			var rootInt = root.trunc.asInteger;
+			var residual;
+			var i, j;
+
+			// now sum(1..root+1) >= n
+			var deltas = (m .. rootInt+1);
+
+			if(root > rootInt) {
+				// we want sum up to rootInt+1 so
+				// ((k+1)(k+2)) - (m(m-1)) = k.squared + 3k - 2 - m.squared + m
+				residual = ((rootInt.squared + (3*rootInt) + 2 - m.squared + m) div: 2) - n;
+				if(deltas.includes(residual)) {
+					deltas.remove(residual);
+				} {
+					// not sure if this is optimal but you can get out of jail
+					// by adding two of the choices until a+b-residual > rootInt+1
+					// this requires at least 3 values in the array; fail otherwise
+					if(deltas.size >= 3) {
+						#i, j = block { |break|
+							deltas.do { |a, i|
+								(i+1 .. deltas.size - 1).do { |j|
+									var b = deltas[j];
+									if(a + b - residual > (rootInt+1)) {
+										break.([i, j]);
+									};
+								};
+							};
+							#[nil, nil]
+						};
+						if(i.notNil) {
+							deltas[i] = deltas[i] + deltas[j] - residual;
+							deltas.removeAt(j);
+						} {
+							deltas = nil
+						};
+					} {
+						deltas = nil;
+					};
+				};
+			} {
+				deltas = deltas.keep(rootInt - m + 1)
+			};
+
+			deltas
+		};
+
+		// classvar
+		~cache = MultiLevelIdentityDictionary.new;
+
+		~snippet.("golomb", "\\golomb(##pool##, quant, minimum)");
+	}.moveFunctionsToParent(#[cache]) => PR(\clGenGolomb);
 
 	// quant is minimum duration to divide
 	// divisor is how many to split into
