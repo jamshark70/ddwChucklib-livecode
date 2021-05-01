@@ -425,11 +425,11 @@ ClNumberNode : ClAbstractParseNode {
 				var colon = str.indexOf($:),  // regexp guarantees ":" is there
 				numerator = str[ .. colon-1].asFloat,
 				denominator = str[colon+1 .. ].asInteger;
-				// 3:2 = triplet spanning half note
-				// 3:4 = triplet spanning quarter note
-				// 5:4 = quintuplet spanning quarter
-				// 4:1 = 4 in a whole-note = quarter note
-				Rational(denominator * 0.25 / numerator)
+				// 3:2 = triplet spanning half note = 0.66667 = 4 / 2 / 3
+				// 3:4 = triplet spanning quarter note = 0.3333 = 4 / 4 / 3
+				// 5:4 = quintuplet spanning quarter = 0.2 = 4 / 4 / 5
+				// 4:1 = 4 in a whole-note = quarter note = 1 = 4 / 4 / 1
+				Rational(4 / (numerator * denominator))
 			} -> "[\\-+]?[0-9]*\\.?[0-9]+([eE][\\-+]?[0-9]+)?:[0-9]+",
 			_.asFloat -> "[\\-+]?[0-9]*\\.[0-9]+([eE][\\-+]?[0-9]+)?",
 			_.asInteger -> "(-[0-9]+|[0-9]+)"
