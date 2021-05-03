@@ -68,6 +68,11 @@ protect {
 			~syncSigns = IdentityDictionary.new;
 			if(~labels.isNil) { ~labels = IdentityDictionary.new };
 			~setDataKeys.();
+			// touch interface needs to wait for ping; MIDI doesn't
+			// so notify as soon as GUI is ready
+			NotificationCenter.registerOneShot(\clInterface, \ready, \nanoTouch, inEnvir {
+				NotificationCenter.notify(currentEnvironment, '/ping');
+			});
 			currentEnvironment
 		};
 		~freeCleanup = {
