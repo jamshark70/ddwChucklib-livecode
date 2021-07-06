@@ -821,6 +821,18 @@ protect {
 			~maps[~toggleKeys[index]] = newMap;
 			~setNotification.(newMap, ~toggleKeys[index]);
 		};
+		~bindFunction = { |func, adverb, parms|
+			var index = ~getIndexFromAdverb.(adverb, 0, \toggle);
+			var newMap;
+			~maps[~toggleKeys[index]].free;
+			newMap = PR(\trigact).copy.prep(~toggleKeys[index],
+				(action: func, switchOff: parms[\switchOff] == true,
+					label: parms[\label] ?? { "toggle" }
+				)
+			);
+			~maps[~toggleKeys[index]] = newMap;
+			~setNotification.(newMap, ~toggleKeys[index]);
+		};
 		~bindNil = { |aNil, adverb|
 			var index;
 			try {
@@ -1153,7 +1165,7 @@ protect {
 			}
 			{ VC } {
 				BP.collection.every { |bp|
-					var event = bp[\event];
+					var event = if(bp.exists) { bp[\event] };
 					event.isNil or: { event[\voicer] !== obj.v }
 				}
 			}
