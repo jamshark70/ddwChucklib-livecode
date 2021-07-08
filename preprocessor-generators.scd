@@ -691,6 +691,17 @@ protect {
 		~snippet.("shuf", "\\shuf(##items, wildcards, reset##)");
 	} => PR(\clGenShuf);
 
+	PR(\clGenShuf).clone {
+		~makeStream = {
+			~seqStream = Pn(Pshuf(~pool.asArray, 1), inf).collect(_.item).asStream;
+		};
+		~embedInStream = { |inval|
+			Pfin(~repeats, Pn(Pshuf(~pool, 1), inf)).embedInStream(inval)
+		};
+		~helpString = "\\shufn(\"items\")";
+		~snippet.("shufn", "\\shuf(##items, wildcards, reset##)");
+	} => PR(\clGenShufn);
+
 	PR(\clGenSeq).clone {
 		~poolArgs = { [~args[1]] };
 		~canBePool = false;  // inheritance here is messy...
@@ -1331,11 +1342,9 @@ protect {
 			} { nil };  // else no error
 		};
 		~canStutter = { |item, index, quant|
-			BP(~bpKey).valueIsRest(item.item, ~parm).not and: {
-				~getIndexDur.(index) >= (2 * quant) and: {
-					~matchItems.isEmpty or: { ~matchItems.includesEqual(item.item) }
-					and: { ~wildcardCheck.(item[\wildcard]) }
-				}
+			~getIndexDur.(index) >= (2 * quant) and: {
+				~matchItems.isEmpty or: { ~matchItems.includesEqual(item.item) }
+				and: { ~wildcardCheck.(item[\wildcard]) }
 			}
 		};
 		~modifySource = {
