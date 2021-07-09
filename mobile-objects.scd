@@ -109,7 +109,13 @@ protect {
 				NotificationCenter.notify(currentEnvironment, msg[0], args);
 			};
 			if(msg[0] == '/ping' /*and: { ~addr.isNil }*/) {
-				if(~pingDebug) { replyAddr.debug("/ping: set mobile IP") };
+				if(~pingDebug or: { ~addr != replyAddr }) {
+					"/ping: set mobile IP%\n".postf(
+						if(~pingDebug) {
+							" = " ++ replyAddr
+						} { "" }
+					)
+				};
 				~addr = replyAddr;
 				~sendAddr = NetAddr(~addr.ip, ~sendPort);
 			};
