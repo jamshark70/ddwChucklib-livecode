@@ -2441,6 +2441,7 @@ Proto {
 	};
 	~setPattern = { |phrase, parm, inParm, pattern, inString, newQuant|
 		var pat = ~phrases[phrase],
+		patternConverter,
 		storeParm, time;
 		if(parm.size > 0) {
 			storeParm = parm.collect { |p|
@@ -2466,80 +2467,38 @@ Proto {
 				// does this ever happen?
 				{ parm == \delta } {
 					if(~debug ?? { false }) { "dur pattern".debug };
-					pat.set(parm, pattern);
+					patternConverter = pattern;
 				}
 				{ storeParm == parm } {
 					if(parm.isArray) {
 						if(~debug ?? { false }) { "storeParm == parm array".debug };
 						// special case: This should happen only for [key, \dur] type keys
 						// constructed by clPattern
-						pat.set(parm, pattern.collect { |valueIDs, inEvent|
-							valueIDs.collect { |valueID, i|
-								~valueForParm.(valueID, parm[i], inEvent) ?? { Rest(valueID) }
-							}
-						});
+						patternConverter = PCllArrayPattern(pattern, parm);
 					} {
 						if(~debug ?? { false }) { "storeParm === parm single".debug };
 						// single key, no alias: optimize by simply converting and returning
-						pat.set(parm, pattern.collect { |valueID, inEvent|
-							~valueForParm.(valueID, parm, inEvent) ?? { Rest(valueID) }
-						});
+						patternConverter = PCllPattern(pattern, parm);
 					};
 				}
 				{ storeParm.size == 0 } {
 					if(~debug ?? { false }) { "storeParm.size == 0".debug };
 					// alias is a single symbol: optimize by converting and storing directly
-					pat.set(parm, pattern.collect { |valueID, event|
-						var result = ~valueForParm.(valueID, parm, event) ?? { Rest(valueID) };
-						event.put(storeParm, result.processRest(event));
-						result
-					});
+					patternConverter = PCllSimpleAliasPattern(pattern, parm, storeParm);
 				}
 				// arrayed *non-default* parm with alias
 				{ storeParm.size > 0 and: { parm.asArray.includes(\delta).not } } {
 					if(~debug ?? { false }) { "storeParm array without dur".debug };
-					pat.set(parm, pattern.collect { |valueID, event|
-						var result = ~valueForParm.(valueID, inParm, event);
-						if(result.isNil) {
-							result = [Rest(valueID)];
-						} {
-							result = result.asArray;
-						};
-						if(storeParm.size >= result.size) {
-							storeParm.do { |key, i|
-								event.put(key, result.wrapAt(i).processRest(event));
-							};
-						} {
-							"Alias for % allows % values, but too many (%) were provided"
-							.format(parm.asCompileString, storeParm.size, result.size)
-							.warn;
-						};
-						result
-					});
+					patternConverter = PCllNondefaultArrayAliasPattern(
+						pattern, parm, storeParm, inParm
+					);
 				}
 				// arrayed *default* parm with alias -- assuming [id, dur] here
 				{ storeParm.size > 0 } {
 					if(~debug ?? { false }) { "storeParm array with dur".debug };
-					pat.set(parm, pattern.collect { |valueID, event|
-						var result = ~valueForParm.(valueID[0], inParm, event), sp0;
-						if(result.isNil) {
-							result = [Rest(valueID[0])];
-						} {
-							result = result.asArray;
-						};
-						sp0 = storeParm[0].asArray;
-						if(sp0.size >= result.size) {
-							sp0.do { |key, i|
-								event.put(key, result.wrapAt(i).processRest(event));
-							};
-						} {
-							"Alias for % allows % values, but too many (%) were provided"
-							.format(parm.asCompileString, sp0, result.size)
-							.warn;
-						};
-						// valueID[1] should be the dur value -- necessary to be second return value
-						[result, valueID[1], valueID[2]]
-					});
+					patternConverter = PCllDefaultArrayAliasPattern(
+						pattern, parm, storeParm, inParm
+					);
 				}
 				{
 					// it really should be impossible to get here
@@ -2548,6 +2507,7 @@ Proto {
 							storeParm.asCompileString
 					)).throw;
 				};
+				pat.set(parm, patternConverter);
 				nil
 			});
 		} {
