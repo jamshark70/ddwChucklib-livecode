@@ -147,6 +147,46 @@ Library.put(\clLivecode, \setupbars, \guiIsFront, false);
 	ev
 } => Func(\voicer);
 
+// intended for use in \preset
+{ |bp|
+	if(BP.exists(bp)) {
+		BP(bp).event[\voicer]
+	} {
+		Error("BP(%) doesn't exist, so, can't find voicer".format(bp.asCompileString)).throw;
+	}
+} => Func(\bpAsVoicer);
+
+{ |bp|
+	var voicer = \bpAsVoicer.eval(bp);
+	var vc;
+	if(voicer.isNil) {
+		Error("\\preset: BP(%) doesn't have a voicer".format(bp.asCompileString)).throw;
+	};
+	vc = VC.collection.detect { |vc| vc.value === voicer };
+	if(vc.isNil) {
+		Error("\\preset: BP(%)'s voicer can't be found in VC".format(bp.asCompileString)).throw;
+	};
+	vc
+} => Func(\bpAsVC);
+
+{ |preset, bp|
+	var vc, presetDef, proc;
+	vc = \bpAsVC.eval(bp);
+	presetDef = vc.env[\presets].tryPerform(\at, preset);
+	if(presetDef.isNil) {
+		Error("\\preset: VC(%) does not define preset %".format(
+			vc.collIndex.asCompileString,
+			preset.asCompileString
+		)).throw;
+	};
+	proc = BP(bp);  // already validated by \bpAsVC
+	// pairsDo supports both SeqColl and Dictionary
+	presetDef.pairsDo { |key, value|
+		proc.set(key, value);
+	};
+	proc
+} => Func(\preset);
+
 // record several mixers with sample-accurate onset
 // for simplicity/livecode use, create a folder in recordingsDir
 { |... mixers|

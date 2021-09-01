@@ -1753,6 +1753,7 @@ Proto({
 	~writeCode = {
 		var out = CollStream.new,
 		lastWasVoicer = false;
+		var presetName, presetCheck;
 		~ids.do { |id, i|
 			if(Fact.exists(id[0])) {
 				if(out.pos > 0) {
@@ -1764,11 +1765,26 @@ Proto({
 					id[1].asCompileString
 				);
 				if(id[2].notNil) {
-					out << ", nil, " << id[2];
+					presetCheck = ~extractKey.(id[2], "preset");
+					if(presetCheck.notNil) {
+						presetName = presetCheck[1];
+						id[2] = presetCheck[0];
+					};
+					// 'preset' might have been the only key; don't write empty dict
+					if(id[2].size > 0) {
+						out << ", nil, " << id[2];
+					};
 				};
 				out << ")";
 				if(lastWasVoicer and: { Fact(id[0]).type == \bp }) {
 					out << ";\nVC(%) => BP(%)".format(~ids[i-1][1].asCompileString, id[1].asCompileString);
+					if(presetName.notNil) {
+						out << ";\nBP(%).preset(%)".format(
+							id[1].asCompileString,
+							presetName
+						);
+						presetName = nil;
+					};
 				};
 				if(~autoGui) {
 					// Can't chuck to specific GUI slots here
@@ -1851,6 +1867,40 @@ Proto({
 				"Collection is already full, can't auto-gui".warn;
 				nil
 			};
+		};
+	};
+	~extractKey = { |str, key|
+		var stream, out, newStr, ch, start, i;
+		var match = str.findRegexp("([0-9A-Za-z_]+):")
+		.detect { |row| row[1] == key };
+		if(match.notNil) {
+			stream = CollStream(str);
+			stream.nextN(match[0] + key.size + 1);
+			start = stream.pos;
+			out = String.new;
+			while {
+				ch = stream.next;
+				ch.notNil and: " \t,)".includes(ch).not
+			} {
+				if("([{".includes(ch)) {
+					\clParseBracketed.eval(stream, ch, false);
+				};
+			};
+			// now 'ch' should be the closing , or ) or nil
+			out = str[start .. stream.pos - 2];
+			// and remove
+			if(match[0] > 0) {
+				newStr = str[0 .. match[0] - 1];
+			} {
+				newStr = "";
+			};
+			if(ch.notNil) {
+				i = stream.pos;
+				if(ch != $,) { i = i - 1 };
+				newStr = newStr ++ str[i ..];
+			};
+			if(newStr.every("(, \t)".includes(_))) { newStr = nil };
+			[newStr, out]
 		};
 	};
 }, parentKeys: #[assignedMCGs, assignedVPs]) => PR(\clMake);
@@ -2538,6 +2588,21 @@ Proto {
 		};
 	};
 	~phraseSeq_.(\main);
+
+	~preset = { |presetName|
+		var presetDef = ~presets.tryPerform(\at, presetName);
+		if(presetDef.isNil) {
+			Error("BP(%) does not define preset %".format(
+				~collIndex.asCompileString,
+				presetName.asCompileString
+			)).throw;
+		};
+		// pairsDo supports both SeqColl and Dictionary
+		presetDef.pairsDo { |key, value|
+			~set.(key, value);
+		};
+		currentEnvironment
+	};
 }.import((abstractProcess: #[makeStreamForKey])) => PR(\abstractLiveCode);
 );
 
