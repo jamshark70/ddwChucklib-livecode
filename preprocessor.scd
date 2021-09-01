@@ -2405,6 +2405,11 @@ Proto {
 
 	// non-patterns go into defaults
 	// patterns make a BPStream and get added to postDefaults (which is tricky)
+	// 'keyExists or: { value.isPattern }' looks odd at first
+	// the reasoning is: if you're setting a parameter that exists
+	// as a BP variable, then you're already referencing it with BPStream
+	// in postDefaults. So you want to keep it in postDefaults.
+	// if it is *not* already in the BP environment, probably it should just go to ~defaults
 	~set = { |... pairs|
 		var envKey, keyExists;
 		pairs.pairsDo { |key, value|
@@ -2421,7 +2426,11 @@ Proto {
 				// no need to double wrap
 				// already using BPStream for postDefaults, so, just reassign
 				if(keyExists.not) {
-					~postDefaults = Pbindf(~postDefaults, key, BPStream(envKey));
+					if(~postDefaultsPbind.isNil) {
+						~postDefaultsPbind = PbindProxy.new.quant_(0);
+						~postDefaults = Pchain(~postDefaultsPbind, ~postDefaults);
+					};
+					~postDefaultsPbind.set(key, BPStream(envKey));
 				};
 			} {
 				~defaults.put(key, value);
