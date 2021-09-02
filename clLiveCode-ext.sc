@@ -92,3 +92,54 @@ PstepDurPair : Pstep {
 + Object {
 	processRest {}
 }
+
+
+// preset support
++ Fact {
+	addPreset { |key, presetDef|
+		if(this.isVoicer) {
+			if(value[\presets].isNil) {
+				value[\presets] = IdentityDictionary.new;
+			};
+			value[\presets].put(key, presetDef);
+		} {
+			"Fact(%) is a BP type; presets are not supported"
+			.format(~collIndex.asCompileString)
+			.warn;
+		}
+	}
+
+	*savePresets {
+		var allPresets = IdentityDictionary.new;
+		this.all.do { |fact|
+			allPresets.put(fact.collIndex, fact.value[\presets]);
+		};
+		allPresets.writeArchive(Platform.userConfigDir +/+ "chucklibPresets.txarch");
+	}
+
+	// should call after creating Fact objects
+	*loadPresets {
+		var allPresets = Object.readArchive(Platform.userConfigDir +/+ "chucklibPresets.txarch");
+		var failed = IdentitySet.new;
+		allPresets.keysValuesDo { |key, presets|
+			if(this.exists(key)) {
+				this.new(key).value[\presets] = presets;
+			} {
+				failed.add(key);
+			};
+		};
+		if(failed.size > 0) {
+			"These Factories were missing:".postln;
+			failed.asArray.sort.postln;
+		};
+	}
+}
+
++ VC {
+	addPreset { |key, presetDef|
+		if(env[\presets].isNil) {
+			env[\presets] = IdentityDictionary.new;
+		};
+		env[\presets].put(key, presetDef);
+	}
+}
