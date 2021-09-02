@@ -1880,7 +1880,7 @@ Proto({
 			out = String.new;
 			while {
 				ch = stream.next;
-				ch.notNil and: " \t,)".includes(ch).not
+				ch.notNil and: ",)".includes(ch).not
 			} {
 				if("([{".includes(ch)) {
 					\clParseBracketed.eval(stream, ch, false);
