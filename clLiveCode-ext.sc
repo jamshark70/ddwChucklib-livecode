@@ -98,43 +98,51 @@ PstepDurPair : Pstep {
 + Fact {
 	addPreset { |key, presetDef|
 		if(this.isVoicer) {
-			if(value[\presets].isNil) {
-				value[\presets] = IdentityDictionary.new;
-			};
-			value[\presets].put(key, presetDef);
+			Library.put(\cll, \presets, this.collIndex, key, presetDef);
+			// if(value[\presets].isNil) {
+			// 	value[\presets] = IdentityDictionary.new;
+			// };
+			// value[\presets].put(key, presetDef);
 		} {
 			"Fact(%) is a BP type; presets are not supported"
-			.format(~collIndex.asCompileString)
+			.format(this.collIndex.asCompileString)
 			.warn;
 		}
 	}
 
 	*savePresets {
-		var allPresets = IdentityDictionary.new;
-		this.all.do { |fact|
-			allPresets.put(fact.collIndex, fact.value[\presets]);
-		};
-		allPresets.writeArchive(Platform.userConfigDir +/+ "chucklibPresets.txarch");
+		Library.at(\cll, \presets).writeArchive(Platform.userConfigDir +/+ "chucklibPresets.txarch");
 	}
 
-	// should call after creating Fact objects
 	*loadPresets {
 		var allPresets = Object.readArchive(Platform.userConfigDir +/+ "chucklibPresets.txarch");
-		var failed = IdentitySet.new;
-		allPresets.keysValuesDo { |key, presets|
-			if(this.exists(key)) {
-				this.new(key).value[\presets] = presets;
+		var curPresets = Library.at(\cll, \presets);
+		var conflicts = IdentityDictionary.new;
+		allPresets.keysValuesDo { |factName, presets|
+			if(curPresets[factName].isNil) {
+				curPresets[factName] = presets;
 			} {
-				failed.add(key);
+				presets.keysValuesDo { |presetName, values|
+					if(curPresets[factName][presetName].isNil) {
+						curPresets[factName][presetName] = values;
+					} {
+						conflicts[factName] = conflicts[factName].add(presetName);
+					};
+				};
 			};
 		};
-		if(failed.size > 0) {
-			"These Factories were missing:".postln;
-			failed.asArray.sort.postln;
+		if(conflicts.notEmpty) {
+			"The following presets loaded from disk already existed in memory.
+The memory version is retained; the disk version was not loaded.".warn;
+			conflicts.do { |factName, presetKeys|
+				"Fact(%): %\n".postf(factName.asCompileString, presetKeys);
+			};
 		};
+		Library.put(\cll, \presets, allPresets);
 	}
 }
 
+// local only, not preserved with Factories
 + VC {
 	addPreset { |key, presetDef|
 		if(env[\presets].isNil) {
