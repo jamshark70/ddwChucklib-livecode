@@ -2237,6 +2237,7 @@ protect {
 					)).prep]
 				};
 			};
+			~layerIDs = Array.fill(~strings.size, { UniqueID.next });
 			~checkPoolArgs.();
 			currentEnvironment
 		};
@@ -2244,13 +2245,16 @@ protect {
 			var sourceItems = ~getUpstreamItems.();
 			var lookupSet = sourceItems.as(IdentitySet);
 			var items, new;
-			~strings.do { |patString|
+			// prevent items from leaking in from the previous bar
+			~items = sourceItems;
+			~strings.do { |patString, i|
 				items = sourceItems.copy;
 				items = ~processOne.(items, ~source);  // common source
 				items = ~processOne.(items, patString);
 				items = ~updateDeltas.(items, \dur);
 				items.do { |item|
 					if(lookupSet.includes(item).not) {
+						item[\layerID] = ~layerIDs[i];
 						new = new.add(item);
 					};
 				};
