@@ -2334,9 +2334,6 @@ Proto {
 		~parmMap.keysValuesDo { |key, map|
 			new.put(key, map);  // magic: dispatch should make handler
 		};
-		// valueForParm does get called with 'delta' and 'dur'
-		// install passthrough handlers for them
-		#[delta, dur].do(~getParmHandler);
 		~parmMap = new;
 		currentEnvironment
 	};

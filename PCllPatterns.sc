@@ -48,12 +48,13 @@ PCllPattern : FilterPattern {
 	}
 }
 
-PCllArrayPattern : PCllPattern {
+PCllDefaultNoAliasPattern : PCllPattern {
 	// key and valueID are arrays
 	processValue { |key, valueID, inEvent|
-		^valueID.collect { |value, i|
-			this.processOneValue(key[i], value, inEvent)
-		}
+		var out;
+		out = valueID.copy;
+		out[0] = this.processOneValue(key[0], out[0], inEvent);
+		^out
 	}
 }
 
@@ -136,7 +137,7 @@ CllParmHandlerFactory {
 		if(map.tryPerform(\at, \alias).isNil) {
 			// non-aliased cases (2)
 			if(bp.parmIsDefault(parm)) {
-				^CllArrayParm(parm, bpKey, map)
+				^CllDefaultNoAliasParm(parm, bpKey, map)
 			} {
 				^CllParm(parm, bpKey, map)
 			};
@@ -275,9 +276,9 @@ CllParm {
 	}
 }
 
-CllArrayParm : CllParm {
+CllDefaultNoAliasParm : CllParm {
 	wrapPattern { |pattern, parm, storeParm, inParm|
-		^PCllArrayPattern(pattern, parm, storeParm, inParm)
+		^PCllDefaultNoAliasPattern(pattern, parm, storeParm, inParm)
 	}
 }
 
