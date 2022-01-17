@@ -228,7 +228,7 @@ CllParm {
 				if(isDefault) {
 					inEvent[\legato] = 0.9;
 				};
-				event = Rest(~parmMap[parm][\rest] ?? { 0 });
+				event = Rest(map[\rest] ?? { 0 });
 			};
 			convert.(event, inEvent) ?? { event }
 		};
