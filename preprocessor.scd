@@ -2297,6 +2297,7 @@ Proto {
 			~phraseStrings = MultiLevelIdentityDictionary.new;
 		};
 		~userprep.();
+		~fixParmMap.();
 		~postParmMap.();
 		// for backward compatibility: User might have put in a stopCleanup func
 		// but I need it, to clear highlights
@@ -2320,84 +2321,40 @@ Proto {
 		~userfree.();
 	};
 
+	~getParmHandler = { |key|
+		if(~parmHandlers[key].isNil) {
+			~parmHandlers[key] = CllParmHandlerFactory(key, ~collIndex);
+		};
+		~parmHandlers[key]
+	};
+	~fixParmMap = {
+		var new = EnvironmentRedirect.new;
+		~parmHandlers = IdentityDictionary.new;
+		new.dispatch = inEnvir(~getParmHandler);
+		~parmMap.keysValuesDo { |key, map|
+			new.put(key, map);  // magic: dispatch should make handler
+		};
+		// valueForParm does get called with 'delta' and 'dur'
+		// install passthrough handlers for them
+		#[delta, dur].do(~getParmHandler);
+		~parmMap = new;
+		currentEnvironment
+	};
+
 	~valueForParm = { |event, parm, inEvent|
 		var dict, result, convert;
 		if(~debug ?? { false }) { [event, parm, inEvent].debug(">> valueForParm") };
-		result = case
-		{ parm == \delta } { event }
-		{ parm == \dur } { event }
-		{ ~parmIsPitch.(parm) } {
-			dict = ~parmMap[parm];
-			convert = dict.tryPerform(\at, \convertFunc);
-			if(event.isKindOf(SequenceNote)) {
-				// only defaultParm should influence articulation
-				if(parm == ~defaultParm) {
-					if(event.length <= 0.4) {
-						// this must be a function because ~dur is not populated yet!
-						inEvent[\sustain] = { min(0.15, ~dur * event.length) };
-					} {
-						inEvent[\legato] = event.length
-					};
-					// press args into service for accents, may change the spec later
-					if(event.args == \accent) {
-						inEvent[\accent] = true;
-					};
-				};
-				// not asFloat: We already know this is a SeqNote, and asFloat breaks Rests here.
-				convert.(event, inEvent) ?? { event.freq }
-			} {
-				if(event == \rest or: { event.class == Char }) {
-					if(parm == ~defaultParm) {
-						inEvent[\legato] = 0.9;
-					};
-					event = Rest(~parmMap[parm][\rest] ?? { 0 });
-				};
-				convert.(event, inEvent) ?? { event }
-			};
-		} {
-			dict = ~parmMap[parm];
-			result = if(dict.notNil) {
-				if(dict[\convertFunc].notNil) {
-					dict[\convertFunc].value(event, inEvent)
-				} {
-					dict[event]
-				};
-			};
-			if(result == \rest or: { event == \rest }) {
-				Rest(result ?? { 0 })
-			} {
-				result  // nil if not specified
-			};
-		};
+		result = ~getParmHandler.(parm).valueForParm(event, parm, inEvent);
 		if(~debug ?? { false }) { result.debug("<< valueForParm") };
 		result
 	};
 	~parmIsPitch = { |parm|
 		~parmMap[parm].notNil and: { ~parmMap[parm][\isPitch] == true }
 	};
+	~parmIsDefault = { |parm| parm == ~defaultParm };
 	~valueIsRest = { |event, parm, inEvent|
 		var dict, result;
-		if(~parmIsPitch.(parm)) {
-			if(event.respondsTo(\freq)) {
-				event.freq.isRest
-			} {
-				// if we get here -- not a SequenceNote -- then it should be a Char
-				// if not a Char, assume rest
-				event.tryPerform(\isAlpha) ?? { true }
-			}
-		} {
-			dict = ~parmMap[parm];
-			if(dict.notNil) {
-				result = if(dict[\convertFunc].notNil) {
-					dict[\convertFunc].(event, inEvent);
-				} {
-					dict[event]
-				};
-				result.isRest or: { result.isNil }
-			} {
-				event.isRest
-			}
-		}
+		~getParmHandler.(parm).valueIsRest(event, parm, inEvent)
 	};
 
 	~defaults = ();  // or Pbind
@@ -2441,7 +2398,6 @@ Proto {
 	};
 	~setPattern = { |phrase, parm, inParm, pattern, inString, newQuant|
 		var pat = ~phrases[phrase],
-		patternConverter,
 		storeParm, time;
 		if(parm.size > 0) {
 			storeParm = parm.collect { |p|
@@ -2463,51 +2419,10 @@ Proto {
 				time = BP(~collIndex).eventSchedTime(BasicTimeSpec(-1, wrap: true));
 			};
 			~clock.schedAbs(time - 0.001, inEnvir {
-				case
-				// does this ever happen?
-				{ parm == \delta } {
-					if(~debug ?? { false }) { "dur pattern".debug };
-					patternConverter = pattern;
-				}
-				{ storeParm == parm } {
-					if(parm.isArray) {
-						if(~debug ?? { false }) { "storeParm == parm array".debug };
-						// special case: This should happen only for [key, \dur] type keys
-						// constructed by clPattern
-						patternConverter = PCllArrayPattern(pattern, parm);
-					} {
-						if(~debug ?? { false }) { "storeParm === parm single".debug };
-						// single key, no alias: optimize by simply converting and returning
-						patternConverter = PCllPattern(pattern, parm);
-					};
-				}
-				{ storeParm.size == 0 } {
-					if(~debug ?? { false }) { "storeParm.size == 0".debug };
-					// alias is a single symbol: optimize by converting and storing directly
-					patternConverter = PCllSimpleAliasPattern(pattern, parm, storeParm);
-				}
-				// arrayed *non-default* parm with alias
-				{ storeParm.size > 0 and: { parm.asArray.includes(\delta).not } } {
-					if(~debug ?? { false }) { "storeParm array without dur".debug };
-					patternConverter = PCllNondefaultArrayAliasPattern(
-						pattern, parm, storeParm, inParm
-					);
-				}
-				// arrayed *default* parm with alias -- assuming [id, dur] here
-				{ storeParm.size > 0 } {
-					if(~debug ?? { false }) { "storeParm array with dur".debug };
-					patternConverter = PCllDefaultArrayAliasPattern(
-						pattern, parm, storeParm, inParm
-					);
-				}
-				{
-					// it really should be impossible to get here
-					Error("BP(%): Impossible condition assigning pattern %, storeParm = %"
-						.format(~collIndex.asCompileString, parm.asCompileString,
-							storeParm.asCompileString
-					)).throw;
-				};
-				pat.set(parm, patternConverter);
+				pat.set(parm,
+					~getParmHandler.(inParm)
+					.wrapPattern(pattern, parm, storeParm, inParm)
+				);
 				nil
 			});
 		} {
@@ -2605,10 +2520,10 @@ Proto {
 	~postParmMap = {
 		// leading \n because Buffer:readAndQuery may push the first line to a weird place
 		"\nBP(%)'s parameter map:\n".postf(~collIndex.asCompileString);
-		~parmMap.asSortedArray.do { |pair|
-			if(pair[0] == ~defaultParm) { "** ".post } { "   ".post };
-			"%: %\n".postf(*pair);
-			if(pair[1][$:].notNil) {
+		~parmMap.sortedKeysValuesDo { |key, map|
+			if(key == ~defaultParm) { "** ".post } { "   ".post };
+			"%: %\n".postf(key, map);
+			if(map[$:].notNil) {
 				"   ^^ WARNING: ':' after a generator is reserved for generator chains. Be careful.".postln;
 			};
 		};
