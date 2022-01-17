@@ -43,14 +43,14 @@ PCllPattern : FilterPattern {
 	}
 
 	// valueID is the cll representation (character or SequenceNote)
-	processOneValue { | valueID, inEvent|
+	processOneValue { |valueID, inEvent|
 		^handler.valueForParm(valueID, inEvent) ?? { Rest(valueID) }
 	}
 }
 
 PCllDefaultNoAliasPattern : PCllPattern {
 	// key and valueID are arrays
-	processValue { | valueID, inEvent|
+	processValue { |valueID, inEvent|
 		var out;
 		out = valueID.copy;
 		out[0] = this.processOneValue(out[0], inEvent);
@@ -59,7 +59,7 @@ PCllDefaultNoAliasPattern : PCllPattern {
 }
 
 PCllSimpleAliasPattern : PCllPattern {
-	processValue { | valueID, inEvent|
+	processValue { |valueID, inEvent|
 		var result = this.processOneValue(valueID, inEvent);
 		inEvent.put(storeParm, result);
 		^result
@@ -67,7 +67,7 @@ PCllSimpleAliasPattern : PCllPattern {
 }
 
 PCllNondefaultArrayAliasPattern : PCllPattern {
-	processValue { | valueID, inEvent|
+	processValue { |valueID, inEvent|
 		var result = handler.valueForParm(valueID, inEvent);
 		if(result.isNil) {
 			result = [Rest(valueID)];
@@ -88,7 +88,7 @@ PCllNondefaultArrayAliasPattern : PCllPattern {
 }
 
 PCllDefaultArrayAliasPattern : PCllPattern {
-	processValue { | valueID, inEvent|
+	processValue { |valueID, inEvent|
 		var result = handler.valueForParm(valueID[0], inEvent), sp0;
 		if(result.isNil) {
 			result = [Rest(valueID[0])];
