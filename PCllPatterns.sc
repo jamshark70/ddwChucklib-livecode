@@ -175,22 +175,14 @@ CllParm {
 
 	init {
 		isDefault = BP(bpKey).parmIsDefault(parm);
-		case
-		{ #[delta, dur].includes(parm) } {
-			valueLookup = \passThrough;
-			isRest = \notRest;
-		}
-		{ BP(bpKey).parmIsPitch(parm) } {
+		if(BP(bpKey).parmIsPitch(parm)) {
 			valueLookup = \pitchLookup;
 			isRest = \pitchIsRest;
-		}
-		{
+		} {
 			valueLookup = \dictLookup;
 			isRest = \otherIsRest;
 		};
-		this.init2;
 	}
-	init2 {}
 
 	// this will vary based on subclasses
 	wrapPattern { |pattern, parm, storeParm|
