@@ -20,9 +20,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 // the BP supplies ~valueForParm
 
 PCllPattern : FilterPattern {
-	var <>parm, <>storeParm, <>inParm;
-	*new { |pattern, parm, storeParm, inParm|
-		^super.newCopyArgs(pattern, parm, storeParm, inParm)
+	var <>parm, <>storeParm, <>handler;
+	*new { |pattern, parm, storeParm, handler|
+		^super.newCopyArgs(pattern, parm, storeParm, handler)
 	}
 
 	embedInStream { |inval|
@@ -32,43 +32,43 @@ PCllPattern : FilterPattern {
 			value = stream.next(inval);
 			value.notNil
 		} {
-			inval = this.processValue(parm, value, inval).yield;
+			inval = this.processValue(value, inval).yield;
 		};
 		^inval
 	}
 
 	// higher level hook, for subclasses handling arrays
-	processValue { |key, valueID, inEvent|
-		^this.processOneValue(key, valueID, inEvent)
+	processValue { |valueID, inEvent|
+		^this.processOneValue(valueID, inEvent)
 	}
 
 	// valueID is the cll representation (character or SequenceNote)
-	processOneValue { |key, valueID, inEvent|
-		^ ~valueForParm.(valueID, key, inEvent) ?? { Rest(valueID) }
+	processOneValue { | valueID, inEvent|
+		^handler.valueForParm(valueID, inEvent) ?? { Rest(valueID) }
 	}
 }
 
 PCllDefaultNoAliasPattern : PCllPattern {
 	// key and valueID are arrays
-	processValue { |key, valueID, inEvent|
+	processValue { | valueID, inEvent|
 		var out;
 		out = valueID.copy;
-		out[0] = this.processOneValue(key[0], out[0], inEvent);
+		out[0] = this.processOneValue(out[0], inEvent);
 		^out
 	}
 }
 
 PCllSimpleAliasPattern : PCllPattern {
-	processValue { |key, valueID, inEvent|
-		var result = this.processOneValue(key, valueID, inEvent);
+	processValue { | valueID, inEvent|
+		var result = this.processOneValue(valueID, inEvent);
 		inEvent.put(storeParm, result);
 		^result
 	}
 }
 
 PCllNondefaultArrayAliasPattern : PCllPattern {
-	processValue { |key, valueID, inEvent|
-		var result = ~valueForParm.(valueID, inParm, inEvent);
+	processValue { | valueID, inEvent|
+		var result = handler.valueForParm(valueID, inEvent);
 		if(result.isNil) {
 			result = [Rest(valueID)];
 		} {
@@ -88,8 +88,8 @@ PCllNondefaultArrayAliasPattern : PCllPattern {
 }
 
 PCllDefaultArrayAliasPattern : PCllPattern {
-	processValue { |key, valueID, inEvent|
-		var result = ~valueForParm.(valueID[0], inParm, inEvent), sp0;
+	processValue { | valueID, inEvent|
+		var result = handler.valueForParm(valueID[0], inEvent), sp0;
 		if(result.isNil) {
 			result = [Rest(valueID[0])];
 		} {
@@ -193,19 +193,19 @@ CllParm {
 	init2 {}
 
 	// this will vary based on subclasses
-	wrapPattern { |pattern, parm, storeParm, inParm|
-		^PCllPattern(pattern, parm, storeParm, inParm)
+	wrapPattern { |pattern, parm, storeParm|
+		^PCllPattern(pattern, parm, storeParm, this)
 	}
 
 	// these should be consistent:
 	// the subcases for value conversion don't depend on aliasing
 	// but rather on pitched vs nonpitched
 	// I'd rather not explode 5 classes into 10 though
-	valueForParm { |event, parm, inEvent|
-		^this.perform(valueLookup, event, parm, inEvent)
+	valueForParm { |event, inEvent|
+		^this.perform(valueLookup, event, inEvent)
 	}
 	passThrough { |value| ^value }
-	pitchLookup { |event, parm, inEvent|
+	pitchLookup { |event, inEvent|
 		var convert = map.tryPerform(\at, \convertFunc);
 		^if(event.isKindOf(SequenceNote)) {
 			// only defaultParm should influence articulation
@@ -233,7 +233,7 @@ CllParm {
 			convert.(event, inEvent) ?? { event }
 		};
 	}
-	dictLookup { |event, parm, inEvent|
+	dictLookup { |event, inEvent|
 		var result = if(map.notNil) {
 			if(map[\convertFunc].notNil) {
 				map[\convertFunc].value(event, inEvent)
@@ -248,8 +248,8 @@ CllParm {
 		};
 	}
 
-	valueIsRest { |event, parm, inEvent|
-		^this.perform(isRest, event, parm, inEvent)
+	valueIsRest { |event, inEvent|
+		^this.perform(isRest, event, inEvent)
 	}
 	notRest { ^false }
 	pitchIsRest { |event|
@@ -261,7 +261,7 @@ CllParm {
 			event.tryPerform(\isAlpha) ?? { true }
 		}
 	}
-	otherIsRest { |event, parm, inEvent|
+	otherIsRest { |event, inEvent|
 		var result;
 		^if(map.notNil) {
 			result = if(map[\convertFunc].notNil) {
@@ -277,25 +277,25 @@ CllParm {
 }
 
 CllDefaultNoAliasParm : CllParm {
-	wrapPattern { |pattern, parm, storeParm, inParm|
-		^PCllDefaultNoAliasPattern(pattern, parm, storeParm, inParm)
+	wrapPattern { |pattern, parm, storeParm|
+		^PCllDefaultNoAliasPattern(pattern, parm, storeParm, this)
 	}
 }
 
 CllSimpleAliasParm : CllParm {
-	wrapPattern { |pattern, parm, storeParm, inParm|
-		^PCllSimpleAliasPattern(pattern, parm, storeParm, inParm)
+	wrapPattern { |pattern, parm, storeParm|
+		^PCllSimpleAliasPattern(pattern, parm, storeParm, this)
 	}
 }
 
 CllDefaultArrayAliasParm : CllParm {
-	wrapPattern { |pattern, parm, storeParm, inParm|
-		^PCllDefaultArrayAliasPattern(pattern, parm, storeParm, inParm)
+	wrapPattern { |pattern, parm, storeParm|
+		^PCllDefaultArrayAliasPattern(pattern, parm, storeParm, this)
 	}
 }
 
 CllNonDefaultArrayAliasParm : CllParm {
-	wrapPattern { |pattern, parm, storeParm, inParm|
-		^PCllNondefaultArrayAliasPattern(pattern, parm, storeParm, inParm)
+	wrapPattern { |pattern, parm, storeParm|
+		^PCllNondefaultArrayAliasPattern(pattern, parm, storeParm, this)
 	}
 }

@@ -2341,7 +2341,7 @@ Proto {
 	~valueForParm = { |event, parm, inEvent|
 		var dict, result, convert;
 		if(~debug ?? { false }) { [event, parm, inEvent].debug(">> valueForParm") };
-		result = ~getParmHandler.(parm).valueForParm(event, parm, inEvent);
+		result = ~getParmHandler.(parm).valueForParm(event, inEvent);
 		if(~debug ?? { false }) { result.debug("<< valueForParm") };
 		result
 	};
@@ -2351,7 +2351,7 @@ Proto {
 	~parmIsDefault = { |parm| parm == ~defaultParm };
 	~valueIsRest = { |event, parm, inEvent|
 		var dict, result;
-		~getParmHandler.(parm).valueIsRest(event, parm, inEvent)
+		~getParmHandler.(parm).valueIsRest(event, inEvent)
 	};
 
 	~defaults = ();  // or Pbind
