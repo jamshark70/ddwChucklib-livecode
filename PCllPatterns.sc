@@ -205,7 +205,6 @@ CllParm {
 	valueForParm { |event, inEvent|
 		^this.perform(valueLookup, event, inEvent)
 	}
-	passThrough { |value| ^value }
 	pitchLookup { |event, inEvent|
 		var convert = map.tryPerform(\at, \convertFunc);
 		^if(event.isKindOf(SequenceNote)) {
