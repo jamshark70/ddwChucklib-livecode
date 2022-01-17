@@ -20,9 +20,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 // the BP supplies ~valueForParm
 
 PCllPattern : FilterPattern {
-	var <>parm, <>storeParm, <>handler;
-	*new { |pattern, parm, storeParm, handler|
-		^super.newCopyArgs(pattern, parm, storeParm, handler)
+	var <>handler;
+	*new { |pattern, handler|
+		^super.newCopyArgs(pattern, handler)
 	}
 
 	embedInStream { |inval|
@@ -61,7 +61,7 @@ PCllDefaultNoAliasPattern : PCllPattern {
 PCllSimpleAliasPattern : PCllPattern {
 	processValue { |valueID, inEvent|
 		var result = this.processOneValue(valueID, inEvent);
-		inEvent.put(storeParm, result);
+		inEvent.put(handler.storeParm, result);
 		^result
 	}
 }
@@ -69,6 +69,7 @@ PCllSimpleAliasPattern : PCllPattern {
 PCllNondefaultArrayAliasPattern : PCllPattern {
 	processValue { |valueID, inEvent|
 		var result = handler.valueForParm(valueID, inEvent);
+		var storeParm = handler.storeParm;
 		if(result.isNil) {
 			result = [Rest(valueID)];
 		} {
@@ -80,7 +81,7 @@ PCllNondefaultArrayAliasPattern : PCllPattern {
 			};
 		} {
 			"Alias for % allows % values, but too many (%) were provided"
-			.format(parm.asCompileString, storeParm.size, result.size)
+			.format(storeParm.asCompileString, storeParm.size, result.size)
 			.warn;
 		};
 		^result
@@ -90,19 +91,19 @@ PCllNondefaultArrayAliasPattern : PCllPattern {
 PCllDefaultArrayAliasPattern : PCllPattern {
 	processValue { |valueID, inEvent|
 		var result = handler.valueForParm(valueID[0], inEvent), sp0;
+		var storeParm = handler.storeParm;
 		if(result.isNil) {
 			result = [Rest(valueID[0])];
 		} {
 			result = result.asArray;
 		};
-		sp0 = storeParm[0].asArray;
-		if(sp0.size >= result.size) {
-			sp0.do { |key, i|
+		if(storeParm.size >= result.size) {
+			storeParm.do { |key, i|
 				inEvent.put(key, result.wrapAt(i));
 			};
 		} {
 			"Alias for % allows % values, but too many (%) were provided"
-			.format(parm.asCompileString, sp0, result.size)
+			.format(storeParm.asCompileString, storeParm, result.size)
 			.warn;
 		};
 		// valueID[1] should be the dur value -- necessary to be second return value
@@ -163,18 +164,26 @@ CllParmHandlerFactory {
 }
 
 CllParm {
-	var parm, bpKey, map;
+	var <parm, bpKey, map;
+	var <storeParm, <patternParm;
 	var isDefault;
 	var valueLookup, isRest;
 
 	// bpKey should have been validated in the factory
 	// I won't recheck it redundantly here
 	*new { |parm, bpKey, map|
+		[parm, bpKey, map].debug("creating " ++ this.name);
 		^super.newCopyArgs(parm, bpKey, map).init
 	}
 
 	init {
 		isDefault = BP(bpKey).parmIsDefault(parm);
+		storeParm = map[\alias] ?? { parm };
+		if(isDefault) {
+			patternParm = [parm, \delta, \dur];
+		} {
+			patternParm = parm;
+		};
 		if(BP(bpKey).parmIsPitch(parm)) {
 			valueLookup = \pitchLookup;
 			isRest = \pitchIsRest;
@@ -185,8 +194,8 @@ CllParm {
 	}
 
 	// this will vary based on subclasses
-	wrapPattern { |pattern, parm, storeParm|
-		^PCllPattern(pattern, parm, storeParm, this)
+	wrapPattern { |pattern|
+		^PCllPattern(pattern, this)
 	}
 
 	// these should be consistent:
@@ -269,25 +278,25 @@ CllParm {
 }
 
 CllDefaultNoAliasParm : CllParm {
-	wrapPattern { |pattern, parm, storeParm|
-		^PCllDefaultNoAliasPattern(pattern, parm, storeParm, this)
+	wrapPattern { |pattern|
+		^PCllDefaultNoAliasPattern(pattern, this)
 	}
 }
 
 CllSimpleAliasParm : CllParm {
-	wrapPattern { |pattern, parm, storeParm|
-		^PCllSimpleAliasPattern(pattern, parm, storeParm, this)
+	wrapPattern { |pattern|
+		^PCllSimpleAliasPattern(pattern, this)
 	}
 }
 
 CllDefaultArrayAliasParm : CllParm {
-	wrapPattern { |pattern, parm, storeParm|
-		^PCllDefaultArrayAliasPattern(pattern, parm, storeParm, this)
+	wrapPattern { |pattern|
+		^PCllDefaultArrayAliasPattern(pattern, this)
 	}
 }
 
 CllNonDefaultArrayAliasParm : CllParm {
-	wrapPattern { |pattern, parm, storeParm|
-		^PCllNondefaultArrayAliasPattern(pattern, parm, storeParm, this)
+	wrapPattern { |pattern|
+		^PCllNondefaultArrayAliasPattern(pattern, this)
 	}
 }

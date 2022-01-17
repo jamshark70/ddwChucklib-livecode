@@ -538,11 +538,11 @@ Proto {
 
 	~patternString = { |rightHand, code|  // ~patternString *does* need the full statement
 		var parsed = ClPatternSetNode(CollStream(code)),
-		id, objKey, phrase, parm, bpb, stream, yieldsKeys, wrapArray = false,
+		id, objKey, phrase, parm, bpb, stream, wrapArray = false,
 		streamOne = { |stream, i|
 			var phraseSym = if(i.notNil) { (phrase ++ i).asSymbol } { phrase };
 			stream << "BP(" <<< objKey << ").setPattern(" <<< phraseSym << ", ";
-			stream <<< yieldsKeys << ", " <<< parm << ", Pseq(";
+			stream <<< parm << ", Pseq(";
 			if(wrapArray) { stream << "[ " };
 			parsed.patStringNode.streamCode(stream);
 			if(wrapArray) { stream << " ]" };
@@ -555,11 +555,6 @@ Proto {
 		objKey = id.objKey;
 		phrase = id.phrase;
 		parm = id.parm;
-		if(parsed.isMain) {
-			yieldsKeys = [parm, \delta, \dur];
-		} {
-			yieldsKeys = parm;
-		};
 		if(parsed.hasQuant) {
 			bpb = parsed.quantNode.quant;
 		};
@@ -2393,21 +2388,14 @@ Proto {
 		NotificationCenter.notify(\clLiveCode, \phraseString, [~collIndex, phrase, parm, string]);
 		currentEnvironment
 	};
-	~setPattern = { |phrase, parm, inParm, pattern, inString, newQuant|
+	~setPattern = { |phrase, inParm, pattern, inString, newQuant|
 		var pat = ~phrases[phrase],
-		storeParm, time;
-		if(parm.size > 0) {
-			storeParm = parm.collect { |p|
-				~parmMap[p].tryPerform(\at, \alias) ?? { p };
-			}
-		} {
-			storeParm = ~parmMap[inParm].tryPerform(\at, \alias) ?? { parm };
-		};
+		time, handler;
 		if(pat.isNil) {
 			pat = PbindProxy([~defaultParm, \delta, \dur], nil);
 			~phrases[phrase] = pat;
 		};
-		if(parm.notNil) {
+		if(inParm.notNil) {
 			~prSetPhraseString.(phrase, inParm, inString);
 			time = BP(~collIndex).eventSchedTime(-1);
 			if(time.isNil) {
@@ -2415,10 +2403,10 @@ Proto {
 				.format(~collIndex.asCompileString).warn;
 				time = BP(~collIndex).eventSchedTime(BasicTimeSpec(-1, wrap: true));
 			};
+			handler = ~getParmHandler.(inParm);
 			~clock.schedAbs(time - 0.001, inEnvir {
-				pat.set(parm,
-					~getParmHandler.(inParm)
-					.wrapPattern(pattern, parm, storeParm, inParm)
+				pat.set(handler.patternParm,
+					handler.wrapPattern(pattern)
 				);
 				nil
 			});
