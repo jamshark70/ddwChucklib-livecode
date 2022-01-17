@@ -79,7 +79,6 @@ CllParm {
 	// bpKey should have been validated in the factory
 	// I won't recheck it redundantly here
 	*new { |parm, bpKey, map|
-		[parm, bpKey, map].debug("creating " ++ this.name);
 		^super.newCopyArgs(parm, bpKey, map).init
 	}
 
