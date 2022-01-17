@@ -19,99 +19,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 // these assume to be run within a chucklib-livecode BP
 // the BP supplies ~valueForParm
 
-PCllPattern : FilterPattern {
-	var <>handler;
-	*new { |pattern, handler|
-		^super.newCopyArgs(pattern, handler)
-	}
-
-	embedInStream { |inval|
-		var stream = pattern.asStream;
-		var value;
-		while {
-			value = stream.next(inval);
-			value.notNil
-		} {
-			inval = this.processValue(value, inval).yield;
-		};
-		^inval
-	}
-
-	// higher level hook, for subclasses handling arrays
-	processValue { |valueID, inEvent|
-		^this.processOneValue(valueID, inEvent)
-	}
-
-	// valueID is the cll representation (character or SequenceNote)
-	processOneValue { |valueID, inEvent|
-		^handler.valueForParm(valueID, inEvent) ?? { Rest(valueID) }
-	}
-}
-
-PCllDefaultNoAliasPattern : PCllPattern {
-	// key and valueID are arrays
-	processValue { |valueID, inEvent|
-		var out;
-		out = valueID.copy;
-		out[0] = this.processOneValue(out[0], inEvent);
-		^out
-	}
-}
-
-PCllSimpleAliasPattern : PCllPattern {
-	processValue { |valueID, inEvent|
-		var result = this.processOneValue(valueID, inEvent);
-		inEvent.put(handler.storeParm, result);
-		^result
-	}
-}
-
-PCllNondefaultArrayAliasPattern : PCllPattern {
-	processValue { |valueID, inEvent|
-		var result = handler.valueForParm(valueID, inEvent);
-		var storeParm = handler.storeParm;
-		if(result.isNil) {
-			result = [Rest(valueID)];
-		} {
-			result = result.asArray;
-		};
-		if(storeParm.size >= result.size) {
-			storeParm.do { |key, i|
-				inEvent.put(key, result.wrapAt(i));
-			};
-		} {
-			"Alias for % allows % values, but too many (%) were provided"
-			.format(storeParm.asCompileString, storeParm.size, result.size)
-			.warn;
-		};
-		^result
-	}
-}
-
-PCllDefaultArrayAliasPattern : PCllPattern {
-	processValue { |valueID, inEvent|
-		var result = handler.valueForParm(valueID[0], inEvent), sp0;
-		var storeParm = handler.storeParm;
-		if(result.isNil) {
-			result = [Rest(valueID[0])];
-		} {
-			result = result.asArray;
-		};
-		if(storeParm.size >= result.size) {
-			storeParm.do { |key, i|
-				inEvent.put(key, result.wrapAt(i));
-			};
-		} {
-			"Alias for % allows % values, but too many (%) were provided"
-			.format(storeParm.asCompileString, storeParm, result.size)
-			.warn;
-		};
-		// valueID[1] should be the dur value -- necessary to be second return value
-		// if 'result' is one item, unbubble reverses the 'asArray' earlier
-		^[result.unbubble, valueID[1], valueID[2]]
-	}
-}
-
 
 // parameter handlers
 CllParmHandlerFactory {
@@ -193,9 +100,20 @@ CllParm {
 		};
 	}
 
-	// this will vary based on subclasses
 	wrapPattern { |pattern|
-		^PCllPattern(pattern, this)
+		^pattern.collect { |valueID, inEvent|
+			this.processValue(valueID, inEvent)
+		}
+	}
+
+	// higher level hook, for subclasses handling arrays
+	processValue { |valueID, inEvent|
+		^this.processOneValue(valueID, inEvent)
+	}
+
+	// valueID is the cll representation (character or SequenceNote)
+	processOneValue { |valueID, inEvent|
+		^this.valueForParm(valueID, inEvent) ?? { Rest(valueID) }
 	}
 
 	// these should be consistent:
@@ -277,25 +195,62 @@ CllParm {
 }
 
 CllDefaultNoAliasParm : CllParm {
-	wrapPattern { |pattern|
-		^PCllDefaultNoAliasPattern(pattern, this)
+	processValue { |valueID, inEvent|
+		var out;
+		out = valueID.copy;
+		out[0] = this.processOneValue(out[0], inEvent);
+		^out
 	}
 }
 
 CllSimpleAliasParm : CllParm {
-	wrapPattern { |pattern|
-		^PCllSimpleAliasPattern(pattern, this)
+	processValue { |valueID, inEvent|
+		var result = this.processOneValue(valueID, inEvent);
+		inEvent.put(storeParm, result);
+		^result
 	}
 }
 
 CllDefaultArrayAliasParm : CllParm {
-	wrapPattern { |pattern|
-		^PCllDefaultArrayAliasPattern(pattern, this)
+	processValue { |valueID, inEvent|
+		var result = this.valueForParm(valueID[0], inEvent), sp0;
+		if(result.isNil) {
+			result = [Rest(valueID[0])];
+		} {
+			result = result.asArray;
+		};
+		if(storeParm.size >= result.size) {
+			storeParm.do { |key, i|
+				inEvent.put(key, result.wrapAt(i));
+			};
+		} {
+			"Alias for % allows % values, but too many (%) were provided"
+			.format(storeParm.asCompileString, storeParm, result.size)
+			.warn;
+		};
+		// valueID[1] should be the dur value -- necessary to be second return value
+		// if 'result' is one item, unbubble reverses the 'asArray' earlier
+		^[result.unbubble, valueID[1], valueID[2]]
 	}
 }
 
 CllNonDefaultArrayAliasParm : CllParm {
-	wrapPattern { |pattern|
-		^PCllNondefaultArrayAliasPattern(pattern, this)
+	processValue { |valueID, inEvent|
+		var result = this.valueForParm(valueID, inEvent);
+		if(result.isNil) {
+			result = [Rest(valueID)];
+		} {
+			result = result.asArray;
+		};
+		if(storeParm.size >= result.size) {
+			storeParm.do { |key, i|
+				inEvent.put(key, result.wrapAt(i));
+			};
+		} {
+			"Alias for % allows % values, but too many (%) were provided"
+			.format(storeParm.asCompileString, storeParm.size, result.size)
+			.warn;
+		};
+		^result
 	}
 }
