@@ -2405,9 +2405,7 @@ Proto {
 			};
 			handler = ~getParmHandler.(inParm);
 			~clock.schedAbs(time - 0.001, inEnvir {
-				pat.set(handler.patternParm,
-					handler.wrapPattern(pattern)
-				);
+				pat.set(handler.patternParm, handler.wrapPattern(pattern));
 				nil
 			});
 		} {
