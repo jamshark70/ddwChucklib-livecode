@@ -50,19 +50,16 @@ CllParmHandlerFactory {
 				^CllParm(parm, bpKey, map)
 			};
 		} {
-			// aliased cases: simple or arrayed?
-			if(map[\alias].size == 0) {
-				// simple
-				if(bp.parmIsDefault(parm)) {
-					^CllDefaultArrayAliasParm(parm, bpKey, map)
-				} {
-					^CllSimpleAliasParm(parm, bpKey, map)
-				}
+			// aliased cases
+			if(bp.parmIsDefault(parm)) {
+				// default parm with alias is always this type
+				^CllDefaultArrayAliasParm(parm, bpKey, map)
 			} {
-				// arrayed
-				if(bp.parmIsDefault(parm)) {
-					^CllDefaultArrayAliasParm(parm, bpKey, map)
+				if(map[\alias].size == 0) {
+					// non-default, alias is not an array
+					^CllSimpleAliasParm(parm, bpKey, map)
 				} {
+					// non-default, alias is an array
 					^CllNonDefaultArrayAliasParm(parm, bpKey, map)
 				}
 			};
