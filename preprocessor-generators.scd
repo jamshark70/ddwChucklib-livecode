@@ -2089,7 +2089,7 @@ protect {
 				srcBP = BP(~srcBP);
 				// lookup must be here: the parm index might be different in different phrases
 				i = ~getParmIndex.(srcBP, srcBP.lastPhrase, ~srcParm);
-				if(i.notNil and: { srcBP.phrases[srcBP.lastPhrase].pairs[i].source.isKindOf(PCllPattern) }) {
+				if(i.notNil and: { srcBP.phrases[srcBP.lastPhrase].pairs[i].source.isKindOf(Pcollect) }) {
 					srcBP.phrases[srcBP.lastPhrase].pairs[i].source.pattern.list[0].cachedItems
 					.select { |item|
 						item[\initialRest] != true and: {
