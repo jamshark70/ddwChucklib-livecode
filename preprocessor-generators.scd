@@ -1481,6 +1481,40 @@ protect {
 		~snippet.("stuttN", "\\stuttN(##match, numToAdd, quant, prob, numInclusive, insItem \"-\", wildcards##)");
 	} => PR(\clGenStuttN);
 
+	PR(\clGenStuttN).clone {
+		~defaultNames = #[/*baseItems,*/ match, numToAdd, quant, prob, addLimit, insPool, articPool, wildcards];
+		~defaults = [/*nil,*/ nil, 1, 0.25, 0.75, 1000, nil, nil, nil];
+		// expand this later
+		~validation = [/*nil,*/ nil, \isNumProxy, \isNumProxy, \isNumProxy, \isNumProxy, nil, nil, nil];
+
+		~getValuesForTimes = { |times|
+			var lastIndex, lastPitch, new;
+			if(~passIndex) {
+				// note: this branch doesn't make sense.
+				// A pitch accumulator assumes that you've provided an
+				// interval pool. We get here if you didn't.
+				// Shouldn't happen -- but, if we don't provide a branch,
+				// then you get errors during a show. So at least don't die.
+				times.collect { |pair, i|
+					// we know passIndex is true, so just pass it
+					~insStream.value(pair[1]);  // else nil
+				};
+			} {
+				times.collect { |pair, i|
+					if(pair[1] != lastIndex) {
+						lastIndex = pair[1];
+						lastPitch = ~items[pair[1]].item;
+					};
+					new = SequenceNote(lastPitch.asFloat + ~insStream.next);
+					new = ~applyArtic.($., new);
+					lastPitch = new;
+				};
+			};
+		};
+
+		~snippet.("stuttPitch", "\\stuttPitch(##match, numToAdd, quant, prob, numInclusive, intervalPool, wildcards##)");
+	} => PR(\clGenStuttPitch);
+
 	// for each, add up to a total duration
 	PR(\clGenStutt).clone {
 		~defaultNames = #[/*baseItems,*/ match, numToAdd, quant, prob, addDur, insPool, wildcards];
