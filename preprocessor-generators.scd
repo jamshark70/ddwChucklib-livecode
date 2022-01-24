@@ -1349,11 +1349,12 @@ protect {
 		};
 		~modifySource = {
 			var times = ~getTimes.();  // [time, index] pairs unless overridden
-			var values = ~getValuesForTimes.(times);
+			var valueStream = ~getValueStream.();
 			times.do { |pair, i|
+				var new = valueStream.next(pair);
 				~items = ~items.add((
-					item: values[i],
-					wildcard: values[i],
+					item: new,
+					wildcard: new,
 					src: \stutt,  // DON'T HARDCODE THIS
 					time: pair[0]
 				));
@@ -1405,9 +1406,15 @@ protect {
 		~timeValue = { |time ... extra|
 			[time] ++ extra
 		};
-		~getValuesForTimes = { |times|
-			times.collect { |pair, i|
-				~insStream.value(if(~passIndex) { pair[1] });  // else nil
+		// Routine is needed for stuttPitch
+		// Other approach would be to build an array of values
+		// but that's an extra iteration.
+		// The routine does the same work with one fewer loop.
+		~getValueStream = {
+			Routine { |pair|
+				loop {
+					pair = yield(~insStream.value(if(~passIndex) { pair[1] }));  // else nil
+				};
 			};
 		};
 		~makeStream = 0;  // ~seqStream is not used here
@@ -1487,27 +1494,32 @@ protect {
 		// expand this later
 		~validation = [/*nil,*/ nil, \isNumProxy, \isNumProxy, \isNumProxy, \isNumProxy, nil, nil, nil];
 
-		~getValuesForTimes = { |times|
-			var lastIndex, lastPitch, new;
+		~getValueStream = {
 			if(~passIndex) {
 				// note: this branch doesn't make sense.
 				// A pitch accumulator assumes that you've provided an
 				// interval pool. We get here if you didn't.
 				// Shouldn't happen -- but, if we don't provide a branch,
 				// then you get errors during a show. So at least don't die.
-				times.collect { |pair, i|
-					// we know passIndex is true, so just pass it
-					~insStream.value(pair[1]);  // else nil
-				};
-			} {
-				times.collect { |pair, i|
-					if(pair[1] != lastIndex) {
-						lastIndex = pair[1];
-						lastPitch = ~items[pair[1]].item;
+				Routine { |pair|
+					loop {
+						// we know passIndex is true, so just pass it
+						pair = yield(~insStream.value(pair[1]));  // else nil
 					};
-					new = SequenceNote(lastPitch.asFloat + ~insStream.next);
-					new = ~applyArtic.($., new);
-					lastPitch = new;
+				}
+			} {
+				Routine { |pair|
+					var lastIndex, lastPitch, new;
+					loop {
+						if(pair[1] != lastIndex) {
+							lastIndex = pair[1];
+							lastPitch = ~items[pair[1]].item;
+						};
+						new = SequenceNote(lastPitch.asFloat + ~insStream.next);
+						new = ~applyArtic.($., new);
+						lastPitch = new;
+						pair = new.yield;
+					};
 				};
 			};
 		};
