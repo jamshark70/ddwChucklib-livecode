@@ -1388,7 +1388,7 @@ protect {
 					time < nextTime and: { goCondition.value(time, numAdded) }
 				} {
 					if(prob.coin) {
-						times = times.add(~timeValue.(time, index));
+						times = times.add([time, index]);
 						numAdded = numAdded + 1;
 					};
 				};
@@ -1402,9 +1402,6 @@ protect {
 		};
 		~makeGoCondition = { |time, index|
 			true
-		};
-		~timeValue = { |time ... extra|
-			[time] ++ extra
 		};
 		// Routine is needed for stuttPitch
 		// Other approach would be to build an array of values
