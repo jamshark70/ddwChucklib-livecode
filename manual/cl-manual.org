@@ -59,6 +59,15 @@
 #+LATEX_HEADER: \usepackage{environ}
 #+LATEX_HEADER: \NewEnviron{boxnote}[1][]{\bigskip\noindent\framebox[1\textwidth]{\parbox[c]{0.95\textwidth}{\textbf{Note:} \BODY}}\bigskip}
 
+* To-dos (not printed)                                             :noexport:
+** TODO convertFunc documentation: =value, inEvent, map=
+   - Actually convertFunc is totally undocumented
+** TODO Pitch processes: Voicer keys
+   - argPairs
+   - postArgs
+   - extraChildParms
+   - extraParms
+   - parmMap
 * Introduction
 #+LATEX: \frenchspacing
 ** Overview
