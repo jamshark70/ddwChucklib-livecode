@@ -1521,7 +1521,7 @@ protect {
 			};
 		};
 
-		~snippet.("stuttPitch", "\\stuttPitch(##match, numToAdd, quant, prob, numInclusive, intervalPool, wildcards##)");
+		~snippet.("stuttPitch", "\\stuttPitch(##match, numToAdd, quant, prob, numInclusive, intervalPool, articPool, wildcards##)");
 	} => PR(\clGenStuttPitch);
 
 	// for each, add up to a total duration
