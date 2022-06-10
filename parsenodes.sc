@@ -793,14 +793,14 @@ ClGeneratorNode : ClAbstractParseNode {
 			// gen refs
 			Error("Generator '%' has no argument list".format(name)).throw;
 		};
-		// stream.collection[~begin .. ~begin + 10].debug("<< clGeneratorNode");
+		// stream.collection[begin .. begin + 10].debug("<< clGeneratorNode");
 	}
 	parseArg { |stream|
 		var type, ch, new;
-		// stream.collection[stream.pos .. stream.pos + 10].debug(">> parseArg");
+		// [stream.pos, stream.collection[stream.pos .. stream.pos + 10]].debug(">> parseArg");
 		type = types.detect { |entry|
 			(entry[\match].value(this) ?? { true }) and: {
-				entry[\regexp].matchRegexp(stream.collection, stream.pos)
+				stream.collection.findRegexpAt(entry[\regexp], stream.pos).notNil
 			}
 		};
 		if(type/*.debug("type")*/.notNil) {
@@ -818,13 +818,13 @@ ClGeneratorNode : ClAbstractParseNode {
 				new.init(stream, this);
 			};
 		} {
-			Error("Syntax error in % arg list, at '%'".format(~name, stream.collection[stream.pos .. stream.pos + 10])).throw;
+			Error("Syntax error in % arg list, at '%'".format(name, stream.collection[stream.pos .. stream.pos + 10])).throw;
 		};
 		ch = stream.next;
 		if(ch == $,) { this.skipSpaces(stream) } {
 			if(ch.notNil) { stream.pos = stream.pos - 1 };
 		};
-		// new.listVars; "<< parseArg".debug;
+		// "<< parseArg".debug;
 		^new
 	}
 
