@@ -69,6 +69,7 @@ this.preProcessor = { |code|
 	if("/+".includes(code.first)) {
 		code = \clParseIntoStatements.eval(code);
 		code.do { |stmt, i|
+			// [i, stmt].debug("preprocessor");
 			case
 			{ stmt.first == $/ and: { stmt[1] != $/ } } {
 				code[i] = PR(\chucklibLiveCode)/*.copy?*/.process(stmt.drop(1));
@@ -717,9 +718,9 @@ Proto {
 		if(~parm.notNil) {
 			Error("\clPatternSet: Pattern string should have been handled outside of buildStatement").throw;
 		} {
-			"%(%).setPattern(%, %, %, %, %, %)".format(
+			"%(%).setPattern(%, %, %, %, %)".format(
 				~clClass, ~objKey.asCompileString,
-				~phrase.asCompileString, nil, nil,  // we already know ~parm is nil in this branch
+				~phrase.asCompileString, nil,  // we already know ~parm is nil in this branch
 				~group.asPatString, ~inString.asCompileString, ~quant
 			);
 		};
@@ -2375,7 +2376,14 @@ Proto {
 	~fixParmMap = {
 		var new = EnvironmentRedirect.new;
 		~parmHandlers = IdentityDictionary.new;
-		new.dispatch = inEnvir(~getParmHandler);
+		new.dispatch = inEnvir { |key|
+			// currently removeAt doesn't call 'dispatch'
+			// but if it ever did, we would need this to prevent inf-recursion
+			if(~parmHandlers[key].notNil) {
+				~parmHandlers.removeAt(key);
+			};
+			~getParmHandler.value(key)
+		};
 		~parmMap.keysValuesDo { |key, map|
 			new.put(key, map);  // magic: dispatch should make handler
 		};

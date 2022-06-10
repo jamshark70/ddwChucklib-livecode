@@ -136,7 +136,7 @@ CllParm {
 				};
 			};
 			// not .asFloat: We already know this is a SeqNote, and asFloat breaks Rests here.
-			convert.(event, inEvent) ?? { event.freq }
+			convert.(event, inEvent, map) ?? { event.freq }
 		} {
 			if(event == \rest or: { event.class == Char }) {
 				if(isDefault) {
@@ -144,13 +144,13 @@ CllParm {
 				};
 				event = Rest(map[\rest] ?? { 0 });
 			};
-			convert.(event, inEvent) ?? { event }
+			convert.(event, inEvent, map) ?? { event }
 		};
 	}
 	dictLookup { |event, inEvent|
 		var result = if(map.notNil) {
 			if(map[\convertFunc].notNil) {
-				map[\convertFunc].value(event, inEvent)
+				map[\convertFunc].value(event, inEvent, map)
 			} {
 				map[event]
 			};
