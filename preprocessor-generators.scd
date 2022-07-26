@@ -483,6 +483,10 @@ protect {
 		~embedInStream = { |inval|
 			Pser(~pool, { ~repeats.next }, { ~offset.next }).embedInStream(inval)
 		};
+		// makeStream should always be infinite
+		~makeStream = {
+			~seqStream = Pn(Pser(~pool.asArray, { ~repeats.next }, { ~offset.next }), inf).collect(_.item).asStream;
+		};
 		~snippet.("ser", "\\ser(##items, wildcards, reset##)");
 	} => PR(\clGenSer);
 
