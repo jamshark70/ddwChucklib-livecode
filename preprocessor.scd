@@ -193,6 +193,7 @@ this.preProcessor = { |code|
 { |code, open, patString(false)|
 	var brak = "()[]{}", i = brak.indexOf(open), close, wrongClose, ch, ch2;
 	var savePos = code.pos;
+	// [open, code.collection[savePos .. savePos + 10]].debug(">> clParseBracketed");
 	if(i.notNil) {
 		close = brak[i+1];
 		wrongClose = brak[1, 3..].reject(_ == close);
@@ -232,14 +233,20 @@ this.preProcessor = { |code|
 			Error("Unclosed " ++ open).throw
 		};
 	} {
-		Error("Func(\\clParseBracketed) entered with " ++ open).throw;
+		if(open.isKindOf(Char)) {
+			Error("Invalid opening delimiter " ++ open).throw;
+		} {
+			Error("Checking a bracketed region, invalid input = '%'".format(open)).throw;
+		};
 	};
+	// [open, code.collection[savePos .. savePos + 10], code.collection[code.pos .. code.pos + 10]].debug("<< clParseBracketed");
 	ch
 } => Func(\clParseBracketed);
 
 { |code, quote($")|
 	var escaped = false, ch, pos = code.pos;
 	var savePos = code.pos;
+	// [quote, code.collection[savePos .. savePos + 10]].debug(">> clParseQuote");
 	while {
 		ch = code.next;
 		ch.notNil and: { escaped or: { ch != quote } }
@@ -247,12 +254,14 @@ this.preProcessor = { |code|
 		if(ch == $\\ and: { escaped.not }) { escaped = true } { escaped = false };
 	};
 	if(ch.isNil) { Error("Unclosed quote " ++ quote ++ " : " ++ code.collection[max(0, pos - 20) .. pos + 20]).throw };
+	// [quote, code.collection[savePos .. savePos + 10], code.collection[code.pos .. code.pos + 10]].debug("<< clParseQuote");
 	ch
 } => Func(\clParseQuote);
 
 { |code|
 	var ch;
 	var savePos = code.pos;
+	// [code.collection[savePos .. savePos + 10]].debug(">> clParsePatString");
 	while {
 		ch = code.next;
 		ch.notNil and: { ch != $" }
@@ -266,24 +275,39 @@ this.preProcessor = { |code|
 		};
 	};
 	if(ch.isNil) { Error("Unclosed pattern string quote").throw };
+	// [code.collection[savePos .. savePos + 10], code.collection[code.pos .. code.pos + 10]].debug("<< clParsePatString");
 	ch
 } => Func(\clParsePatString);
 
-{ |code, patString(false)|
+{ |code, allowedBrackets|
 	var ch;
+	while {
+		ch = code.next;
+		// generators may now have a {} pair before the arg list
+		// e.g. \ser*{Pwhite(1,4,inf)}(...)
+		ch.notNil and: { allowedBrackets.includes(ch).not }
+	};
+	\clParseBracketed.eval(code, ch, true);  // can only be in a patstring here
+	ch  // return bracket type
+} => Func(\clParseGeneratorBrackets);
+
+{ |code, patString(false)|
+	var ch, openBracket;
 	var savePos = code.pos;
+	// [code.collection[savePos .. savePos + 10]].debug(">> clParseGenerator");
 	// ["[a-zA-Z0-9_]+\\(", code.collection[code.pos ..]].debug("check gen");
 	if("[a-zA-Z0-9_]+\\(".matchRegexp(code.collection, code.pos)) {
-		while {
-			ch = code.next;
-			// generators may now have a {} pair before the arg list
-			// e.g. \ser*{Pwhite(1,4,inf)}(...)
-			"({".includes(ch).not
+		// somewhat ugly, but... there can be two bracketed groups
+		// if there are two, they must be {}()
+		// if only one, it must be ()
+		openBracket = \clParseGeneratorBrackets.eval(code, "({");
+		if(openBracket == ${) {
+			\clParseGeneratorBrackets.eval(code, "(");
 		};
-		ch = \clParseBracketed.eval(code, ch, patString);
 	} {
 		Error("Backslash in cl pattern string must introduce a generator").throw;
 	};
+	// [code.collection[savePos .. savePos + 10], code.collection[code.pos .. code.pos + 10]].debug("<< clParseGenerator");
 	ch
 } => Func(\clParseGenerator);
 
@@ -292,6 +316,7 @@ this.preProcessor = { |code|
 { |code|
 	var ch, ch2, continue = true;
 	var savePos = code.pos;
+	// [code.collection[savePos .. savePos + 10]].debug(">> clParseDelimComment");
 	while { (ch = ch2 ?? { code.next }).notNil and: { continue } } {
 		ch2 = nil;
 		switch(ch)
@@ -304,6 +329,7 @@ this.preProcessor = { |code|
 			if(ch2 == $/) { continue = false };
 		}
 	};
+	// [code.collection[savePos .. savePos + 10], code.collection[code.pos .. code.pos + 10]].debug("<< clParseDelimComment");
 	ch
 } => Func(\clParseDelimComment);
 );
