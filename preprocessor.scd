@@ -1778,9 +1778,9 @@ Proto({
 		[str, ch]
 	};
 	~writeCode = {
-		var out = CollStream.new,
-		lastWasVoicer = false;
-		var presetName, presetCheck, makeParms;
+		var out = CollStream.new;
+		var lastWasVoicer = false;
+		var parmString, presetName, result;
 		~ids.do { |id, i|
 			if(Fact.exists(id[0])) {
 				if(out.pos > 0) {
@@ -1791,40 +1791,33 @@ Proto({
 					~classForFactoryType.(id[0]),
 					id[1].asCompileString
 				);
-				if(id[2].notNil) {
-					presetCheck = ~extractKey.(id[2].debug, "preset");
-					if(presetCheck.notNil) {
-						presetName = ~removeDelimiters.(presetCheck[1]).asSymbol;
-						id[2] = presetCheck[0];
-					};
-					presetCheck = Fact(id[0]).presetAt(presetName);
-					if(presetCheck.notNil) {
-						presetCheck = presetCheck[\makeParms];
-						if(presetCheck.size > 0) {
-							makeParms = CollStream.new;
-							// should work with both arrays and dicts
-							presetCheck.keysValuesDo { |key, value, i|
-								if(i > 0) {
-									makeParms << ", ";
-								};
-								makeParms << key << ": " <<< value;
-							};
-							if(id[2].size > 0) {
-								id[2] ++ ".putAll((" ++ makeParms ++ "))"
-							} {
-								id[2] = "(" ++ makeParms.collection ++ ")";
-							};
-							id[2].debug("id2");
-						};
-					};
-					// 'preset' might have been the only key; don't write empty dict
-					if(id[2].size > 0) {
-						out << ", nil, " << id[2];
-					};
+				result = ~getParmString.(id);
+				parmString = result[0];
+				if(result[1].notNil) { presetName = result[1] };
+				// 'preset' might have been the only key; don't write empty dict
+				if(parmString.size > 0) {
+					out << ", nil, " << parmString
 				};
 				out << ")";
-				if(lastWasVoicer and: { Fact(id[0]).type == \bp }) {
-					out << ";\nVC(%) => BP(%)".format(~ids[i-1][1].asCompileString, id[1].asCompileString);
+
+				// VC and preset assignment belong only to BP
+				if(Fact(id[0]).type == \bp) {
+					// first step after making bp:
+					// if there's an attached voicer, assign it
+					if(lastWasVoicer) {
+						out << ";\nVC(%) => BP(%)".format(
+							~ids[i-1][1].asCompileString,
+							id[1].asCompileString
+						);
+					} {
+						// otherwise assume it's a freestanding BP
+						// and a preset dictionary needs to be referenced
+						out << ";\nBP(%).presets = Fact(%).presets".format(
+							id[1].asCompileString,
+							id[0].asCompileString
+						);
+					};
+					// last, apply a preset if one was given
 					if(presetName.notNil) {
 						out << ";\nBP(%).preset(%)".format(
 							id[1].asCompileString,
@@ -1856,6 +1849,52 @@ Proto({
 		{ \bp } { BP }
 		{ \vc } { VC }
 		{ \voicer } { VC }
+	};
+	~getParmString = { |id, parmString|
+		var presetCheck, presetName;
+
+		parmString = id[2];
+
+		if(parmString.notNil) {
+			presetCheck = ~extractKey.(parmString, "preset");
+			if(presetCheck.notNil) {
+				presetName = ~removeDelimiters.(presetCheck[1]).asSymbol;
+				parmString = presetCheck[0];  // removed 'preset'
+			};
+			presetCheck = Fact(id[0]).presetAt(presetName);
+			// handle 'makeParms' entry
+			if(presetCheck.notNil) {
+				parmString = ~makeParmsIntoList.(presetCheck[\makeParms], parmString);
+			};
+			[parmString, presetName]
+		} {
+			[nil, nil]  // already know id[2] is nil
+		}
+	};
+	~makeParmsIntoList = { |dict, parmString|
+		var makeParms = CollStream.new;
+		// honestly why can we not call 'notEmpty' on Objects?
+		if(dict.size > 0) {
+			// should work with both arrays and dicts
+			dict.keysValuesDo { |key, value, i|
+				if(i > 0) {
+					makeParms << ", ";
+				};
+				makeParms << key << ": " <<< value;
+			};
+			if(parmString.size > 0) {
+				parmString ++ ".putAll((" ++ makeParms ++ "))"
+			} {
+				parmString = "(" ++ makeParms.collection ++ ")";
+			};
+		};
+		parmString
+	};
+	~handleBPPreset = {
+
+	};
+	~handleVCPreset = {
+
 	};
 	// for autoGui: Remember which slots were auto-assigned
 	// round-robin reuse them after running out
@@ -2663,7 +2702,7 @@ Proto {
 			)).throw;
 		};
 		// pairsDo supports both SeqColl and Dictionary
-		presetDef.debug("fucking kidding me again").pairsDo { |key, value|
+		presetDef.pairsDo { |key, value|
 			~set.(key, value);
 		};
 		currentEnvironment

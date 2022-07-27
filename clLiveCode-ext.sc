@@ -1,19 +1,19 @@
 /**
-    Chucklib-livecode: A framework for live-coding improvisation of electronic music
-    Copyright (C) 2018  Henry James Harkins
+Chucklib-livecode: A framework for live-coding improvisation of electronic music
+Copyright (C) 2018  Henry James Harkins
 
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
 **/
 
 // "decodes" pairs of [value, delta] into step sequences, for non-default parameters
@@ -97,35 +97,15 @@ PstepDurPair : Pstep {
 // preset support
 + Fact {
 	addPreset { |key, presetDef|
-		if(this.isVoicer) {
-			Library.put(\cl, \presets, this.collIndex, key, presetDef);
-		} {
-			"Fact(%) is a BP type; presets are not supported"
-			.format(this.collIndex.asCompileString)
-			.warn;
-		}
+		Library.put(\cl, \presets, this.collIndex, key, presetDef);
 	}
 
 	presets {
-		if(this.isVoicer) {
-			^Library.at(\cl, \presets, this.collIndex)
-		} {
-			"Fact(%) is a BP type; presets are not supported"
-			.format(this.collIndex.asCompileString)
-			.warn;
-			^nil
-		}
+		^Library.at(\cl, \presets, this.collIndex)
 	}
 
 	presetAt { |key|
-		if(this.isVoicer) {
-			^Library.at(\cl, \presets, this.collIndex, key)
-		} {
-			"Fact(%) is a BP type; presets are not supported"
-			.format(this.collIndex.asCompileString)
-			.warn;
-			^nil
-		}
+		^Library.at(\cl, \presets, this.collIndex, key)
 	}
 
 	*savePresets {
