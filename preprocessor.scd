@@ -1890,12 +1890,6 @@ Proto({
 		};
 		parmString
 	};
-	~handleBPPreset = {
-
-	};
-	~handleVCPreset = {
-
-	};
 	// for autoGui: Remember which slots were auto-assigned
 	// round-robin reuse them after running out
 	// this may not be the best algorithm
