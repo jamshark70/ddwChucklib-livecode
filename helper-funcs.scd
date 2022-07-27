@@ -171,8 +171,12 @@ Library.put(\clLivecode, \setupbars, \guiIsFront, false);
 
 { |preset, bp|
 	var vc, presetDef, proc;
+	var gcs;
 	vc = \bpAsVC.eval(bp);
-	presetDef = vc.env[\presets].tryPerform(\at, preset);
+	presetDef = vc.env[\presets].tryPerform(\at, preset) ?? {
+		// vc.env[\collIndex] is the Factory's collIndex
+		Library.at(\cl, \presets, vc.env[\collIndex], preset)
+	};
 	if(presetDef.isNil) {
 		Error("\\preset: VC(%) does not define preset %".format(
 			vc.collIndex.asCompileString,
@@ -180,9 +184,15 @@ Library.put(\clLivecode, \setupbars, \guiIsFront, false);
 		)).throw;
 	};
 	proc = BP(bp);  // already validated by \bpAsVC
+	gcs = vc.v.globalControls;
 	// pairsDo supports both SeqColl and Dictionary
 	presetDef.pairsDo { |key, value|
 		proc.set(key, value);
+		// presets should be able to override globalcontrol defaults
+		// but not with patterns
+		if(gcs[key].notNil and: { value.isNumber }) {
+			gcs[key].value = value
+		};
 	};
 	proc
 } => Func(\preset);

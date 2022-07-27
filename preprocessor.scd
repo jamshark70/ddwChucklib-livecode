@@ -1780,7 +1780,7 @@ Proto({
 	~writeCode = {
 		var out = CollStream.new,
 		lastWasVoicer = false;
-		var presetName, presetCheck;
+		var presetName, presetCheck, makeParms;
 		~ids.do { |id, i|
 			if(Fact.exists(id[0])) {
 				if(out.pos > 0) {
@@ -1792,10 +1792,30 @@ Proto({
 					id[1].asCompileString
 				);
 				if(id[2].notNil) {
-					presetCheck = ~extractKey.(id[2], "preset");
+					presetCheck = ~extractKey.(id[2].debug, "preset");
 					if(presetCheck.notNil) {
-						presetName = presetCheck[1];
+						presetName = ~removeDelimiters.(presetCheck[1]).asSymbol;
 						id[2] = presetCheck[0];
+					};
+					presetCheck = Fact(id[0]).presetAt(presetName);
+					if(presetCheck.notNil) {
+						presetCheck = presetCheck[\makeParms];
+						if(presetCheck.size > 0) {
+							makeParms = CollStream.new;
+							// should work with both arrays and dicts
+							presetCheck.keysValuesDo { |key, value, i|
+								if(i > 0) {
+									makeParms << ", ";
+								};
+								makeParms << key << ": " <<< value;
+							};
+							if(id[2].size > 0) {
+								id[2] ++ ".putAll((" ++ makeParms ++ "))"
+							} {
+								id[2] = "(" ++ makeParms.collection ++ ")";
+							};
+							id[2].debug("id2");
+						};
 					};
 					// 'preset' might have been the only key; don't write empty dict
 					if(id[2].size > 0) {
@@ -1808,7 +1828,7 @@ Proto({
 					if(presetName.notNil) {
 						out << ";\nBP(%).preset(%)".format(
 							id[1].asCompileString,
-							presetName
+							presetName.asCompileString
 						);
 						presetName = nil;
 					};
@@ -1929,6 +1949,15 @@ Proto({
 			if(newStr.every("(, \t)".includes(_))) { newStr = nil };
 			[newStr, out]
 		};
+	};
+	// special case for preset names
+	~removeDelimiters = { |str|
+		str = \strTrim.eval(str);
+		switch(str[0])
+		{ $\\ } { str.drop(1) }
+		{ $' } { str.drop(-1).drop(1) }
+		{ $" } { str.drop(-1).drop(1) }
+		{ str }
 	};
 }, parentKeys: #[assignedMCGs, assignedVPs]) => PR(\clMake);
 
@@ -2623,6 +2652,8 @@ Proto {
 	};
 	~phraseSeq_.(\main);
 
+	// note that this is separate from VC/Fact presets
+	// those are implemented in helper-funcs
 	~preset = { |presetName|
 		var presetDef = ~presets.tryPerform(\at, presetName);
 		if(presetDef.isNil) {
@@ -2632,7 +2663,7 @@ Proto {
 			)).throw;
 		};
 		// pairsDo supports both SeqColl and Dictionary
-		presetDef.pairsDo { |key, value|
+		presetDef.debug("fucking kidding me again").pairsDo { |key, value|
 			~set.(key, value);
 		};
 		currentEnvironment

@@ -98,11 +98,7 @@ PstepDurPair : Pstep {
 + Fact {
 	addPreset { |key, presetDef|
 		if(this.isVoicer) {
-			Library.put(\cll, \presets, this.collIndex, key, presetDef);
-			// if(value[\presets].isNil) {
-			// 	value[\presets] = IdentityDictionary.new;
-			// };
-			// value[\presets].put(key, presetDef);
+			Library.put(\cl, \presets, this.collIndex, key, presetDef);
 		} {
 			"Fact(%) is a BP type; presets are not supported"
 			.format(this.collIndex.asCompileString)
@@ -110,13 +106,37 @@ PstepDurPair : Pstep {
 		}
 	}
 
+	presets {
+		if(this.isVoicer) {
+			^Library.at(\cl, \presets, this.collIndex)
+		} {
+			"Fact(%) is a BP type; presets are not supported"
+			.format(this.collIndex.asCompileString)
+			.warn;
+			^nil
+		}
+	}
+
+	presetAt { |key|
+		if(this.isVoicer) {
+			^Library.at(\cl, \presets, this.collIndex, key)
+		} {
+			"Fact(%) is a BP type; presets are not supported"
+			.format(this.collIndex.asCompileString)
+			.warn;
+			^nil
+		}
+	}
+
 	*savePresets {
-		Library.at(\cll, \presets).writeArchive(Platform.userConfigDir +/+ "chucklibPresets.txarch");
+		Library.at(\cl, \presets).writeArchive(Platform.userConfigDir +/+ "chucklibPresets.txarch");
 	}
 
 	*loadPresets {
 		var allPresets = Object.readArchive(Platform.userConfigDir +/+ "chucklibPresets.txarch");
-		var curPresets = Library.at(\cll, \presets);
+		var curPresets = Library.at(\cl, \presets) ?? {
+			IdentityDictionary.new
+		};
 		var conflicts = IdentityDictionary.new;
 		allPresets.keysValuesDo { |factName, presets|
 			if(curPresets[factName].isNil) {
@@ -138,7 +158,7 @@ The memory version is retained; the disk version was not loaded.".warn;
 				"Fact(%): %\n".postf(factName.asCompileString, presetKeys);
 			};
 		};
-		Library.put(\cll, \presets, allPresets);
+		Library.put(\cl, \presets, allPresets);
 	}
 }
 
