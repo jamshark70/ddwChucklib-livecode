@@ -17,17 +17,17 @@
 # /**
 #     Chucklib-livecode: A framework for live-coding improvisation of electronic music
 #     Copyright (C) 2018  Henry James Harkins
-# 
+#
 #     This program is free software: you can redistribute it and/or modify
 #     it under the terms of the GNU General Public License as published by
 #     the Free Software Foundation, either version 3 of the License, or
 #     (at your option) any later version.
-# 
+#
 #     This program is distributed in the hope that it will be useful,
 #     but WITHOUT ANY WARRANTY; without even the implied warranty of
 #     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #     GNU General Public License for more details.
-# 
+#
 #     You should have received a copy of the GNU General Public License
 #     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # **/
@@ -583,14 +583,14 @@ Using pitch in /cll/ requires a little preparation.
    =/make= will automatically assign the instrument to the player (3,
    implicitly). Listing [[bass1]] demonstrates with
    =/make(pbsVC:pbs/melBP:bs(octave:3));=:
-   
+
    - =/make=
      - =pbsVC:pbs=: Make the =pbsVC= instrument under the name =pbs=.
      - =melBP:bs=: Make the melody player =melBP= under the name =bs=.
        - =(octave:3)=: A parameter to apply to the new =bs= process.
      - (Here, /cll/ does =VC(\pbs) => BP(\bs)= for you, but you don't
        have to write anything for this!)
-   
+
    The general form is =/make(factoryID:instanceID(parameters...))= with
    additional factory/instance pairs separated by slashes.
 
@@ -900,7 +900,7 @@ manually =stop= and =reset= before trying again to play it.)
 
 # #+BEGIN_SRC {SuperCollider} -i
 # // Playback error recovery
-# 
+#
 # /proc-;
 # /proc(reset);
 # /proc+;
@@ -1404,16 +1404,16 @@ Some examples:
 # #+BEGIN_SRC SuperCollider -i
 # // One generator, whole bar.
 # /beep = "\shuf("*  *| ** |**| *  ", ".-^", "*")";
-# 
+#
 # // Fixed entry on the downbeat, followed by 3 beats of generator.
 # // All 3 dividers are required (4-beat division).
 # // Also, the source string inside \shuf() is now 3 beats instead of 4.
 # /beep = "^|\shuf("****| ** |*  *", ".-", "*")||";
-# 
+#
 # // 8th-note upbeat, written outside.
 # // \shuf() occupies 2.5 beats.
 # /beep = "^|\shuf("**|**| *|* | *", ".", "*")|| -";
-# 
+#
 # // Same, but perhaps easier to manage:
 # /beep = "^|\shuf("****| ** | *- ", ".", "*")||";
 # #+END_SRC
@@ -1674,7 +1674,7 @@ multiple number of beats. In 4/4 time, =/proc+4= will start the
 process on the next bar line; =/proc+8= will start on the next
 event-numbered bar line (i.e., every other bar). =quant= is optional;
 if not given, each process will use its own internal =quant=
-setting. By default, this is one bar; however, the =setm= 
+setting. By default, this is one bar; however, the =setm=
 helper function overrides this for the given number of bars.
 
 ** Make statement
@@ -2207,21 +2207,21 @@ non-default parameters.
 # #+BEGIN_SRC {SuperCollider} -i
 # // non-default parameter, generates values per main rhythm
 # /beep..pan = "\xrand("<(-)>")";
-# 
+#
 # // non-default parameter, sample-and-hold once per quarter
 # /beep..pan = "\xrand("<(-)>":randRhy(1, 1))";
-# 
+#
 # // easier to hear with sequence
 # /beep..pan = "\seq("<>":randRhy(1, 1))";
-# 
+#
 # // default parameter with rhythm generator
 # // beginning the pattern string with '^' means
 # // every bar will have a strong downbeat
 # /beep = "^\rand("-.":randRhy(0.25, 2, 1, 1))  |||";
-# 
+#
 # // switch to triplets, weight the return items
 # /beep = "^\wrand("-.", 1, 3:randRhy(1/3, 2, 1)) |||";
-# 
+#
 # // default parameter, no rhythm: Error
 # /beep = "^\rand("-.")  |||";
 # #+END_SRC
@@ -2329,7 +2329,7 @@ TempoClock.tempo = 112/60;
   - =parameters=: Numbers supplied as additional arguments to the
     delta pattern. Currently used only by =`beta= (supply /alpha/ and
     /beta/) and =`expb= (supply /spread/).
-  
+
   #+name: rDeltaExample
   #+caption: Usage of \textbackslash rDelta() generator.
   #+BEGIN_SRC SuperCollider -i
@@ -2376,7 +2376,7 @@ TempoClock.tempo = 112/60;
   - =curve=: Curvature types from =Env= are supported: numbers, or
     =`lin=, =`exp= etc. A curvature number applies to the first
     segment, and will be negated for the second.
-  
+
   #+name: rampExample
   #+caption: Usage of \textbackslash ramp() generator.
   #+BEGIN_SRC SuperCollider -i
@@ -2549,7 +2549,7 @@ Note that =\seq()=, =\ser()=, =\rand()=, =\wrand()=, =\xrand()=, and
   #+caption: Usage of \textbackslash pdefn() generator.
   #+BEGIN_SRC SuperCollider
 Pdefn(\y, Pn(Pseries(0, 1, 8), inf).collect { |d| SequenceNote(d, nil, 0.9) });
-   
+
 /y.a0 = "[*]::\ins("*", 2, 0.5)::\pdefn(`y, "*")";
 /y.a1 = "\ins("*", 3, 0.5)::\pdefn(`y, "*")";
 /y = (a**2);
@@ -2595,7 +2595,7 @@ Pdefn(\x, Pseq("01234", inf).trace(prefix: "pdefn: "));
 /x/y+
 /x/y-
   #+END_SRC
-  
+
   #+ATTR_LATEX: :align |c|c|c|c|
   |------------+------------+----------+----------|
   | Expected x | Expected y | Actual x | Actual y |
@@ -2944,6 +2944,263 @@ players and save them under =Platform.userAppSupportDir +/+
 displayed at the bottom of the controller window. (You can edit the
 text here and save as well.) This is free text, only for your
 convenience.
+
+* Presets
+Presets are a way to maintain multiple variants of the same process or
+instrument.
+
+** Note: hh and break don't support 'set' yet                      :noexport:
+
+** 'set'-ting extra parameters in a cll process
+Presets are concerned with synthesis parameters that are /not/ defined
+as sequencing parameters in =parmMap=. Some parameters are impractical
+to encode into =parmMap= (or also, it can be impractical to encode
+every possible parameter into =parmMap=).
+
+Parameters external to =parmMap= can be changed by calling =.set= on
+the BP object. The specific behavior varies, depending on the type of
+process. In all cases, =defaults= and =postDefaults= are used; see the
+section on [[*PR(\textbackslash abstractLiveCode)][PR(\textbackslash abstractLiveCode)]] for details.
+
+If the process was made by cloning =PR(\abstractLiveCode)=, then extra
+parameters are placed into =postDefaults= (unless they are simple
+constants, in which case they might be placed into =defaults=).
+
+Pitched note-playing processes (such as =Fact(\melBP)=,
+=Fact(\chordBP)= and =Fact(\arpegBP)= in the ddwLivecodeInstruments
+quark) place a special object into the process's =defaults= slot, to
+integrate parameters from multiple sources. =set= parameters become
+"overrides."
+
+In general, the implementation details are less important than the
+fact that you can insert new keys and values into the process's events
+by using =set=.
+
+# #+begin_figure  WHY DOES BEGIN_FIGURE WORK EVERYWHERE ELSE BUT NOT HERE. OMG.
+#+name: setMethod1
+#+caption: Changing the length of a drum by set().
+#+BEGIN_SRC {SuperCollider} -i
+\loadCl.eval;
+s.boot;
+
+TempoClock.tempo = 124/60;
+
+// prepare a SynthDef and a process to play it
+(
+SynthDef(\snare, { |out, freq = 1200, drop = 0.6, rq = 0.3,
+   time = 0.15, amp = 0.1|
+   var sig = PinkNoise.ar;
+   var pitchEg = EnvGen.ar(Env([1, drop], [time], \exp),
+      levelScale: freq);
+   var ampEg = EnvGen.ar(Env([0, 1, 0.7, 0], [0.01, 0.4, 0.5, 0.09], -4),
+      timeScale: time, doneAction: 2);
+   sig = BPF.ar(sig, pitchEg.clip(20, 20000), rq) / rq;
+   Out.ar(out, (sig * amp * ampEg).dup);
+}).add;
+
+PR(\abstractLiveCode).clone {
+   ~event = (eventKey: \default);
+   ~initLevel = 0.7;
+   ~userprep = {
+      ~chan = MixerChannel(~collIndex, s, 2, 2, ~initLevel);
+      ~defaults.put(\out, ~chan.inbus).put(\group, ~chan.synthgroup);
+   };
+   ~userfree = {
+      ~chan.free;
+   };
+   ~defaultParm = \amp;
+   ~parmMap = (amp: ($-: 0.7, $.: 0.3));
+   ~defaults = (instrument: \snare)
+} => PR(\ksnr);
+)
+
+// play it
+PR(\ksnr) => BP(\ksnr);
+
+/ksnr = " - -";
+/ksnr+;
+
+/ksnr(set(\freq, 1200, \time, 0.11));  // one sound
+
+/ksnr(set(\freq, 3200, \time, 0.35));  // other sound
+
+/ksnr-;
+#+END_SRC
+# #+end_figure
+
+#+BEGIN_boxnote
+Because =set()= parameters are embedded into the process's pattern,
+the parameter can itself be a pattern. For instance, you could
+randomize a filter frequency by =/process(set(\ffreq, Pexprand(1000,
+5000, inf)));=.
+#+END_boxnote
+
+** Presets and (post)defaults
+
+Presets are a way to store, and automatically apply, =set=-style extra
+parameters.
+
+For =abstractLiveCode= clone processes, it is relatively
+simple. Presets belong to the process, stored in the =presets=
+variable. If you begin with Listing [[setMethod1]], you can define local
+presets as follows.
+
+#+name: presets1
+#+caption: Defining and applying local presets.
+#+BEGIN_SRC {SuperCollider} -i
+/ksnr(presets = (
+   short: (freq: 1200, time: 0.11),
+   long: (freq 3200, time: 0.35)
+));
+
+// Use a preset
+/ksnr(preset(\long));
+#+END_SRC
+
+Note-playing processes, which go through a VC (voicer) instrument,
+define presets with the VC instrument rather than the process. That
+will be explained shortly.
+
+** Global, persistent presets
+Presets are especially relevant at the moment of creating a process,
+from a Factory object. For this reason, you can add presets to
+Factories, save them to disk, and reload them at any time. Then they
+are globally available.
+
+#+name: presets2
+#+caption: Defining and applying global presets.
+#+BEGIN_SRC {SuperCollider} -i
+// First we need a factory for the ksnr process.
+(
+make: { |name|
+   PR(\ksnr) => BP(name);
+},
+type: \bp) => Fact(\ksnr);
+
+// Then define presets for the factory
+Fact(\ksnr).addPreset(\short, (time: 0.11, freq: 1200))
+.addPreset(\long, (time: 0.35, freq: 3200));
+
+Fact.savePresets;
+
+// later, when loading the system, you can do:
+Fact.loadPresets;
+
+// Use a preset
+/make(ksnr:sn(preset:\short));
+#+END_SRC
+
+#+BEGIN_boxnote
+For saving, values or patterns within presets need to be possible to
+archive (Object methods =writeArchive=, =readArchive=). In particular,
+avoid /open functions/ (those which refer to variables outside the
+function's own scope).
+#+END_boxnote
+
+** Presets for note players
+The examples so far have concerned a process that is tailored to a
+specific SynthDef. Note-playing processes are different in that the
+process encapsulates generic pitch-handling logic, leaving the sound
+definition to a voicer (VC) instrument.
+
+Presets define sonic parameters. Therefore, presets for new players
+should be defined with the instrument, not with the process.
+
+The procedure, however, is much the same as in the last section:
+=addPreset= populates the data, exactly as shown earlier, but applied
+to a voicer factory instead of a process factory. Then the presets
+will follow the instrument into whichever note-playing process you use
+with it. (Preset parameters go into the process, so you can use the
+same voicer factory with different processes, and each process can use
+a different preset.)
+
+#+name: presets3
+#+caption: Defining and applying global presets.
+#+BEGIN_SRC {SuperCollider} -i
+// Add presets to one of the livecodeInstruments voicers
+Fact(\staccVC).addPreset(\short, (ffreq: 90, fAtk: 0.01, fDcy: 0.1))
+.addPreset(\brassy, (ffreq: 453, fAtk: 0.22, fDcy: 0.97));
+
+// Create a note-player with one of these presets
+/make(staccVC:st(preset:\short)/melBP:st);
+
+/st = "\ins("*", 8, 0.5)::\seq("13569")";
+/st+;
+
+/st(preset(\brassy));  // apply a different preset
+
+/st-;
+#+END_SRC
+
+** =makeParms=
+Some preset parameters may need to be applied at the time of
+Factory-building. For instance, a sample-player instrument (Listing
+[[samplePlayer]]) loads audio files while initializing. A preset should be
+able to specify which file(s), but normal preset parameters are
+applied after initializing. This is too late for this case.
+
+The =makeParms= key within the preset dictionary contains items that
+will be inserted into the =make= statement's initialization
+parameters. 
+
+#+name: samplePlayer
+#+caption: Using makeParms to set initialization parameters.
+#+BEGIN_SRC {SuperCollider} -i
+\loadAllCl.eval;
+
+(
+SynthDef(\bufPan, { |gate = 1, start, bufnum, pan, freq = 440, amp = 1,
+      attack = 0.001, decay = 0.02, out, baseFreq = 440|
+   var sig;
+   sig = PlayBuf.ar(1, bufnum, freq / baseFreq * BufRateScale.kr(bufnum), 1, start, 0)
+      * EnvGen.kr(Env.asr(attack, 1, decay), gate, doneAction:2);
+   Out.ar(out, Pan2.ar(sig, pan, amp));
+}).add;
+
+// sample-player Voicer
+(
+keys: #[master, rvbmc],
+initLevel: -12.dbamp,
+// user should specify path at creation time
+baseFreq: 60.midicps,
+make: { |name|
+   ~target = MixerChannel(name, s, 2, 2, ~initLevel);
+   ~buf = Buffer.read(s, ~path);
+   Voicer(10, \bufPan, [bufnum: ~buf.bufnum, baseFreq: ~baseFreq], target: ~target);
+},
+free: { ~target.free; ~buf.free },
+type: \vc) => Fact(\sampleVC);
+
+Fact(\sampleVC).addPreset(\houston, (
+   makeParms: (
+      path: Platform.resourceDir +/+ "sounds/a11wlk01.wav",
+      baseFreq: 71.midicps
+   ),
+   start: 87205, amp: 0.5
+));
+)
+
+/make(sampleVC:hou(preset:\houston)/melBP:hou);
+
+/hou = "\ins("*", 8, 0.5)::\seq("12345678")";
+
+/hou+
+/hou-
+#+END_SRC
+
+For curious readers: the =make= statement in Listing [[samplePlayer]]
+translates into the following four SuperCollider statements, to show
+how =makeParms= are applied. (The file path is for Linux and will be
+different in Mac or Windows.)
+
+#+name: makeTranslation
+#+caption: makeParms translation into SuperCollider code.
+#+BEGIN_SRC {SuperCollider} -i
+Fact('sampleVC').chuck(VC('hou'), nil, (path: "/usr/local/share/SuperCollider/sounds/a11wlk01.wav", baseFreq: 493.88330125612));
+Fact('melBP').chuck(BP('hou'));
+VC('hou') => BP('hou');
+BP('hou').preset('houston')
+#+END_SRC
 
 * Extending cll
 /cll/ is designed to be extensible: adding new statements is
