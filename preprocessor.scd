@@ -2701,6 +2701,18 @@ Proto {
 		};
 		currentEnvironment
 	};
+
+	// if the Fact() defines presets, these may override
+	// locally defined presets, but they should not destroy
+	// local ones -- merge if needed
+	~presets_ = { |presetDict|
+		if(~presets.isNil) {
+			~presets = presetDict;
+		} {
+			~presets.putAll(presetDict);
+		};
+		currentEnvironment
+	};
 }.import((abstractProcess: #[makeStreamForKey])) => PR(\abstractLiveCode);
 );
 
