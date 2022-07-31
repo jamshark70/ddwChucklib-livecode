@@ -984,7 +984,7 @@ protect {
 							.put(\stop, inEnvir { |obj, what, value|
 								if(value == \stopped) { defer(~updateView) };
 							})
-							.put(\voicer_, ~updateView)
+							.put(\voicer_, inEnvir { defer(~updateView) })
 						);
 					}, 0.1);
 				};
