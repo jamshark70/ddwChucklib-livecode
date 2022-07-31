@@ -186,9 +186,13 @@ After downloading these quarks, do the following:
 - =\loadAllCl.eval=: Load both of these at once.
 - =\makeController.eval=: Open a graphical window with reusable mixing
   and parameter controls. (See Section [[Graphical interface windows]].)
+  Arguments are: Control prototype (currently, either =\mix16Touch= or
+  =\nanoTouch=), and a MIDI device search string (relevant only for
+  =\nanoTouch=).
 - =\makeCodeWindow.eval=: Open a code editor window with
   /cll/-specific features.
-- =\cllGui.eval=: Open both the controller and code windows.
+- =\cllGui.eval=: Open both the controller and code windows. Accepts
+  the same arguments as =\makeController=.
 
 These are /not/ executed by default at SC startup, because you may not
 want the preprocessor in every SC session. Once you load the

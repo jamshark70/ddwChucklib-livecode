@@ -238,7 +238,7 @@ Library.put(\clLivecode, \setupbars, \guiIsFront, false);
 
 
 // finally publish my GUI functions
-{ |controller(\nanoTouch)|  // or \mix16Touch
+{ |controller(\nanoTouch), midiDevice("The default search string should fail")|  // or \mix16Touch
 	var sBounds = Window.screenBounds, touchExtent, w, lay, touchParent, v, left,
 	midiIndex,
 	path = Platform.userAppSupportDir +/+ "cll-cheatsheet.txt",
@@ -258,12 +258,11 @@ Library.put(\clLivecode, \setupbars, \guiIsFront, false);
 	if(MBM.exists(0).not) {
 		MIDIClient.init;
 		midiIndex = MIDIClient.sources.detectIndex { |endpt|
-			endpt.device.containsi("remote")
+			endpt.device.containsi(midiDevice)
 		};
 		MIDIPort.init(midiIndex.asArray);
 		MIDIBufManager(nil, 0) => MBM.prNew(0);
 	};
-	if(controller == \nanoTouch) { MIDIIn.connectAll };
 
 	BP(#[touchGui, touch]).free;
 	PR(controller).chuck(BP(\touch), nil, (pingDebug: false));
@@ -391,7 +390,7 @@ Library.put(\clLivecode, \setupbars, \guiIsFront, false);
 	~editor
 } => Func(\makeCodeWindow);
 
-{ |controller(\nanoTouch)|
-	\makeController.eval(controller);
+{ |controller(\nanoTouch), midiDevice|
+	\makeController.eval(controller, midiDevice);
 	\makeCodeWindow.eval;
 } => Func(\cllGui);
