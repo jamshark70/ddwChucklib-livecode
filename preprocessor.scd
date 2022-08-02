@@ -2697,7 +2697,9 @@ Proto {
 		};
 		// pairsDo supports both SeqColl and Dictionary
 		presetDef.pairsDo { |key, value|
-			~set.(key, value);
+			if(key != \makeParms) {
+				~set.(key, value);
+			};
 		};
 		currentEnvironment
 	};
@@ -2710,6 +2712,32 @@ Proto {
 			~presets = presetDict;
 		} {
 			~presets.putAll(presetDict);
+		};
+		currentEnvironment
+	};
+
+	~printPreset = { |stream(Post)|
+		var vc, doComma = false;
+		if(~defaults.isKindOf(Proto)) {
+			~defaults[\override].pairs.pairsDo { |a, b, i|
+				if(doComma) {
+					stream << ", ";
+				} {
+					doComma = true;
+				};
+				Post << a << ": " <<< b.source;
+			};
+		};
+		vc = ~event[\voicer];
+		if(vc.notNil) {
+			vc.globalControlsByCreation.do { |gc|
+				if(doComma) {
+					stream << ", ";
+				} {
+					doComma = true;
+				};
+				Post << gc.name << ": " <<< gc.value.round(0.00001)
+			}
 		};
 		currentEnvironment
 	};
