@@ -689,7 +689,10 @@ protect {
 			~seqStream = Pn(Pshuf(~pool.asArray, 1), inf).collect(_.item).asStream;
 		};
 		~embedInStream = { |inval|
-			Pn(Pshuf(~pool, 1), ~repeats).embedInStream(inval)
+			if(~shufStream.isNil) {
+				~shufStream = Pn(Pshuf(~pool, 1), inf).asStream;
+			};
+			Pfinval(~repeats, ~shufStream).embedInStream(inval)
 		};
 		~helpString = "\\shuf(\"items\")";
 		~snippet.("shuf", "\\shuf(##items, wildcards, reset##)");
