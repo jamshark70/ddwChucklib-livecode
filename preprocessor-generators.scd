@@ -1519,7 +1519,7 @@ protect {
 							lastIndex = pair[1];
 							lastPitch = ~items[pair[1]].item;
 						};
-						new = SequenceNote(lastPitch.asFloat + ~insStream.next);
+						new = SequenceNote(lastPitch.asFloat + ~insStream.next.asFloat);
 						new = ~applyArtic.($., new);
 						lastPitch = new;
 						pair = new.yield;
