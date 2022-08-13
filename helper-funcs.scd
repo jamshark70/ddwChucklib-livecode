@@ -396,3 +396,48 @@ Library.put(\clLivecode, \setupbars, \guiIsFront, false);
 	\makeController.eval(controller, midiDevice);
 	\makeCodeWindow.eval;
 } => Func(\cllGui);
+
+{ |vcKey, index = 0, exclude(#[]), overwrite = true|
+	var t = thisProcess.interpreter.t;
+	var i = index;
+	if(VC.exists(vcKey)) {
+		block { |break|
+			VC(vcKey).globalControlsByCreation.do { |gc|
+				// also check i < size
+				if(i >= t.faderKeys.size) {
+					"VC(%).globalControls[%]: Ran out of GUI slots"
+					.format(vcKey.asCompileString, gc.name.asCompileString)
+					.warn;
+					break.(nil)
+				};
+				if(overwrite or: { t.maps[t.faderKeys[i]].isNil }) {
+					if(exclude.includes(gc.name).not) {
+						gc.chuck(t, i);
+						i = i + 1;
+					};
+				};
+			};
+		};
+	} {
+		"gcChuck: VC(%) doesn't exist".format(vcKey.asCompileString).warn;
+	};
+} => Func(\gcChuck);
+
+
+{ |str, i|
+	var match;
+	var alphaNum = { |chr|
+		chr.respondsTo(\isAlphaNum) and: { chr.isAlphaNum }
+	};
+	// allow cursor to trail the identifier
+	if(alphaNum.(str[i]).not) {
+		i = i - 1
+	};
+	while { i > 0 and: { alphaNum.(str[i]) } } {
+		i = i - 1;
+	};
+	// now we should be one char before the symbol
+	i = i + 1;
+	match = str.findRegexpAt("([A-Za-z0-9]+)", i);
+	[i, match]
+} => Func(\strGetIdentifier);
