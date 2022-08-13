@@ -134,7 +134,7 @@ PstepDurPair : Pstep {
 		if(conflicts.notEmpty) {
 			"The following presets loaded from disk already existed in memory.
 The memory version is retained; the disk version was not loaded.".warn;
-			conflicts.do { |factName, presetKeys|
+			conflicts.keysValuesDo { |factName, presetKeys|
 				"Fact(%): %\n".postf(factName.asCompileString, presetKeys);
 			};
 		};
