@@ -2627,7 +2627,7 @@ Pdefn(\x, Pseq("01234", inf).trace(prefix: "pdefn: "));
   would output 1, 1, 2, 2, 3, 3, 4, 4 etc. the number of repeats may
   be randomized.
 
-- =\pitch(src, "wildcards", "intervalPool", fallbackMin, fallbackMax, "articPool")= :: Valid
+- =\pitch("wildcards", "intervalPool", fallbackMin, fallbackMax, "articPool")= :: Valid
      for pitched parameters only. Replaces /wildcards/ with "Brownian
      motion" melody. Each wildcard will search backward for the
      previous note. Then, one of the intervals will be chosen from
@@ -2643,7 +2643,7 @@ Pdefn(\x, Pseq("01234", inf).trace(prefix: "pdefn: "));
      from /articPool/; if omitted, new notes will use the default
      "unslurred, legato" articulation.
 
-- =\pitch2(src, "wildcards", "intervalPool", fallbackMin, fallbackMax, "articPool", connect)= :: Like
+- =\pitch2("wildcards", "intervalPool", fallbackMin, fallbackMax, "articPool", connect)= :: Like
      =\pitch()=, but it remembers the previous pitch /that it
      generated/, instead of looking back for every wildcard. This may
      be used to produce multiple, interlocking lines. NOTE: This
