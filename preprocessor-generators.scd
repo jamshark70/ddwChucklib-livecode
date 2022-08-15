@@ -1537,6 +1537,17 @@ protect {
 		// expand this later
 		~validation = [/*nil,*/ nil, \isNumProxy, \isNumProxy, \isNumProxy, \isNumProxy, nil, nil, nil];
 
+		~superPrep = ~prep;
+		~prep = {
+			~superPrep.();
+			if(~articPool.isNil) {
+				~articPool = [$.];
+			};
+			~articPool = ~articPool.reject(_ == $");
+			~articStream = Prand(~articPool.asArray, inf).asStream;
+			currentEnvironment
+		};
+
 		~getValueStream = {
 			if(~passIndex) {
 				// note: this branch doesn't make sense.
@@ -1559,7 +1570,7 @@ protect {
 							lastPitch = ~items[pair[1]].item;
 						};
 						new = SequenceNote(lastPitch.asFloat + ~insStream.next.asFloat);
-						new = ~applyArtic.($., new);
+						new = ~applyArtic.(~articStream.next, new);
 						lastPitch = new;
 						pair = new.yield;
 					};
