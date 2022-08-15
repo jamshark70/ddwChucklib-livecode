@@ -2256,7 +2256,8 @@ play: #{
 						node.trigger(freq, ~gate.wrapAt(i), ~args.wrapAt(i));
 					} {
 						voicer.prArticulate1(node, freq, nil, ~gate.wrapAt(i), ~args.wrapAt(i),
-							slur: ~accent != true, seconds: thisThread.seconds
+							slur: length == inf and: { ~accent != true },
+							seconds: thisThread.seconds
 						);
 					};
 				})
