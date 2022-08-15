@@ -702,14 +702,22 @@ protect {
 	} => PR(\clGenWrand);
 
 	PR(\clGenSeq).clone {
+		~repeats = \unset;  // \shuf*num() will override this
 		~makeStream = {
 			~seqStream = Pn(Pshuf(~pool.asArray, 1), inf).collect(_.item).asStream;
 		};
 		~embedInStream = { |inval|
-			if(~shufStream.isNil) {
-				~shufStream = Pn(Pshuf(~pool, 1), inf).asStream;
+			// This is uglier than I'd like, but unavoidable.
+			// It's mandatory not to check the pool size until
+			// after the environment is fully initialized.
+			if(~repeats == \unset) {
+				~repeats = ~pool.size;
 			};
-			Pfinval(~repeats, ~shufStream).embedInStream(inval)
+			if(~shuffler.isNil) {
+				~shuffler = Pnshuf(~pool, ~repeats, false);
+			};
+			// non-local is OK because this Pnshuf exists only in this generator
+			~shuffler.embedInStream(inval)
 		};
 		~helpString = "\\shuf(\"items\")";
 		~snippet.("shuf", "\\shuf(##items, wildcards, reset##)");

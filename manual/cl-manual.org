@@ -2536,7 +2536,7 @@ Note that =\seq()=, =\ser()=, =\rand()=, =\wrand()=, =\xrand()=, and
 
 - =\shuf("items", "wildcards", reset)= :: Shuffles the items
      into random order, and returns each one before choosing a new
-     order, like =Pn(Pshuf(items, 1), inf)=.
+     order. See =Pnshuf()= in the ddwPatterns quark.
 
 - =\pdefn(`pdefnKey, "wildcards")= :: Like =\seq()=,
      but obtaining replacement items from a =Pdefn=. For non-pitched
