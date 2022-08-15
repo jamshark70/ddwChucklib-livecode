@@ -236,6 +236,23 @@ protect {
 				~time + ~dur - ~items[index].time
 			};
 		};
+		~getParmIndex = { |parm|
+			var bp = BP(~bpKey);
+			var i = bp.phrases[bp.lastPhrase].pairs.detectIndex { |value, i|
+				i.even and: {
+					value == parm or: {
+						value.asArray.includes(parm)
+					}
+				}
+			};
+			if(i.isNil) {
+				Error("BP(%): parm '%' is not found in pairs array (should never happen)"
+					.format(~bpKey.asCompileString, parm)
+				).throw;
+			} {
+				i + 1
+			}
+		};
 
 		if('DDWSnippets'.asClass.notNil) {
 			~snippet = { |key, value| 'DDWSnippets'.asClass.put(key, value) };
@@ -727,30 +744,52 @@ protect {
 			~intervalStream = Prand(~intervalPool, inf).asStream.collect { |item| item.item.asFloat };
 			~articPool = ~articPool.reject(_ == $");
 			~articStream = Prand(~articPool.asArray, inf).asStream;
+
 			currentEnvironment
 		};
 		~makeStream = {
 			~seqStream = Pfunc {
-				var i = ~currentIndex, pitch, prev, new, newLen;
-				while {
-					i = i - 1;
-					i >= 0 and: {
-						~items[i].item.isKindOf(SequenceNote).not or: {
-							// in here, ~items[i].item must be a SequenceNote
-							~items[i].item.freq.isRest
-						}
-					}
-				};
-				prev = ~items[i];
-				if(prev.isNil) {
-					pitch = rrand(~fallbackMin.next, ~fallbackMax.next);
-				} {
-					pitch = prev.item.asFloat + ~intervalStream.next;
-				};
+				var pitch, new;
+				pitch = ~getPrev.(~currentIndex) + ~intervalStream.next;
 				new = SequenceNote(pitch);
 				new = ~applyArtic.(~articStream.next, new);
 				new
 			}.asStream;
+		};
+		~getPrev = { |index|
+			var prev, bp, cache;
+			prev = ~findLastPitch.(~items, index);
+			if(prev.isNil) {
+				bp = BP(~bpKey);
+				if(~patIndex.isNil) {
+					~patIndex = ~getParmIndex.(~parm);
+				};
+				cache = bp.phrases[bp.prevPhrase].pairs[~patIndex].source.pattern.list[0][\cachedItems];
+				if(cache.isNil) {
+					rrand(~fallbackMin.next, ~fallbackMax.next);
+				} {
+					prev = ~findLastPitch.(cache, cache.size);
+					if(prev.isNil) {
+						rrand(~fallbackMin.next, ~fallbackMax.next);
+					} {
+						prev.item.asFloat
+					}
+				}
+			} {
+				prev.item.asFloat
+			}
+		};
+		~findLastPitch = { |items, index|
+			while {
+				index = index - 1;
+				index >= 0 and: {
+					items[index].item.isKindOf(SequenceNote).not or: {
+						// in here, items[i].item must be a SequenceNote
+						items[index].item.freq.isRest
+					}
+				}
+			};
+			items[index]
 		};
 		~snippet.("pitch", "\\pitch(##replaceItems, intervalPool, fallbackMin, fallbackMax, articPool##)");
 	} => PR(\clGenPitch);
@@ -762,7 +801,7 @@ protect {
 		~makeStream = {
 			~seqStream = Routine {
 				// first init only is from previous item
-				var pitch, prev, i, new, newLen;
+				var pitch, prev, i, new;
 				if(~connect.next > 0) {
 					// prev item might be a rest, if it's a placeholder from \ins
 					// so, scan backward through rests; normally this won't loop
@@ -2056,7 +2095,7 @@ protect {
 		};
 		// for chain-in-pool
 		~apply = { |item|
-			var artic, new, newLen;
+			var artic, new;
 			if(item.item.isKindOf(SequenceNote) and: {
 				~wildcards.isNil or: { ~wildcards.includes(item.wildcard) }
 			}) {
