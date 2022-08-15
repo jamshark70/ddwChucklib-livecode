@@ -2611,6 +2611,7 @@ Proto {
 						"BP(%): Empty phrase %, stopping".format(~collIndex.asCompileString, phr).warn;
 						nil.alwaysYield
 					};
+					~prevPhrase = ~lastPhrase;
 					~lastPhrase = phr = ~phraseSeqStream.next(inevent);
 					pat = ~phrases[phr];
 					// the pattern-wrapping here is not directly supported in Psym
