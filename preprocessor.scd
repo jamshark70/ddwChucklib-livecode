@@ -2249,23 +2249,24 @@ play: #{
 		});
 		releaseGate = (~releaseGate ? 0).asArray;
 		~nodes.do({ |node, i|
-			var	freq = ~newFreq.wrapAt(i), length = ~length.wrapAt(i);
+			var	freq = ~newFreq.wrapAt(i), length = ~length.wrapAt(i) ?? { inf };
+			var releaseTime = thisThread.clock.beats2secs(
+				thisThread.beats + length + timingOffset
+			);
 			Func(\schedEventBundleArray).doAction(lag, ~timingOffset, node.server,
 				node.server.makeBundle(false, {
 					if(~forceNew == true) {
 						node.trigger(freq, ~gate.wrapAt(i), ~args.wrapAt(i));
 					} {
 						voicer.prArticulate1(node, freq, nil, ~gate.wrapAt(i), ~args.wrapAt(i),
-							slur: length == inf and: { ~accent != true },
+							slur: ~accent != true,
 							seconds: thisThread.seconds
 						);
 					};
+					node.releaseTime = releaseTime;
 				})
 			);
 			if(length.notNil and: { length != inf }) {
-				node.releaseTime = thisThread.clock.beats2secs(
-					thisThread.beats + length + timingOffset
-				);
 				thisThread.clock.sched(length + timingOffset, {
 					voicer.releaseNode(node, freq, releaseGate.wrapAt(i),
 						lag + (node.server.latency ? 0));
