@@ -52,6 +52,8 @@ protect {
 			~pathTable.pairsDo { |ccnum, path|
 				~pathsForCC[ccnum] = path;
 			};
+			// special case for presetbrowser
+			~pathsForCC[45] = '/1/push5';
 			// if we do this now, it delays server init messages
 			NotificationCenter.registerOneShot(\clInterface, \ready, \nanoKtl, {
 				if(MIDIClient.initialized.not) { MIDIIn.connectAll };

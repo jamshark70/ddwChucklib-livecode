@@ -98,6 +98,7 @@ PstepDurPair : Pstep {
 + Fact {
 	addPreset { |key, presetDef|
 		Library.put(\cl, \presets, this.collIndex, key, presetDef);
+		Fact.changed(\addPreset, this.collIndex, key);
 	}
 
 	presets {

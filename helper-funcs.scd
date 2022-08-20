@@ -199,6 +199,81 @@ Library.put(\clLivecode, \setupbars, \guiIsFront, false);
 	proc
 } => Func(\preset);
 
+{ |parent, bounds(Rect(800, 200, 500, 400))|
+	var view = TreeView(parent, bounds);
+	var watcher;
+	view.columns_(["ID", "preset"]).setColumnWidth(0, 140);
+	if(parent.isNil) { view.front };
+
+	// populate
+	Fact.keys.as(Array).sort.do { |key|
+		var fact = Fact(key);
+		var presets, factoryItem;
+		if(fact.isVoicer) {
+			presets = fact.presets;
+			if(presets.size > 0) {
+				factoryItem = view.addChild([fact.collIndex.asString]);
+				presets.keys.as(Array).sort.do { |presetKey|
+					var str = String.streamContentsLimit({ |stream|
+						fact.presetAt(presetKey).printOn(stream)
+					}, 50);
+					factoryItem.addChild([presetKey.asString, str]);
+				};
+			};
+		};
+	};
+
+	// this is absolutely not modularized in a good way
+	watcher = SimpleController(Fact)
+	.put(\addPreset, { |obj, what, factKey, presetKey|
+		// queue these? or assume the clock will do it
+		defer {
+			var fIndex, pIndex, fItem, pItem;
+			var fKeyStr = factKey.asString;
+			var pKeyStr;
+			var presetStr = String.streamContentsLimit({ |stream|
+				Fact(factKey).presetAt(presetKey).printOn(stream)
+			}, 50);
+
+			fIndex = block { |break|
+				view.numItems.do { |i|
+					if(view.itemAt(i).strings[0] == fKeyStr) {
+						break.(i);
+					}
+				};
+				nil
+			};
+			if(fIndex.notNil) {
+				pKeyStr = presetKey.asString;
+				fItem = view.itemAt(fIndex);
+				// super-oldskool while loop
+				// because there's no 'numChildren' method for TreeViewItem
+				pIndex = 0;
+				while {
+					fItem.childAt(pIndex).notNil and: {
+						fItem.childAt(pIndex).strings[0] != pKeyStr
+					}
+				} {
+					pIndex = pIndex + 1;
+				};
+				pItem = fItem.childAt(pIndex);
+				if(pItem.notNil) {
+					pItem.strings = [pKeyStr, presetStr]
+				} {
+					fItem.addChild([pKeyStr, presetStr]);
+				}
+			} {
+				fItem = view.addChild([fKeyStr]);
+				fItem.addChild([pKeyStr, presetStr]);
+			};
+		}
+	});
+
+	view.onClose = { watcher.remove };
+
+	view
+} => Func(\presetBrowser);
+
 // record several mixers with sample-accurate onset
 // for simplicity/livecode use, create a folder in recordingsDir
 { |... mixers|
