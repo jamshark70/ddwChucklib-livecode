@@ -109,8 +109,19 @@ PstepDurPair : Pstep {
 		^Library.at(\cl, \presets, this.collIndex, key)
 	}
 
-	*savePresets {
-		Library.at(\cl, \presets).writeArchive(Platform.userConfigDir +/+ "chucklibPresets.txarch");
+	*savePresets { |force = false|
+		var write = {
+			Library.at(\cl, \presets).writeArchive(Platform.userConfigDir +/+ "chucklibPresets.txarch");
+		};
+		if(force) {
+			write.value
+		} {
+			if(Library.at(\cl, \presetsLoaded) == true) {
+				write.value
+			} {
+				"Presets not previously loaded from disk. Load first to avoid data loss".warn;
+			}
+		}
 	}
 
 	*loadPresets {
@@ -140,6 +151,7 @@ The memory version is retained; the disk version was not loaded.".warn;
 			};
 		};
 		Library.put(\cl, \presets, allPresets);
+		Library.put(\cl, \presetsLoaded, true);
 	}
 }
 
