@@ -511,13 +511,13 @@ protect {
 		// seq ~prep defines a numeric ~offset
 		// let's reuse that for the number of repeats
 		~makeStream = {
-			~seqStream = Pstutter(
+			~seqStream = Pdup(
 				Pfunc { ~offset.next },
 				Prand(~pool.asArray, inf)
 			).collect(_.item).asStream;
 		};
 		~embedInStream = { |inval|
-			Pstutter(Pfunc { ~offset.next }, Prand(~pool)).embedInStream(inval)
+			Pdup(Pfunc { ~offset.next }, Prand(~pool)).embedInStream(inval)
 		};
 		~snippet.("repeat1", "\\repeat1(##items, wildcards, reset, repeats##)");
 	} => PR(\clGenRepeat1);
