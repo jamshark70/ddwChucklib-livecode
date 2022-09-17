@@ -97,6 +97,12 @@ PstepDurPair : Pstep {
 // preset support
 + Fact {
 	addPreset { |key, presetDef|
+		if(presetDef.isKindOf(Dictionary).not) {
+			Error(
+				"Presetdef for '%' should be a dictionary but isn't"
+				.format(key)
+			).throw;
+		};
 		Library.put(\cl, \presets, this.collIndex, key, presetDef);
 		Fact.changed(\addPreset, this.collIndex, key);
 	}
@@ -132,14 +138,18 @@ PstepDurPair : Pstep {
 		var conflicts = IdentityDictionary.new;
 		allPresets.keysValuesDo { |factName, presets|
 			if(curPresets[factName].isNil) {
-				curPresets[factName] = presets;
-			} {
-				presets.keysValuesDo { |presetName, values|
-					if(curPresets[factName][presetName].isNil) {
-						curPresets[factName][presetName] = values;
-					} {
-						conflicts[factName] = conflicts[factName].add(presetName);
-					};
+				curPresets[factName] = IdentityDictionary.new;
+			};
+			presets.keysValuesDo { |presetName, values|
+				if(values.isKindOf(Dictionary).not) {
+					"Invalid preset '%' for '%': %"
+					.format(presetName, factName, values.asCompileString)
+					.warn;
+				};
+				if(curPresets[factName][presetName].isNil) {
+					curPresets[factName][presetName] = values;
+				} {
+					conflicts[factName] = conflicts[factName].add(presetName);
 				};
 			};
 		};
