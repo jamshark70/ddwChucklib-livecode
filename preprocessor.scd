@@ -1883,7 +1883,7 @@ Proto({
 				makeParms << key << ": " <<< value;
 			};
 			if(parmString.size > 0) {
-				parmString ++ ".putAll((" ++ makeParms ++ "))"
+				parmString = "(" ++ makeParms.collection ++ ").putAll(" ++ parmString ++ ")"
 			} {
 				parmString = "(" ++ makeParms.collection ++ ")";
 			};
