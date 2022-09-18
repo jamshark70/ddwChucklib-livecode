@@ -2333,7 +2333,7 @@ protect {
 			var stream, thing;
 			~list = Array.new;
 			~weights = Array.new;
-			stream = Pseq(~args.drop(1), 1).asStream;
+			stream = Pseq(~args, 1).asStream;
 			thing = stream.next;
 			while { thing.notNil } {
 				if(thing.isSequenceableCollection) {
