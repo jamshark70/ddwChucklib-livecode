@@ -2463,10 +2463,33 @@ Proto {
 		};
 		~parmHandlers[key]
 	};
+	~defaultConvertFuncs = (
+		pitch: { |degree, inEvent, map|
+			var mode, octave;
+			if(degree.isRest) {
+				degree  // Rests should pass through
+			} {
+				mode = (inEvent[\mode] ?? { \default }).asMode;
+				octave = inEvent[\octave] ?? { 5 };
+				mode.cps(degree + (7 * octave), inEvent[\scAccidentals] ?? { true })
+			}
+		}
+	);
+	~addPitchConversion = { |key, map(~parmMap[key] ?? { IdentityDictionary.new })|
+		if(~parmIsDefault.(key).not and: {
+			map[\isPitch] == true and: {
+				map[\convertFunc].isNil
+			}
+		}) {
+			map[\convertFunc] = ~defaultConvertFuncs[\pitch];
+		};
+		map
+	};
 	~fixParmMap = {
 		var new = EnvironmentRedirect.new;
 		~parmHandlers = IdentityDictionary.new;
 		new.dispatch = inEnvir { |key|
+			~addPitchConversion.(key);
 			// currently removeAt doesn't call 'dispatch'
 			// but if it ever did, we would need this to prevent inf-recursion
 			if(~parmHandlers[key].notNil) {
@@ -2475,6 +2498,10 @@ Proto {
 			~getParmHandler.value(key)
 		};
 		~parmMap.keysValuesDo { |key, map|
+			// experimental: isPitch for non-default processes
+			// should convert to frequency. If this wasn't specified,
+			// insert a convertFunc
+			map = ~addPitchConversion.(key, map);
 			new.put(key, map);  // magic: dispatch should make handler
 		};
 		~parmMap = new;
