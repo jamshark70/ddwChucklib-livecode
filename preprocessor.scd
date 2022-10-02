@@ -2457,6 +2457,9 @@ Proto {
 		~userfree.();
 	};
 
+	~defaultParmMaps = (
+		pan: ($<: -0.9, $(: -0.4, $-: 0, $=: 0, $.: 0, $): 0.4, $>: 0.9)
+	);
 	~getParmHandler = { |key|
 		if(~parmHandlers[key].isNil) {
 			~parmHandlers[key] = CllParmHandlerFactory(key, ~collIndex);
@@ -2497,6 +2500,7 @@ Proto {
 			};
 			~getParmHandler.value(key)
 		};
+		new.putAll(~defaultParmMaps);
 		~parmMap.keysValuesDo { |key, map|
 			// experimental: isPitch for non-default processes
 			// should convert to frequency. If this wasn't specified,
