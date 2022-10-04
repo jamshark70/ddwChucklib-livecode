@@ -2460,9 +2460,9 @@ Proto {
 	~defaultParmMaps = (
 		pan: ($<: -0.9, $(: -0.4, $-: 0, $=: 0, $.: 0, $): 0.4, $>: 0.9)
 	);
-	~getParmHandler = { |key|
+	~getParmHandler = { |key, map|
 		if(~parmHandlers[key].isNil) {
-			~parmHandlers[key] = CllParmHandlerFactory(key, ~collIndex);
+			~parmHandlers[key] = CllParmHandlerFactory(key, ~collIndex, map);
 		};
 		~parmHandlers[key]
 	};
@@ -2491,14 +2491,14 @@ Proto {
 	~fixParmMap = {
 		var new = EnvironmentRedirect.new;
 		~parmHandlers = IdentityDictionary.new;
-		new.dispatch = inEnvir { |key|
-			~addPitchConversion.(key);
+		new.dispatch = inEnvir { |key, map|
+			~addPitchConversion.(key, map);
 			// currently removeAt doesn't call 'dispatch'
 			// but if it ever did, we would need this to prevent inf-recursion
 			if(~parmHandlers[key].notNil) {
 				~parmHandlers.removeAt(key);
 			};
-			~getParmHandler.value(key)
+			~getParmHandler.value(key, map)
 		};
 		new.putAll(~defaultParmMaps);
 		~parmMap.keysValuesDo { |key, map|

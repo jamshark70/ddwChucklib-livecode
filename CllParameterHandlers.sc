@@ -25,9 +25,8 @@ CllParmHandlerFactory {
 	// the logic to decode the sub-cases is still a bit ugly
 	// but at least 1/ it's now concentrated in this one location
 	// and 2/ refactored as nested ifs
-	*new { |parm, bpKey|
+	*new { |parm, bpKey, map|
 		var bp;
-		var map;
 
 		if(BP.exists(bpKey)) {
 			bp = BP(bpKey);
@@ -36,7 +35,9 @@ CllParmHandlerFactory {
 			.format(bpKey.asCompileString)).throw;
 		};
 
-		map = bp.parmMap[parm];
+		if(map.isNil) {
+			map = bp.parmMap[parm];
+		};
 		if(map.isNil and: { #[delta, dur].includes(parm).not }) {
 			Error("BP(%): Can't create handler for nonexistent parm '%'"
 				.format(bpKey.asCompileString, parm)).throw;
