@@ -712,6 +712,10 @@ Proto {
 				};
 			};
 		});
+		~view.view.receiveDragHandler_({ |view|
+			view.setString(View.currentDrag.asString, view.selectionStart, 0)
+		})
+		.canReceiveDragHandler_({ View.currentDrag.isString });
 		currentEnvironment
 	};
 	~free = {

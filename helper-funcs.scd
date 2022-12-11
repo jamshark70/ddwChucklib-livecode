@@ -270,6 +270,22 @@ Library.put(\clLivecode, \setupbars, \guiIsFront, false);
 	});
 
 	view.onClose = { watcher.remove };
+	view.beginDragAction = { |view|
+		var item = view.currentItem;
+		var str, parent;
+		if(item.notNil) {
+			str = item.strings;
+			// child item or parent item?
+			if(str.size >= 2) {
+				parent = item.parent;
+				"/make(%:name(preset:%%)/".format(
+					parent.strings[0],
+					$\\,
+					item.strings[0]
+				);
+			} { nil }
+		} { nil }
+	};
 
 	view
 } => Func(\presetBrowser);
