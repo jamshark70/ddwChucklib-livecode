@@ -328,8 +328,7 @@ protect {
 						{ Error("Wrong character in artic pool").throw }
 					}
 					{ "~_.".includes(ch) } {
-						out.add(\accent -> ch);  // ">_" branch
-						str.next;
+						out.add(ch);
 					}
 					{ Error("Wrong character in artic pool").throw }
 				}
