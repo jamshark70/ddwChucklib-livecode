@@ -709,7 +709,7 @@ ClDividerNode : ClAbstractParseNode {
 
 ClGeneratorNode : ClAbstractParseNode {
 	classvar types, extras;
-	var <>name, <>repeats;
+	var <>name, <>repeats, <>reset;
 
 	*initClass {
 		types = [
@@ -762,20 +762,7 @@ ClGeneratorNode : ClAbstractParseNode {
 		};
 		children = children.add(name);
 		name = name.string;
-		ch = stream.next;
-		if(ch == $*) {
-			case
-			{ this.findType(ClPassthruNumberNode)[\regexp].matchRegexp(stream.collection, stream.pos) } {
-				repeats = ClPassthruNumberNode(stream, this);
-			}
-			{ this.findType(ClRangeNode)[\regexp].matchRegexp(stream.collection, stream.pos) } {
-				repeats = ClRangeNode(stream, this);
-			}
-			{ this.findType(ClNumberNode)[\regexp].matchRegexp(stream.collection, stream.pos) } {
-				repeats = ClNumberNode(stream, this);
-			};
-			ch = stream.next;
-		};
+		#repeats, reset, ch = this.parseModifiers(stream);
 		if(ch == $() {
 			while {
 				ch = stream.next;
@@ -794,6 +781,40 @@ ClGeneratorNode : ClAbstractParseNode {
 			Error("Generator '%' has no argument list".format(name)).throw;
 		};
 		// stream.collection[begin .. begin + 10].debug("<< clGeneratorNode");
+	}
+	parseModifiers { |stream|
+		var repeats, reset, ch;
+		while {
+			ch = stream.next;
+			ch.notNil and: { "*!".includes(ch) }
+		} {
+			switch(ch)
+			{ $* } {
+				if(repeats.notNil) {
+					Error("\\%(): duplicate repeats".format(name)).throw;
+				};
+				case
+				{ this.findType(ClPassthruNumberNode)[\regexp].matchRegexp(stream.collection, stream.pos) } {
+					repeats = ClPassthruNumberNode(stream, this);
+				}
+				{ this.findType(ClRangeNode)[\regexp].matchRegexp(stream.collection, stream.pos) } {
+					repeats = ClRangeNode(stream, this);
+				}
+				{ this.findType(ClNumberNode)[\regexp].matchRegexp(stream.collection, stream.pos) } {
+					repeats = ClNumberNode(stream, this);
+				};
+			}
+			{ $! } {
+				if(reset.notNil) {
+					Error("\\%(): duplicate reset flag".format(name)).throw;
+				};
+				reset = true;
+			};
+		};
+		if(ch != $() {
+			Error("\\%(): invalid modifier character '%'".format(name, ch)).throw;
+		};
+		^[repeats, reset, ch]
 	}
 	parseArg { |stream|
 		var type, ch, new;
@@ -841,6 +862,7 @@ ClGeneratorNode : ClAbstractParseNode {
 			repeats.streamCode(stream);
 			stream << ", ";
 		};
+		stream << "resetFlag: " << reset.notNil << ", ";
 		stream << "bpKey: " <<< bpKey;
 		stream << ", args: [ ";
 		forBy(1, children.size - 1, 1) { |i|

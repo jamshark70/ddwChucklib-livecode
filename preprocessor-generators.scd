@@ -462,6 +462,7 @@ protect {
 			if(~doReset.next > 0 or: { ~seqStream.isNil }) {
 				~makeStream.();
 			};
+			~doResetFlag.();  // really just for \pitch() at this time
 			~items = ~getUpstreamItems.();
 			~modifySource.();
 			~items
@@ -754,6 +755,9 @@ protect {
 
 			currentEnvironment
 		};
+		~doResetFlag = {
+			if(~resetFlag) { ~intervalStream.reset };
+		};
 		~makeStream = {
 			~seqStream = Pfunc {
 				var pitch, new;
@@ -979,6 +983,7 @@ protect {
 		~modifySource = {
 			var avail = ~getAvail.(~items, ~quant.next).scramble;
 			avail = avail.keep(min(~numToAdd.next, avail.size).asInteger).sort;
+			if(~resetFlag) { ~poolStream.reset };
 			avail.size.do { |i|
 				var newTime = avail[i],
 				new;
@@ -1251,6 +1256,7 @@ protect {
 		};
 		~modifySource = {
 			var avail = ~getAvail.(~items, ~quant.next).sort;
+			if(~resetFlag) { ~poolStream.reset };
 			avail.size.do { |i|
 				var newTime = avail[i],
 				new;
@@ -1461,6 +1467,7 @@ protect {
 		// but that's an extra iteration.
 		// The routine does the same work with one fewer loop.
 		~getValueStream = {
+			if(~resetFlag) { ~insStream.reset };
 			Routine { |pair|
 				loop {
 					pair = yield(~insStream.value(if(~passIndex) { pair[1] }));  // else nil
@@ -1614,6 +1621,7 @@ protect {
 		~validation = [/*nil,*/ \isNumProxy, nil, nil];
 		~process = {
 			var lastEvent, localItems, new, maxDur;
+			if(~resetFlag) { ~insStream.reset };
 			~items = ~getUpstreamItems.();
 			localItems = ~items.copy;
 			(localItems.collect(_.time) ++ [~time + ~dur]).do { |time, i|
@@ -1652,6 +1660,7 @@ protect {
 		};
 		~modifySource = {
 			var avail;
+			if(~resetFlag) { ~poolStream.reset };
 			avail = ~getAvail.(~items);
 			avail.size.do { |i|
 				var newTime = avail[i],
@@ -2146,6 +2155,7 @@ protect {
 		~process = {
 			var srcBP, i, endTime = ~time + ~dur, new, wildcard;
 			~items = ~getUpstreamItems.();
+			if(~resetFlag) { ~poolStream.reset };
 			if(BP.exists(~srcBP)) {
 				srcBP = BP(~srcBP);
 				// lookup must be here: the parm index might be different in different phrases
