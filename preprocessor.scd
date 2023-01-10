@@ -282,11 +282,12 @@ this.preProcessor = { |code|
 { |code, allowedBrackets|
 	var ch;
 	while {
-		ch = code.next;
+		ch = code.next/*.debug("skip over")*/;
 		// generators may now have a {} pair before the arg list
 		// e.g. \ser*{Pwhite(1,4,inf)}(...)
 		ch.notNil and: { allowedBrackets.includes(ch).not }
 	};
+	// ch.debug("clParseGeneratorBrackets got");
 	\clParseBracketed.eval(code, ch, true);  // can only be in a patstring here
 	ch  // return bracket type
 } => Func(\clParseGeneratorBrackets);
@@ -295,8 +296,10 @@ this.preProcessor = { |code|
 	var ch, openBracket;
 	var savePos = code.pos;
 	// [code.collection[savePos .. savePos + 10]].debug(">> clParseGenerator");
-	// ["[a-zA-Z0-9_]+\\(", code.collection[code.pos ..]].debug("check gen");
-	if("[a-zA-Z0-9_]+\\(".matchRegexp(code.collection, code.pos)) {
+	// ["[a-zA-Z0-9_]+\\(", code.collection[code.pos ..],
+	// 	code.collection.findRegexpAt("[a-zA-Z0-9_]+[!*(]", code.pos)
+	// ].debug("check gen");
+	if(code.collection.findRegexpAt("[a-zA-Z0-9_]+[!*(]", code.pos).notNil) {
 		// somewhat ugly, but... there can be two bracketed groups
 		// if there are two, they must be {}()
 		// if only one, it must be ()
