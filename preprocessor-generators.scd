@@ -1660,7 +1660,7 @@ protect {
 		};
 		~modifySource = {
 			var avail;
-			if(~resetFlag) { ~poolStream.reset };
+			~resetPool.();  // for subclasses
 			avail = ~getAvail.(~items);
 			avail.size.do { |i|
 				var newTime = avail[i],
@@ -1681,6 +1681,9 @@ protect {
 				};
 			};
 			~items
+		};
+		~resetPool = {
+			if(~resetFlag) { ~poolStream.reset };
 		};
 		~getAvail = { |items|
 			var quant = ~quant.next, weights = ~weights.next,
@@ -1746,7 +1749,38 @@ protect {
 			~resetCount = 0;  // see ~getAvail; trap infinite loops
 			~initRest = false;  // see superclass modifySource
 			~remainder = 0;
+
+			// prepare reset flags for the 2 pool streams
+			~pReset = ~checkChildReset.(~pool);
+			~dpReset = ~checkChildReset.(~dpool.list);  // dpool is a Prand
+			// want: pReset.not and: dpReset.not (3 ops)
+			// which == not(preset or: dpReset) (2 ops)
+			if(not(~pReset or: { ~dpReset })) {
+				// here: neither subpattern specified reset
+				// therefore both of them should follow the pdelta's resetFlag
+				~pReset = ~dpReset = ~resetFlag;
+			};
+
 			currentEnvironment
+		};
+		~resetPool = {
+			// not checking resetFlag
+			// bc the two child flags should be false if resetFlag was false
+			if(~pReset) { ~poolStream.reset };
+			if(~dpReset) { ~dpoolStream.reset };
+		};
+		~checkChildReset = { |child|
+			case
+			{ child.tryPerform(\isClGen) ?? { false } } {
+				child.resetFlag
+			}
+			{ child.isKindOf(SequenceableCollection) } {
+				child.any { |item|
+					item.tryPerform(\isClGen) ?? { false }
+					and: { item.resetFlag == true }
+				};
+			}
+			{ false };  // else, normal item cannot specify reset
 		};
 		// modifySource is inherited
 		// getAvail has the new logic
