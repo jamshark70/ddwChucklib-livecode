@@ -2622,7 +2622,7 @@ Pdefn(\x, Pseq("01234", inf).trace(prefix: "pdefn: "));
      warning will be posted and the wildcard will become a rest
      (silent).
 
-- =\repeat1("items", "wildcards", reset, repeats)=: Repeats every
+- =\repeat1("items", "wildcards", reset, repeats)= :: Repeats every
   value from the ="items"= stream. =\repeat1(\seq("1234"), "*", , 2)=
   would output 1, 1, 2, 2, 3, 3, 4, 4 etc. the number of repeats may
   be randomized.
