@@ -862,7 +862,9 @@ ClGeneratorNode : ClAbstractParseNode {
 			repeats.streamCode(stream);
 			stream << ", ";
 		};
-		stream << "resetFlag: " << reset.notNil << ", ";
+		if(reset.notNil) {
+			stream << "resetFlag: true, ";
+		};
 		stream << "bpKey: " <<< bpKey;
 		stream << ", args: [ ";
 		forBy(1, children.size - 1, 1) { |i|
