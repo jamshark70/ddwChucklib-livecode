@@ -2538,6 +2538,15 @@ Note that =\seq()=, =\ser()=, =\rand()=, =\wrand()=, =\xrand()=, and
      into random order, and returns each one before choosing a new
      order. See =Pnshuf()= in the ddwPatterns quark.
 
+- =\first("init items", "items", "wildcards", reset)= :: Like
+  =\rand()=, but, when reset, it begins with a sequence of the "init
+  items": =Pseq([Pseq(init_items, 1), Prand(items, inf)])=. Without
+  this, it can be difficult to start at a specific place at the
+  beginning of a bar. *IMPORTANT:* Per Section [[Pool strings, pool streams]],
+  if =\first()= is embedded, then reset must be enabled in the generator
+  into which it's embedded. Currently there is no good way around this.
+  See Listing [[genReset]].
+
 - =\pdefn(`pdefnKey, "wildcards")= :: Like =\seq()=,
      but obtaining replacement items from a =Pdefn=. For non-pitched
      parameters, the =Pdefn= should yield characters corresponding to
@@ -2672,9 +2681,9 @@ Mode(\cphr) => Mode(\default);
 /pl-
   #+END_SRC
 
-Note also that =\seq()=, =\rand()=, =\wrand()=, =\xrand()=, =\shuf()=
-and =\repeat1()= may be used in (or as!) pool strings (Listing
-[[genSequencers]]).
+Note also that =\seq()=, =\rand()=, =\wrand()=, =\xrand()=, =\shuf()=,
+=\first()= and =\repeat1()= may be used in (or as!) pool strings
+(Listing [[genSequencers]]).
 
   #+name: genSequencers
   #+caption: Complex sequencing with sub-generators.
@@ -2831,12 +2840,12 @@ identifies pool arguments as ="new items"=, and Section
 [[Wildcard-replacement generators]] as ="items"=.
 
 Since 2020, a subset of wildcard-replacement generators (=\seq()=,
-=\ser()=, =\rand()=, =\wrand()=, =\xrand()=, =\shuf()=, =\shufn()=)
-can appear within pool strings. These are treated as subpatterns in
-the SC pattern system: \linebreak
-=\rand("\seq("123")\seq("543")\seq("678")")=
-will randomly choose among the three phrases defined by the =\seq()=
-members. See Listing [[genSequencers]].
+=\ser()=, =\rand()=, =\wrand()=, =\xrand()=, =\shuf()=, =\shufn()=,
+=\first()=) can appear within pool strings. These are treated as
+subpatterns in the SC pattern system: \linebreak
+=\rand("\seq("123")\seq("543")\seq("678")")= will randomly choose
+among the three phrases defined by the =\seq()= members. See Listing
+[[genSequencers]].
 
 Except =\wrand()=, these generators include a =reset= argument. If
 this is > 0, the generator will reset to the beginning of its stream,
@@ -2908,6 +2917,7 @@ TempoClock.default.tempo = 2;
 
 // double-pool generator
 // intervals and artic don't reset (barline accent)
+// note that \first() requires ! at the top-level generator
 /pl = "\ins!(\first("@", "*"), 16, 0.25)::\seq("1>~", "@")::\pitch("*", \first("5'", "7,"), 0, 0, \first(">~", "~"))";
 
 // normal reset: both intervals and artic reset (easy way, specify \pitch!)
