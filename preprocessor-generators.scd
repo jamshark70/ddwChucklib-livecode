@@ -734,7 +734,7 @@ protect {
 		~snippet.("shufn", "\\shuf(##items, wildcards, reset##)");
 	} => PR(\clGenShufn);
 
-	PR(\clGenSeq).clone {
+	PR(\clGenSeq).clone({
 		~poolArgs = { [~args[1]] };
 		~canBePool = false;  // inheritance here is messy...
 		~defaults = [/*[],*/ [(item: $*)], #[-2, -1, 1, 2].collect({ |int| (item: int) }), 0, 7, "_"];
@@ -749,14 +749,24 @@ protect {
 			};
 			~checkArticPool.(~articPool);  // throws error on failure
 			~replaceItems = ~replaceItems.collect { |item| item.item };
+
+			~intervalPool = ~intervalPool.asArray;  // don't die if gen isn't wrapped in ""
+			~iReset = ~checkChildReset.(~intervalPool);
 			~intervalStream = Prand(~intervalPool, inf).asStream.collect { |item| item.item.asFloat };
-			~articPool = ~articPool.reject(_ == $");
-			~articStream = Prand(~articPool.asArray, inf).asStream;
+			~articPool = ~articPool.asArray.reject(_ == $");
+			~aReset = ~checkChildReset.(~articPool);
+			~articStream = Prand(~articPool, inf).asStream;
+			if(not(~iReset or: { ~aReset })) {
+				// here: neither subpattern specified reset
+				// therefore both of them should follow the pdelta's resetFlag
+				~iReset = ~aReset = ~resetFlag;
+			};
 
 			currentEnvironment
 		};
 		~doResetFlag = {
-			if(~resetFlag) { ~intervalStream.reset };
+			if(~iReset) { ~intervalStream.reset };
+			if(~aReset) { ~articStream.reset };
 		};
 		~makeStream = {
 			~seqStream = Pfunc {
@@ -803,7 +813,7 @@ protect {
 			items[index]
 		};
 		~snippet.("pitch", "\\pitch(##replaceItems, intervalPool, fallbackMin, fallbackMax, articPool##)");
-	} => PR(\clGenPitch);
+	}).import((clGenPdelta: #[checkChildReset])) => PR(\clGenPitch);
 
 	PR(\clGenPitch).clone {
 		~defaults = [/*[],*/ [(item: $*)], #[-2, -1, 1, 2].collect({ |int| (item: int) }), 0, 7, "_", 1];
