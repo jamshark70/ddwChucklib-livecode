@@ -551,6 +551,46 @@ protect {
 		~snippet.("replace", "\\replace(##items, wildcards##)");
 	} => PR(\clGenReplace);
 
+	PR(\clGenSeq).clone {
+		~poolArgs = { ~args[0..1] };
+		~resetFlag = true;  // special case, these two
+		~repeats = inf;
+		~prep = {
+			~first = ~args[0].asArray;
+			~checkEmpty.(~first, "first");
+			~pool = ~args[1].asArray;
+			~checkEmpty.(~pool, "pool");
+			if(~args[2].isSequenceableCollection) {
+				~replaceItems = ~args[2].collect { |item| item.item };
+			} {
+				~replaceItems = [$*];
+			};
+			~doReset = ~args[3] ?? { 0 };
+			~offset = ~args[4] ?? { 0 };
+			#[doReset, offset].do { |key|
+				if(~isNumProxy.(key.envirGet).not) {
+					Error("%: % should be a number proxy".format(~protoID, key)).throw;
+				};
+			};
+			currentEnvironment
+		};
+		~makeStream = {
+			~seqStream = Pseq([
+				Pseq(~first, 1),
+				Prand(~pool, inf)
+			]).collect(_.item).asStream;
+		};
+		// embedInStream is for generators embedded in pools, should use repeats
+		~embedInStream = { |inval|
+			Pseq([
+				Pseq(~first, 1),
+				Prand(~pool, { ~repeats.next }, { ~offset.next })
+			]).embedInStream(inval)
+		};
+		~helpString = "\\seq(\"first\", \"items\")";
+		~snippet.("first", "\\seq(##first, items, wildcards, reset##)");
+	} => PR(\clGenFirst);
+
 	PR(\clGen).clone {
 		~poolArgs = [];
 		~prep = {
