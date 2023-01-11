@@ -2819,8 +2819,106 @@ Mode(\cphr) => Mode(\default);
      information in its place.
 
 # - =\oneof()= :: Currently broken
-
 **** TODO Fix \oneof()						   :noexport:
+
+** Pool strings, pool streams
+January 2023 new feature!
+
+Many generators include an argument for a "pool" of potential
+values. A pool is written as a pattern string, from which values are
+chosen randomly (like =Prand=). Section [[Rhythm generators]] in general
+identifies pool arguments as ="new items"=, and Section
+[[Wildcard-replacement generators]] as ="items"=.
+
+Since 2020, a subset of wildcard-replacement generators (=\seq()=,
+=\ser()=, =\rand()=, =\wrand()=, =\xrand()=, =\shuf()=, =\shufn()=)
+can appear within pool strings. These are treated as subpatterns in
+the SC pattern system: \linebreak
+=\rand("\seq("123")\seq("543")\seq("678")")=
+will randomly choose among the three phrases defined by the =\seq()=
+members. See Listing [[genSequencers]].
+
+Except =\wrand()=, these generators include a =reset= argument. If
+this is > 0, the generator will reset to the beginning of its stream,
+at the barline; if <= 0, it will continue from its last
+position. (Note that =\wrand()= doesn't need to reset, because the
+random selections depend only on the weights, not on the previous
+selection.)
+
+The reset argument applies only when the generator is used as part of
+a chain, fulfilling its original wildcard-replacement purpose. A
+generator inside a pool string does not reset based on the reset
+argument.
+
+- =\ins("*", 16, 0.25)::\seq("12345", , 1)= /does/ reset on the bar
+  line.
+- =\ins(\seq("12345", , 1), 16, 0.25)= does /not/ reset.
+
+This is because of SuperCollider's stream implementation. Patterns are
+embedded into a stream, and a stream can reset only to the beginning
+of the entire stream. There is no concept of resetting to a specific
+pattern that is being embedded into the stream. "Reset," then, belongs
+properly to the generator that owns the pool stream, and is marked
+with a =!= following the generator name.
+
+- In =\ins!(\seq("12345"), 16, 0.25)=, the =!= tells =\ins()= that its
+  pool should reset on the bar line.
+
+=\pdelta()= and =\pitch()= are tricky cases because they have two pool
+strings. In these cases, and only these cases, you may attach a =!=
+reset flag to a generator inside the pool string itself. If a =!= is
+present in one or both pool strings, it overrides the =\pdelta()= or
+=\pitch()= generator's upper-level reset flag. This allows one or the
+other to reset. Normally you will want both to reset; in that case, as
+normal, add the reset flag to the parent generator.
+
+#+ATTR_LATEX: :align |l|l|l|l
+|                  |                  | Parent with ! | Parent without ! |
+|------------------+------------------+---------------+------------------|
+| pool 1 with !    | pool 2 with !    | Both reset    | Both reset       |
+| pool 1 with !    | pool 2 without ! | Only 1 resets | Only 1 resets    |
+| pool 1 without ! | pool 2 with !    | Only 2 resets | Only 2 resets    |
+| pool 1 without ! | pool 2 without ! | Both reset    | Neither resets   |
+
+#+name: genReset
+#+caption: Behavior of pool-string reset flags.
+#+BEGIN_SRC SuperCollider -i
+TempoClock.default.tempo = 2;
+
+/make(pulseLeadVC:pl/melBP:pl);
+
+// no reset: hear groups of 5 shifting off the barline
+/pl = "\ins("*", 16, 0.25)::\seq("1>~2~3~4~5")";
+
+// reset: extra C at end of bar
+/pl = "\ins("*", 16, 0.25)::\seq("1>~2~3~4~5", , 1)";
+
+// pool string generator without reset
+/pl = "\ins(\seq("1>~2~3~4~5", , 1), 16, 0.25)";
+
+// pool string generator with reset -- note usage on \ins!
+/pl = "\ins!(\seq("1>~2~3~4~5"), 16, 0.25)";
+
+// why can you not attach ! to the inner generator?
+// here: should it always reset, or depending on which pattern is active?
+// so we just disallow it. \ins() can reset its pool.
+/pl = "\ins("\seq!("1>~2~3~4~5")\seq("9>~8~7~6~")", 16, 0.25)";
+
+/pl = "\ins!("\seq("1>~2~3~4~5")\seq("9>~8~7~6~")", 16, 0.25)";
+
+// double-pool generator
+// intervals and artic don't reset (barline accent)
+/pl = "\ins!(\first("@", "*"), 16, 0.25)::\seq("1>~", "@")::\pitch("*", \first("5'", "7,"), 0, 0, \first(">~", "~"))";
+
+// normal reset: both intervals and artic reset (easy way, specify \pitch!)
+/pl = "\ins!(\first("@", "*"), 16, 0.25)::\seq("1>~", "@")::\pitch!("*", \first("5'", "7,"), 0, 0, \first(">~", "~"))";
+
+// intervals reset, artic doesn't (slur up after first bar)
+/pl = "\ins!(\first("@", "*"), 16, 0.25)::\seq("1>~", "@")::\pitch("*", \first!("5'", "7,"), 0, 0, \first(">~", "~"))";
+
+// artic resets, intervals don't (second bar starts at C and goes down)
+/pl = "\ins!(\first("@", "*"), 16, 0.25)::\seq("1>~", "@")::\pitch("*", \first("5'", "7,"), 0, 0, \first!(">~", "~"))";
+#+END_SRC
 
 ** Writing new generators
 Generators inherit from =PR(\clGen)=.[fn:a395111b] They should implement:
