@@ -35,6 +35,7 @@ protect {
 		~isClGen = true;
 		~canBePool = false;
 		~repeats = 1;
+		~resetFlag = false;
 
 		// responsible for parsing any time-sequence strings
 		// each generator may have different ones
@@ -808,6 +809,19 @@ protect {
 			if(~iReset) { ~intervalStream.reset };
 			if(~aReset) { ~articStream.reset };
 		};
+		~checkChildReset = { |child|
+			case
+			{ child.tryPerform(\isClGen) ?? { false } } {
+				child.resetFlag
+			}
+			{ child.isKindOf(SequenceableCollection) } {
+				child.any { |item|
+					item.tryPerform(\isClGen) ?? { false }
+					and: { item.resetFlag == true }
+				};
+			}
+			{ false };  // else, normal item cannot specify reset
+		};
 		~makeStream = {
 			~seqStream = Pfunc {
 				var pitch, new;
@@ -853,7 +867,7 @@ protect {
 			items[index]
 		};
 		~snippet.("pitch", "\\pitch(##replaceItems, intervalPool, fallbackMin, fallbackMax, articPool##)");
-	}).import((clGenPdelta: #[checkChildReset])) => PR(\clGenPitch);
+	}) => PR(\clGenPitch);
 
 	PR(\clGenPitch).clone {
 		~defaults = [/*[],*/ [(item: $*)], #[-2, -1, 1, 2].collect({ |int| (item: int) }), 0, 7, "_", 1];
@@ -1786,7 +1800,7 @@ protect {
 		~snippet.("delta", "\\delta(##pool, quant, weights...##)");
 	} => PR(\clGenDelta);
 
-	PR(\clGenDelta).clone {
+	PR(\clGenDelta).clone({
 		// can't use Char:digit because I want 0 in keyboard order, not logical order
 		~charMap = "1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 		~prep = {
@@ -1818,19 +1832,6 @@ protect {
 			// bc the two child flags should be false if resetFlag was false
 			if(~pReset) { ~poolStream.reset };
 			if(~dpReset) { ~dpoolStream.reset };
-		};
-		~checkChildReset = { |child|
-			case
-			{ child.tryPerform(\isClGen) ?? { false } } {
-				child.resetFlag
-			}
-			{ child.isKindOf(SequenceableCollection) } {
-				child.any { |item|
-					item.tryPerform(\isClGen) ?? { false }
-					and: { item.resetFlag == true }
-				};
-			}
-			{ false };  // else, normal item cannot specify reset
 		};
 		// modifySource is inherited
 		// getAvail has the new logic
@@ -1893,7 +1894,7 @@ protect {
 			};
 		};
 		~snippet.("pdelta", "\\pdelta(##pool, quant, deltapool##)");
-	} => PR(\clGenPdelta);
+	}).import((clGenPitch: #[checkChildReset])) => PR(\clGenPdelta);
 
 	// non-metric generators
 
