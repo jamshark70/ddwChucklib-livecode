@@ -41,8 +41,10 @@ protect {
 		// each generator may have different ones
 		// generic one assumes only ~args[0]
 		~prep = {
-			~baseItems = ~args[0];
+			// ~baseItems = ~args[0];
+			~localPrep.();
 			~checkPoolArgs.();
+			~checkChildrenReset.();
 			currentEnvironment
 		};
 
@@ -64,6 +66,7 @@ protect {
 					~repository[~parm] = (time: 0, item: temp);
 				};
 			};
+			~process.debug("DOPROCESS SHOULD BE CALLING PROCESS HERE");
 			~process.();
 			if(~items.size > 0) {
 				if(~repository[~parm].isNil) {
@@ -85,10 +88,10 @@ protect {
 		};
 		// .value polymorphism: we may need items from an array or a clgen
 		// Proto maps .value onto ~next
-		~next = { ~process.() };
+		~next = { currentEnvironment.dumpBackTrace; "^^ NEXT".debug; ~process.() };
 		~getUpstreamItems = { |key(\baseItems)|
 			var out;
-			// ">> % getUpstreamItems".format(~protoID).debug;
+			">> % getUpstreamItems".format(~protoID).debug;
 			out = key.envirGet.asArray
 			.collect { |item| item.value }
 			.flatten(1)
@@ -96,8 +99,8 @@ protect {
 				if(item[\wildcard].isNil) { item[\wildcard] = item[\item] };
 				item
 			};
-			// "<< % getUpstreamItems".format(~protoID).debug;
-			// out.postcs
+			"<< % getUpstreamItems".format(~protoID).debug;
+			out.postcs
 		};
 		~updateDeltas = { |items, key = \dur|
 			var deltas;
@@ -415,6 +418,28 @@ protect {
 			};
 			// [~protoID, inPool].debug("<< checkPoolArgs");
 		};
+		~checkChildrenReset = {
+			var reset = false;
+			">> checkChildrenReset".debug;
+			~poolArgs.().do { |obj, i|
+				[obj, i].debug("checking");
+				reset = reset or: { ~checkChildReset.(obj).debug("checkChildReset") };
+			};
+			~resetFlag = (~resetFlag or: reset).debug("<< checkChildrenReset");
+		};
+		~checkChildReset = { |child|
+			case
+			{ child.tryPerform(\isClGen) ?? { false } } {
+				child.resetFlag
+			}
+			{ child.isKindOf(SequenceableCollection) } {
+				child.any { |item|
+					item.tryPerform(\isClGen) ?? { false }
+					and: { item.resetFlag == true }
+				};
+			}
+			{ false };  // else, normal item cannot specify reset
+		};
 		~checkEmpty = { |obj, str|
 			if(obj.size == 0) {
 				Error("Values expected for %, but was empty".format(str)).throw;
@@ -426,7 +451,7 @@ protect {
 	// PR(\clGen).copy => PR(\clGenTest);
 
 	PR(\clGen).clone {
-		~prep = {
+		~localPrep = {
 			~baseItems = ~args[0];
 			currentEnvironment
 		};
@@ -438,7 +463,7 @@ protect {
 	// "\seq("rhythm", "itemseq", "replaceItems", >0 to reset)
 	PR(\clGen).clone {
 		~poolArgs = { [~args[0]] };
-		~prep = {
+		~localPrep = {
 			~pool = ~args[0].asArray;
 			~checkEmpty.(~pool, "pool");
 			if(~args[1].isSequenceableCollection) {
@@ -462,11 +487,12 @@ protect {
 		};
 
 		~process = {
+			"ARE WE EVEN FUCKING CALLING PROCESS() AT ALL".debug;
 			if(~doReset.next > 0 or: { ~seqStream.isNil }) {
 				~makeStream.();
 			};
 			~doResetFlag.();  // really just for \pitch() at this time
-			~items = ~getUpstreamItems.();
+			~items = ~getUpstreamItems.().debug("getUpstream");
 			~modifySource.();
 			~items
 		};
@@ -558,7 +584,7 @@ protect {
 		~poolArgs = { ~args[0..1] };
 		~resetFlag = true;  // special case, these two
 		~repeats = inf;
-		~prep = {
+		~localPrep = {
 			~first = ~args[0].asArray;
 			~checkEmpty.(~first, "first");
 			~pool = ~args[1].asArray;
@@ -596,7 +622,7 @@ protect {
 
 	PR(\clGen).clone {
 		~poolArgs = [];
-		~prep = {
+		~localPrep = {
 			if(~args[0].isSequenceableCollection) {
 				~replaceItems = ~args[0].collect { |item| item.item };
 			} {
@@ -646,8 +672,8 @@ protect {
 
 	PR(\clGenSeq).clone {
 		~poolArgs = nil;
-		~superprep = ~prep;
-		~prep = {
+		~superprep = ~localPrep;
+		~localPrep = {
 			~superprep.();
 			~pool = ~args[0];  // 'super' wrapped this in an array
 			if(Pdefn.all[~pool].isNil) {
@@ -717,8 +743,8 @@ protect {
 	} => PR(\clGenPdefn);
 
 	PR(\clGenSeq).clone {
-		~superprep = ~prep;
-		~prep = {
+		~superprep = ~localPrep;
+		~localPrep = {
 			~superprep.();
 			~doReset = 0;  // reset is meaningless for wrand anyway
 			currentEnvironment
@@ -786,7 +812,7 @@ protect {
 			$>: { |note| note.args = \accent; nil }  // don't change length
 		);
 		~doReset = 0;
-		~prep = {
+		~localPrep = {
 			~argNames.do { |key, i|
 				key.envirPut(~args[i] ?? { ~defaults[i] });
 			};
@@ -810,19 +836,6 @@ protect {
 		~doResetFlag = {
 			if(~iReset) { ~intervalStream.reset };
 			if(~aReset) { ~articStream.reset };
-		};
-		~checkChildReset = { |child|
-			case
-			{ child.tryPerform(\isClGen) ?? { false } } {
-				child.resetFlag
-			}
-			{ child.isKindOf(SequenceableCollection) } {
-				child.any { |item|
-					item.tryPerform(\isClGen) ?? { false }
-					and: { item.resetFlag == true }
-				};
-			}
-			{ false };  // else, normal item cannot specify reset
 		};
 		~makeStream = {
 			~seqStream = Pfunc {
@@ -913,7 +926,7 @@ protect {
 		~poolArgs = { [~args[0]] };
 		~defaults = [/*[],*/ [(item: SequenceNote(0, nil, 0.9))], nil];
 		~argNames = #[/*baseItems,*/ intervalPool, wildcards];
-		~prep = {
+		~localPrep = {
 			~argNames.do { |key, i|
 				key.envirPut(~args[i] ?? { ~defaults[i] });
 			};
@@ -951,7 +964,7 @@ protect {
 		~poolArgs = { [~args[0]] };
 		~canBePool = false;
 		~snippet.("prev", "\\prev(##pool, replaceItems, staccDur##)");
-		~prep = {
+		~localPrep = {
 			~pool = ~args[0] ?? { [] };
 			// empty pool = ignored
 			~poolStream = if(~pool.size > 0) { Prand(~pool, inf).asStream } { nil };
@@ -1035,8 +1048,8 @@ protect {
 		~doReset = 0;
 		~canBePool = false;
 		~poolArgs = { [~args[0]] };
-		~prep = {
-			~pool = ~args[0].asArray;
+		~localPrep = {
+			~pool = ~args[0].asArray.debug("ins localPrep");
 			~checkEmpty.(~pool, "pool");
 			~numToAdd = ~args[1] ?? { 1 };
 			if(~isNumProxy.(~numToAdd).not) {
@@ -1048,14 +1061,14 @@ protect {
 		};
 		~modifySource = {
 			var avail = ~getAvail.(~items, ~quant.next).scramble;
-			avail = avail.keep(min(~numToAdd.next, avail.size).asInteger).sort;
-			if(~resetFlag) { ~poolStream.reset };
+			avail = avail.keep(min(~numToAdd.next, avail.size).asInteger).sort.debug("getAvail");
+			if(~resetFlag.debug("ins modify source resetflag")) { ~poolStream.reset };
 			avail.size.do { |i|
 				var newTime = avail[i],
 				new;
 				// should be guaranteed but, protect against mistakes
 				if(newTime.notNil) {
-					new = ~poolStream.next;
+					new = ~poolStream.next.debug("got from pool");
 					if(new.notNil) {
 						~insertItem.((item: new, wildcard: new, src: \ins, time: newTime));
 					};
@@ -1105,7 +1118,7 @@ protect {
 	// \euclid(pool, subdivision, increment, initial)
 	PR(\clGenIns).clone {
 		~numToAdd = 0x7FFFFFFF;  // always add all avail
-		~prep = {
+		~localPrep = {
 			~pool = ~args[0].asArray;
 			~checkEmpty.(~pool, "pool");
 			~quant = ~args[1] ?? { 0.25 };
@@ -1162,7 +1175,7 @@ protect {
 
 	PR(\clGenIns).clone {
 		~numToAdd = 0x7FFFFFFF;  // always add all avail
-		~prep = {
+		~localPrep = {
 			~pool = ~args[0].asArray;
 			~checkEmpty.(~pool, "pool");
 			~quant = ~args[1] ?? { 0.25 };
@@ -1293,8 +1306,8 @@ protect {
 	// (divisible == 0 means *only* quant can be divided)
 	// divisor may randomize once per bar (I might change this later but it's a bigger rewrite)
 	PR(\clGenIns).clone {
-		~superprep = ~prep;
-		~prep = {
+		~superprep = ~localPrep;
+		~localPrep = {
 			~pool = ~args[0];
 			~replaceItems = ~args[1];  // should allow nil to match everything
 			~numToAdd = ~args[2] ?? { 1 };
@@ -1417,7 +1430,7 @@ protect {
 	// choose numToAdd of "pool" items and of these, add more items after it
 	PR(\clGenIns).clone {
 		~poolArgs = { [~args[4]] };
-		~prep = {
+		~localPrep = {
 			~defaultNames.do { |key, i|
 				var value = ~args[i] ?? { ~defaults[i].value },
 				error;
@@ -1617,8 +1630,8 @@ protect {
 		// expand this later
 		~validation = [/*nil,*/ nil, \isNumProxy, \isNumProxy, \isNumProxy, \isNumProxy, nil, nil, nil];
 
-		~superPrep = ~prep;
-		~prep = {
+		~superprep = ~localPrep;
+		~localPrep = {
 			~superPrep.();
 			if(~articPool.isNil) {
 				~articPool = [$.];
@@ -1710,7 +1723,7 @@ protect {
 	}.import((clGenIns: #[insertItem])) => PR(\clGenChoke);
 
 	PR(\clGenIns).clone {
-		~prep = {
+		~localPrep = {
 			~pool = ~args[0];
 			~quant = ~args[1] ?? { 0.25 };
 			~weights = ~args[2..];
@@ -1805,7 +1818,7 @@ protect {
 	PR(\clGenDelta).clone({
 		// can't use Char:digit because I want 0 in keyboard order, not logical order
 		~charMap = "1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-		~prep = {
+		~localPrep = {
 			~pool = ~args[0];
 			~quant = ~args[1] ?? { 0.25 };
 			~dpool = ~args[2];
@@ -1929,7 +1942,7 @@ protect {
 			\lp -> { |lo, hi| Plprand(lo, hi, inf) }
 		];
 		~numToAdd = 1e10;  // hack: ~modifySource does min(~numToAdd, avail.size)
-		~prep = {
+		~localPrep = {
 			~pool = ~args[0].asArray;
 			~checkEmpty.(~pool, "pool");
 			~maxDelta = ~args[1] ?? { 1 };
@@ -2017,7 +2030,7 @@ protect {
 	// pool, avg delta, factor(>1 = accel to midpoint), midpoint, curve
 	PR(\clGenRDelta).clone {
 		~numToAdd = 1e10;  // hack: ~modifySource does min(~numToAdd, avail.size)
-		~prep = {
+		~localPrep = {
 			~pool = ~args[0].asArray;
 			~checkEmpty.(~pool, "pool");
 			~initDelta = ~args[1] ?? { 1 };
@@ -2059,8 +2072,8 @@ protect {
 
 	PR(\clGenIns).clone {
 		~poolArgs = nil;
-		~superprep = ~prep;
-		~prep = {
+		~superprep = ~localPrep;
+		~localPrep = {
 			~superprep.();
 			// pool comes from superclass, but it isn't a "pool"
 			// it's a list of matching items
@@ -2137,7 +2150,7 @@ protect {
 
 	PR(\clGen).clone {
 		~poolArgs = nil;
-		~prep = {
+		~localPrep = {
 			~quant = ~args[0];
 			if(~isNumProxy.(~quant).not) {
 				Error("\rot() quant must be a number").throw;
@@ -2184,7 +2197,7 @@ protect {
 
 	PR(\clGen).clone {
 		~poolArgs = { [~args[0]] };
-		~prep = {
+		~localPrep = {
 			~convertArticPools.();
 			~pool = ~args[0] ?? { "_" };
 			~checkArticPool.(~pool);
@@ -2226,7 +2239,7 @@ protect {
 
 	PR(\clGen).clone {
 		~poolArgs = { [~args[0]] };
-		~prep = {
+		~localPrep = {
 			~srcParm = ~args[0];
 			~pool = ~args[1].asArray;
 			~srcBP = ~args[2] ?? { ~bpKey };
@@ -2285,7 +2298,7 @@ protect {
 	// if an item has no wildcard, don't touch it
 	// useful pattern: \unis(...)::\wildcards(...)
 	PR(\clGen).clone {
-		~prep = {
+		~localPrep = {
 			~wildcards = ~args[0];
 			if(~wildcards.notNil) {
 				~wildcards = ~wildcards.collect(_.item);
@@ -2318,7 +2331,7 @@ protect {
 
 	// \fork(items, "\gen()| \gen()|...")
 	PR(\clGen).clone {
-		~prep = {
+		~localPrep = {
 			~generators = ~args[0];
 			currentEnvironment
 		};
@@ -2375,7 +2388,7 @@ protect {
 
 	PR(\clGenFork).clone {
 		~poolArgs = { ~strings };
-		~prep = {
+		~localPrep = {
 			~source = ~args[0];
 			~strings = ~args[1..].collect { |str|
 				if(str.every { |item| item.tryPerform(\isClGen) ?? { false } }) {
@@ -2425,7 +2438,7 @@ protect {
 	} => PR(\clGenPar);
 
 	PR(\clGen).clone {
-		~prep = {
+		~localPrep = {
 			var stream, thing;
 			~list = Array.new;
 			~weights = Array.new;
@@ -2473,7 +2486,7 @@ protect {
 	// gen1 processed items -> gen2 processed items -> gen3
 	PR(\clGen).clone {
 		~canBePool = true;  // pitch procs can chain \artic or \xpose in a pool
-		~prep = {
+		~localPrep = {
 			currentEnvironment  // just use ~args
 		};
 		~process = {
