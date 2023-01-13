@@ -265,18 +265,20 @@ protect {
 			$>: { |note| note.args = \accent; nil }  // don't change length
 		);
 		~isValidArtic = { |artic|
-			~artic[artic.value].notNil or: {
-				artic.tryPerform(\key) == \accent or: {
-					if(artic.tryPerform(\canBePool) ?? { false }) {
-						artic.poolArgs.every { |item|  // poolArgs is array-of-args
-							// each arg may be a Proto or an array
-							item.asArray.every(~isValidArtic)
-						};
-					} {
-						if(artic.size > 0) { artic.every(~isValidArtic) } { false }
+			if(artic.tryPerform(\isClGen) ?? { false }) {
+				if(artic.tryPerform(\canBePool) ?? { false }) {
+					artic.poolArgs.every { |item|  // poolArgs is array-of-args
+						// each arg may be a Proto or an array
+						item.asArray.every(~isValidArtic)
 					};
+				} {
+					if(artic.size > 0) { artic.every(~isValidArtic) } { false }
 				};
-			}
+			} {
+				~artic[artic.value].notNil or: {
+					artic.tryPerform(\key) == \accent
+				}
+			};
 		};
 		~checkArticPool = { |pool|
 			// for now, shortcut, assume Association's key is \accent
