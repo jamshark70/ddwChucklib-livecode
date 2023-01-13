@@ -41,7 +41,7 @@ protect {
 		// each generator may have different ones
 		// generic one assumes only ~args[0]
 		~prep = {
-			// ~baseItems = ~args[0];
+			~baseItems = ~args[0];
 			~localPrep.();
 			~checkPoolArgs.();
 			~checkChildrenReset.();
@@ -66,7 +66,6 @@ protect {
 					~repository[~parm] = (time: 0, item: temp);
 				};
 			};
-			~process.debug("DOPROCESS SHOULD BE CALLING PROCESS HERE");
 			~process.();
 			if(~items.size > 0) {
 				if(~repository[~parm].isNil) {
@@ -88,10 +87,10 @@ protect {
 		};
 		// .value polymorphism: we may need items from an array or a clgen
 		// Proto maps .value onto ~next
-		~next = { currentEnvironment.dumpBackTrace; "^^ NEXT".debug; ~process.() };
+		~next = { ~process.() };
 		~getUpstreamItems = { |key(\baseItems)|
 			var out;
-			">> % getUpstreamItems".format(~protoID).debug;
+			// ">> % getUpstreamItems".format(~protoID).debug;
 			out = key.envirGet.asArray
 			.collect { |item| item.value }
 			.flatten(1)
@@ -99,8 +98,8 @@ protect {
 				if(item[\wildcard].isNil) { item[\wildcard] = item[\item] };
 				item
 			};
-			"<< % getUpstreamItems".format(~protoID).debug;
-			out.postcs
+			// "<< % getUpstreamItems".format(~protoID).debug;
+			// out.postcs
 		};
 		~updateDeltas = { |items, key = \dur|
 			var deltas;
@@ -420,12 +419,10 @@ protect {
 		};
 		~checkChildrenReset = {
 			var reset = false;
-			">> checkChildrenReset".debug;
 			~poolArgs.().do { |obj, i|
-				[obj, i].debug("checking");
-				reset = reset or: { ~checkChildReset.(obj).debug("checkChildReset") };
+				reset = reset or: { ~checkChildReset.(obj) };
 			};
-			~resetFlag = (~resetFlag or: reset).debug("<< checkChildrenReset");
+			~resetFlag = ~resetFlag or: reset;
 		};
 		~checkChildReset = { |child|
 			case
@@ -487,12 +484,11 @@ protect {
 		};
 
 		~process = {
-			"ARE WE EVEN FUCKING CALLING PROCESS() AT ALL".debug;
 			if(~doReset.next > 0 or: { ~seqStream.isNil }) {
 				~makeStream.();
 			};
 			~doResetFlag.();  // really just for \pitch() at this time
-			~items = ~getUpstreamItems.().debug("getUpstream");
+			~items = ~getUpstreamItems.();
 			~modifySource.();
 			~items
 		};
@@ -1049,7 +1045,7 @@ protect {
 		~canBePool = false;
 		~poolArgs = { [~args[0]] };
 		~localPrep = {
-			~pool = ~args[0].asArray.debug("ins localPrep");
+			~pool = ~args[0].asArray;
 			~checkEmpty.(~pool, "pool");
 			~numToAdd = ~args[1] ?? { 1 };
 			if(~isNumProxy.(~numToAdd).not) {
@@ -1061,14 +1057,14 @@ protect {
 		};
 		~modifySource = {
 			var avail = ~getAvail.(~items, ~quant.next).scramble;
-			avail = avail.keep(min(~numToAdd.next, avail.size).asInteger).sort.debug("getAvail");
-			if(~resetFlag.debug("ins modify source resetflag")) { ~poolStream.reset };
+			avail = avail.keep(min(~numToAdd.next, avail.size).asInteger).sort;
+			if(~resetFlag) { ~poolStream.reset };
 			avail.size.do { |i|
 				var newTime = avail[i],
 				new;
 				// should be guaranteed but, protect against mistakes
 				if(newTime.notNil) {
-					new = ~poolStream.next.debug("got from pool");
+					new = ~poolStream.next;
 					if(new.notNil) {
 						~insertItem.((item: new, wildcard: new, src: \ins, time: newTime));
 					};
