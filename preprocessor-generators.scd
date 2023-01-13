@@ -41,7 +41,10 @@ protect {
 		// each generator may have different ones
 		// generic one assumes only ~args[0]
 		~prep = {
-			~baseItems = ~args[0];
+			// oh that is ugly...
+			if(~protoID == \clGen) {
+				~baseItems = ~args[0];
+			};
 			~localPrep.();
 			~checkPoolArgs.();
 			~checkChildrenReset.();
