@@ -1629,7 +1629,7 @@ protect {
 		// expand this later
 		~validation = [/*nil,*/ nil, \isNumProxy, \isNumProxy, \isNumProxy, \isNumProxy, nil, nil, nil];
 
-		~superprep = ~localPrep;
+		~superPrep = ~localPrep;
 		~localPrep = {
 			~superPrep.();
 			if(~articPool.isNil) {
