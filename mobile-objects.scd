@@ -1,6 +1,7 @@
 // mobile control interface objects
 
 var saveSubtype = AbstractChuckArray.defaultSubType;
+var parentEnvir = currentEnvironment;
 
 /**
     Chucklib-livecode: A framework for live-coding improvisation of electronic music
@@ -63,15 +64,26 @@ protect {
 		~stopAliveThread = { ~aliveThread.stop; };
 
 		~setLabel = { |oscpath, label|
+			var str, num;
 			if(label.isNil) { label = "" /*oscpath.asString.split($/).last*/ };
 			~labels[oscpath] = label;
+			// open stage control can do this:
+			str = oscpath.asString;
+			// a bit of a dodge: buttons have labels, faders don't
+			// but a globalcontrol =>.x t will assign to a fader;
+			// we need to send the label message anyway
+			if(~sendAddr.notNil) {
+				num = str.detectIndex(_.isDecDigit);
+				num = str[num..];
+				~sendAddr.sendMsg("/label_" ++ num, label)
+			};
 			NotificationCenter.notify(currentEnvironment, \any, [[\label, oscpath, label]]);
 			currentEnvironment
 		};
 		// for single-value controls (common case)
 		~setValue = { |oscpath, value|
 			if(~sendAddr.notNil) {
-				~sendAddr.sendMsg(oscpath, value);
+				~sendAddr.sendMsg(*[oscpath, value]);
 			};
 			~respond.([oscpath, value], SystemClock.beats, NetAddr.localAddr, NetAddr.langPort);
 		};
@@ -118,6 +130,8 @@ protect {
 				};
 				~addr = replyAddr;
 				~sendAddr = NetAddr(~addr.ip, ~sendPort);
+				parentEnvir[\pingStatus] = true;
+				parentEnvir[\pingCond].signalAll;
 			};
 		};
 
@@ -144,6 +158,8 @@ protect {
 	// this has GUI stuff in it -- maybe revisit
 	PR(\abstractTouch).clone {
 		var lightness;
+
+		~presetOSCCmd = '/1/push5';
 
 		~white = Color.white;
 		~black = Color.black;
@@ -287,6 +303,102 @@ protect {
 			(keys: keys, faderKeys: faderKeys, toggleKeys: toggleKeys)
 		};
 	} => PR(\mix16Touch);
+
+	PR(\mix16Touch).clone {
+		~buttonExtent = Point(15, 19);
+		~labelHeight = 12;
+		~labelFont = Font.default.copy.pixelSize_(9);
+		~sliderWidth = 100;
+		~xyExtent = Point(140, 145);
+		~gap = Point(3, 3);
+
+		~presetOSCCmd = '/button_27';
+
+		~sliders = { |n = 1, prefix = "/1", oneBound(Rect(0, 0, 400, 50)), buttonExtent(Point(50, 50)), gap = 10, bcolor, bltColor, scolor, sltColor, startI = 0, nameStartI = 1|
+			var out = Array(n * 6),
+			togStr = prefix ++ "/button_",
+			slStr = prefix ++ "/fader_",
+			labelStr = prefix ++ "/label_",
+			origin = Point(gap + oneBound.left, gap + oneBound.top);
+			oneBound = oneBound.copy.top_(0);
+			n.do { |i|
+				var num = (i + nameStartI).asString;
+				if(num.size < 2) { num = "0" ++ num };  // special case, only 2
+				out
+				.add((labelStr ++ num).asSymbol)
+				.add((
+					bounds: Rect.fromPoints(origin, origin + buttonExtent - Point(gap, 0)),
+					class: StaticText,
+					init: { |view|
+						view.string_((i + startI).asDigit.asString);
+					}
+				))
+				.add((togStr ++ num).asSymbol)
+				.add((
+					bounds: Rect.fromPoints(
+						origin + Point(buttonExtent.x - gap, 0),
+						origin + Point(buttonExtent.x * 2 - gap, buttonExtent.y)
+					),
+					class: Button,
+					init: { |view|
+						// init func runs in the touchGui environment
+						view.states_([[" ", nil, bltColor], ["", nil, bcolor]])
+						.receiveDragHandler_(inEnvir { |view|
+							// we don't have access to the 't' touch object
+							// notification assumes there's just one (untested with multiple)
+							NotificationCenter.notify(~model, \receiveDrag, [View.currentDrag, i+startI]);
+						})
+					},
+				))
+				.add((slStr ++ num).asSymbol)
+				.add((
+					bounds: Rect.fromPoints(
+						origin + Point(buttonExtent.x * 2, 0),
+						origin + oneBound.extent
+					),
+					class: Slider,
+					// I considered implementing receive-drag on the slider too but it didn't work
+					init: { |view| view.knobColor_(scolor) },
+					spec: [0, 1]
+				));
+				origin.y = origin.y + oneBound.height + gap;
+			};
+			out
+		};
+
+		~tabSpecs = [
+			"Tab1", ~sliders.(
+				12, "", oneBound: Rect(0, 0, ~sliderWidth, ~buttonExtent.y),
+				buttonExtent: ~buttonExtent, gap: ~gap.y,
+				bcolor: ~aqua, bltColor: ~ltAqua, scolor: ~green, sltColor: ~ltGreen,
+				startI: 0
+			) ++ ~sliders.(
+				12, "", oneBound: Rect(106, 0, ~sliderWidth, ~buttonExtent.y),
+				buttonExtent: ~buttonExtent, gap: ~gap.y,
+				bcolor: ~aqua, bltColor: ~ltAqua, scolor: ~green, sltColor: ~ltGreen,
+				startI: 12, nameStartI: 13
+			),
+			"Tab2", ~sliders.(
+				2, "", oneBound: Rect(0, 0, ~sliderWidth, ~buttonExtent.y),
+				buttonExtent: ~buttonExtent, gap: ~gap.y,
+				bcolor: ~aqua, bltColor: ~ltAqua, scolor: ~green, sltColor: ~ltGreen,
+				startI: 24, nameStartI: 25
+			)
+		];
+		~chuckOSCKeys = {
+			var allKeys = /*BP(~oscKey).*/ ~saveKeys.collect(_.asString),
+			keys, faderKeys, toggleKeys;
+			keys = allKeys.select { |key| "fb".includes(key[1]) }.as(Array).sort;
+			// keys = keys ++ sort(allKeys.select({ |key|
+			// 	key[1] == $1 and: {
+			// 		"ft".includes(key[3]) and: { key.last != $4 }
+			// 	}
+			// }).as(Array));
+			faderKeys = keys.select { |key| key[1] == $f }.collect(_.asSymbol);
+			toggleKeys = keys.select { |key| key[1] == $b }.collect(_.asSymbol);
+			(keys: keys, faderKeys: faderKeys, toggleKeys: toggleKeys)
+		};
+	} => PR(\openStageTouch);
 
 	Proto {
 		~windowName = "TouchOSC";
@@ -896,7 +1008,7 @@ protect {
 			~deleteTimes = Dictionary.new;
 			~expanded = Dictionary.new;
 			~chucking = false;
-			~chuckTargetChars = "0123456789ABCDEF";
+			~chuckTargetChars = "0123456789ABCDEFGHIJKLMN";
 			if(~viewParent.isNil) {
 				// if user puts the BP into a layout
 				~view = ListView.new;

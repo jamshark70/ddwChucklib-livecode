@@ -1,6 +1,7 @@
 // nanoKontrol interface objects
 
 var saveSubtype = AbstractChuckArray.defaultSubType;
+var parentEnvir = currentEnvironment;
 
 /**
 Chucklib-livecode: A framework for live-coding improvisation of electronic music
@@ -71,10 +72,9 @@ protect {
 			if(~labels.isNil) { ~labels = IdentityDictionary.new };
 			~setDataKeys.();
 			// touch interface needs to wait for ping; MIDI doesn't
-			// so notify as soon as GUI is ready
-			NotificationCenter.registerOneShot(\clInterface, \ready, \nanoTouch, inEnvir {
-				NotificationCenter.notify(currentEnvironment, '/ping');
-			});
+			// so signal that it's OK to move ahead
+			parentEnvir[\pingStatus] = true;
+			parentEnvir[\pingCond].signalAll;
 			currentEnvironment
 		};
 		~freeCleanup = {
