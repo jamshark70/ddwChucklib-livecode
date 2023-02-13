@@ -97,14 +97,21 @@ PstepDurPair : Pstep {
 // preset support
 + Fact {
 	addPreset { |key, presetDef|
-		if(presetDef.isKindOf(Dictionary).not) {
-			Error(
-				"Presetdef for '%' should be a dictionary but isn't"
-				.format(key)
-			).throw;
+		// if you add to an empty Factory, later checks will die with error
+		// so, prevent that
+		if(this.class.exists(collIndex)) {
+			if(presetDef.isKindOf(Dictionary).not) {
+				Error(
+					"Presetdef for '%' should be a dictionary but isn't"
+					.format(key)
+				).throw;
+			};
+			Library.put(\cl, \presets, this.collIndex, key, presetDef);
+			Fact.changed(\addPreset, this.collIndex, key);
+		} {
+			Error("Cannot add preset to empty Fact(%)".format(collIndex.asCompileString))
+			.throw;
 		};
-		Library.put(\cl, \presets, this.collIndex, key, presetDef);
-		Fact.changed(\addPreset, this.collIndex, key);
 	}
 
 	presets {
