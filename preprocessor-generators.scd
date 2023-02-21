@@ -562,6 +562,58 @@ protect {
 		~snippet.("rand", "\\rand(##items, wildcards##)");
 	} => PR(\clGenRand);
 
+	PR(\clGenSeq).clone {
+		~localPrep = {
+			~pool = ~args[0].asArray;
+			~checkEmpty.(~pool, "pool");
+			~numToPlay = ~args[1] ?? { inf };
+			~numToSkip = ~args[2] ?? { 0 };
+			~doReset = ~args[4] ?? { 0 };
+			#[numToPlay, numToSkip, doReset].do { |key|
+				if(~isNumProxy.(key.envirGet).not) {
+					Error("BP(%): % should be a number"
+						.format(~bpKey.asCompileString, key)
+					).throw
+				};
+			};
+			if(~args[3].isSequenceableCollection) {
+				~replaceItems = ~args[1].collect { |item| item.item };
+			} {
+				~replaceItems = [$*];
+			};
+			currentEnvironment
+		};
+		~makeStream = {
+			~seqStream = ~skippingPattern.value(inf).collect(_.item).asStream;
+		};
+		~embedInStream = { |inval|
+			~skippingPattern.value(~repeats).embedInStream(inval)
+		};
+		~skippingPattern = { |repeats|  // "makeStream" needs to override ~repeats
+			Prout { |inval|
+				var stream = Pseq(~pool, inf).asStream;
+				var next;
+				block { |break|
+					repeats.next.do {
+						// this may be inf because of yielding
+						~numToPlay.next.do {
+							next = stream.next(inval);
+							if(next.isNil) { break.() };
+							inval = next.embedInStream(inval);
+						};
+						// this must not be inf!
+						~numToSkip.next.do {
+							// stop upon nil, else just throw the value away
+							if(stream.next(inval).isNil) { break.() };
+						};
+					};
+				};
+				inval
+			};
+		};
+		~snippet.("skip", "\\skip(##items, numToPlay, numToSkip, wildcards, reset##)");
+	} => PR(\clGenSkip);
+
 	PR(\clGenRand).clone {
 		~modifySource = {
 			~items.do { |item, i|
