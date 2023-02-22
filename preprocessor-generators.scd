@@ -614,6 +614,48 @@ protect {
 		~snippet.("skip", "\\skip(##items, numToPlay, numToSkip, wildcards, reset##)");
 	} => PR(\clGenSkip);
 
+	PR(\clGenSkip).clone {
+		~repeats = inf;
+		~localPrep = {
+			~weights = ~args[0].asArray;
+			~checkEmpty.(~weights, "weights");
+			if(~args[1].isSequenceableCollection) {
+				~replaceItems = ~args[1].collect { |item| item.item };
+			} {
+				~replaceItems = [$*];
+			};
+			~doReset = ~args[2] ?? { 0 };
+			if(~isNumProxy.(~doReset).not) {
+				Error("BP(%): voss doReset must be a number"
+					.format(~bpKey.asCompileString)
+				).throw;
+			};
+			currentEnvironment
+		};
+		~localPattern = { |repeats(inf)|
+			var prev;
+			Pfin(repeats.next,
+				Ptuple(
+					~weights.collect { |item, i|
+						item = max(1, item.item.asFloat.asInteger.abs);
+						Pdup((1 << i), Pxrand((item.neg .. item), inf))
+					},
+					inf
+				).collect(_.sum)
+				// note that this cannot infloop because
+				// all generators at minimum produce -1, 0, 1 in some order
+				// and Pxrand cannot repeat values
+				// so the i == 0 generator must produce an unequal value
+				.reject { |next| next == prev }
+				.collect { |next|
+					prev = next;
+					(item: SequenceNote(next, nil, 0.9))
+				}
+			)
+		};
+		~snippet.("voss", "\\voss(##weights, wildcards##)");
+	} => PR(\clGenVoss);
+
 	PR(\clGenRand).clone {
 		~modifySource = {
 			~items.do { |item, i|
