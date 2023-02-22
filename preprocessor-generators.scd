@@ -577,19 +577,19 @@ protect {
 				};
 			};
 			if(~args[3].isSequenceableCollection) {
-				~replaceItems = ~args[1].collect { |item| item.item };
+				~replaceItems = ~args[3].collect { |item| item.item };
 			} {
 				~replaceItems = [$*];
 			};
 			currentEnvironment
 		};
 		~makeStream = {
-			~seqStream = ~skippingPattern.value(inf).collect(_.item).asStream;
+			~seqStream = ~localPattern.value(inf).collect(_.item).asStream;
 		};
 		~embedInStream = { |inval|
-			~skippingPattern.value(~repeats).embedInStream(inval)
+			~localPattern.value(~repeats).embedInStream(inval)
 		};
-		~skippingPattern = { |repeats|  // "makeStream" needs to override ~repeats
+		~localPattern = { |repeats|  // "makeStream" needs to override ~repeats
 			Prout { |inval|
 				var stream = Pseq(~pool, inf).asStream;
 				var next;
