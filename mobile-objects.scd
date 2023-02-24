@@ -1217,7 +1217,7 @@ protect {
 			// 'globalControlsByCreation' keeps only 'allowGUI' controls
 			ctls = voicer.tryPerform(\globalControls);
 			if(ctls.size > 0) {
-				if(ctls.isKindOf(Dictionary)) {
+				if(ctls.isKindOf(ValidatingDictionary)) {
 					ctls = ctls.values.as(Array);
 				};
 				key = VC.collection.detect { |vc| vc.v === voicer }
