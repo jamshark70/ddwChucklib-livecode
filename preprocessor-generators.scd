@@ -540,12 +540,12 @@ protect {
 		// let's reuse that for the number of repeats
 		~makeStream = {
 			~seqStream = Pdup(
-				Pfunc { ~offset.next },
+				Pfunc { min(1, ~offset.next) },
 				Prand(~pool.asArray, inf)
 			).collect(_.item).asStream;
 		};
 		~embedInStream = { |inval|
-			Pdup(Pfunc { ~offset.next }, Prand(~pool)).embedInStream(inval)
+			Pdup(Pfunc { min(1, ~offset.next) }, Prand(~pool)).embedInStream(inval)
 		};
 		~snippet.("repeat1", "\\repeat1(##items, wildcards, reset, repeats##)");
 	} => PR(\clGenRepeat1);
@@ -632,7 +632,12 @@ protect {
 			};
 			currentEnvironment
 		};
-		~localPattern = { |repeats(inf)|
+		~localPattern = { |repeats|
+			~numericPattern.(repeats).collect { |next|
+				(item: SequenceNote(next, nil, 0.9))
+			}
+		};
+		~numericPattern = { |repeats(inf)|
 			var prev;
 			Pfin(repeats.next,
 				Ptuple(
@@ -648,13 +653,22 @@ protect {
 				// so the i == 0 generator must produce an unequal value
 				.reject { |next| next == prev }
 				.collect { |next|
-					prev = next;
-					(item: SequenceNote(next, nil, 0.9))
+					prev = next
 				}
 			)
 		};
 		~snippet.("voss", "\\voss(##weights, wildcards##)");
 	} => PR(\clGenVoss);
+
+	PR(\clGenVoss).clone {
+		~localPattern = { |repeats|
+			Pdiff(~numericPattern.(repeats))
+			.collect { |next|
+				(item: SequenceNote(next, nil, 0.9))
+			}
+		};
+		~snippet.("vossdiff", "\\vossdiff(##weights, wildcards##)");
+	} => PR(\clGenVossdiff);
 
 	PR(\clGenRand).clone {
 		~modifySource = {
@@ -722,8 +736,12 @@ protect {
 				~replaceItems = [$*];
 			};
 			~prob = ~args[1] ?? { 0.0 };
+			~negate = ~args[2] ?? { 0 };
 			if(~isNumProxy.(~prob).not) {
 				Error("%: prob should be a number proxy".format(~protoID)).throw;
+			};
+			if(~isNumProxy.(~negate).not) {
+				Error("%: negate should be a number proxy".format(~protoID)).throw;
 			};
 			currentEnvironment
 		};
@@ -731,11 +749,15 @@ protect {
 			var didDelete = false;
 			~items = ~getUpstreamItems.();
 			~items.do { |item, i|
-				if(~replaceItems.includesEqual(item[\wildcard]) and: {
+				var condition = ~replaceItems.includesEqual(item[\wildcard]) and: {
 					// why '.not'? 0.75 should be 75% chance of keeping it
 					// (higher number -> more event density)
 					~prob.next.coin.not
-				}) {
+				};
+				if(~negate.next > 0) {
+					condition = condition.not;
+				};
+				if(condition) {
 					didDelete = true;
 					~items[i] = nil;
 				};
@@ -746,7 +768,7 @@ protect {
 				~items
 			};
 		};
-		~snippet.("delete", "\\delete(##wildcards, probability##)");
+		~snippet.("delete", "\\delete(##wildcards, keepProbability, negate##)");
 	} => PR(\clGenDelete);
 
 	PR(\clGenSeq).clone {
@@ -2396,17 +2418,29 @@ protect {
 			if(~wildcards.notNil) {
 				~wildcards = ~wildcards.collect(_.item);
 			};
+			~negate = ~args[1] ?? { 0 };
+			if(~isNumProxy.(~negate).not) {
+				Error(
+					"BP(%): negate should be a number".format(~bpKey.asCompileString)
+				).throw
+			};
 			currentEnvironment
 		};
 		~process = {
 			var end = ~time + ~dur;
+			var includes;
 			~items = ~getUpstreamItems.();
 			~items.do { |item|
 				if(item[\time] >= ~time and: { item[\time] < end
 					and: {
 						item[\wildcard].notNil and: {
 							~wildcards.isNil or: {
-								~wildcards.includesEqual(item[\wildcard])
+								includes = ~wildcards.includesEqual(item[\wildcard]);
+								if(~negate.next > 0) {
+									includes.not
+								} {
+									includes
+								}
 							}
 						}
 					}
@@ -2415,7 +2449,7 @@ protect {
 				};
 			};
 		};
-		~snippet.("wildcards", "\\wildcards(##wildcards##)");
+		~snippet.("wildcards", "\\wildcards(##wildcards, negate##)");
 	} => PR(\clGenWildcards);
 
 	// PR(\clGen).clone {
