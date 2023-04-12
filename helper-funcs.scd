@@ -187,7 +187,12 @@ Library.put(\clLivecode, \setupbars, \guiIsFront, false);
 	gcs = vc.v.globalControls;
 	// pairsDo supports both SeqColl and Dictionary
 	presetDef.pairsDo { |key, value|
-		if(key != \makeParms) {
+		switch(key)
+		{ \makeParms } { nil }  // no-op
+		{ \postAction } {
+			vc.use { value.value(vc) }
+		}
+		{
 			proc.set(key, value);
 			// presets should be able to override globalcontrol defaults
 			// but not with patterns
