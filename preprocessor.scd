@@ -2252,7 +2252,12 @@ play: #{
 		});
 		releaseGate = (~releaseGate ? 0).asArray;
 		~nodes.do({ |node, i|
-			var	freq = ~newFreq.wrapAt(i), length = ~length.wrapAt(i) ?? { inf };
+			var	freq = ~newFreq.wrapAt(i);
+			var length = max(
+				~length.wrapAt(i) ?? { inf },
+				// ~minGate in seconds, convert to beats
+				(~minGate ?? { 0 }) * thisThread.clock.tempo
+			);
 			var releaseTime = thisThread.clock.beats2secs(
 				thisThread.beats + length + timingOffset
 			);
@@ -2296,7 +2301,9 @@ releaseNote: #{
 
 adjustLengthToRealDelta: { ~voicer.isKindOfByName(\MonoPortaVoicer) },
 
-keysToPropagate: #[\voicer, \midi, \mode, \timingOffset, \argKeys, \immediateOSC]
+keysToPropagate: #[\voicer, \midi, \mode, \timingOffset, \argKeys, \immediateOSC
+			, \minGate  // experimentally
+		]
 ) => ProtoEvent(\voicerArticOverlap);
 
 ProtoEvent(\voicerArticOverlap).parent.copy.putAll((
@@ -2565,6 +2572,68 @@ Proto {
 				};
 			} {
 				~defaults.put(key, value);
+			};
+		};
+		currentEnvironment
+	};
+
+	// a for amp; f, m, others by letters
+	~setEnv = { |atk = 0.01, dcy = 0.1, sus = 0.6, rel = 0.1, keys = "a"|
+		var voicer = \bpAsVoicer.eval(~collIndex);
+		// assuming there's only one def being used in the voicer
+		// (bc it's for my live set, not anyone else's)
+		var defname = voicer.nodes.first.defname;
+		var desc;
+		var args;
+		var aIsSelected;
+
+		block { |break|
+			case
+			{ defname.isString } {
+				defname = defname.asSymbol
+			}
+			{ defname.isSymbol } {
+				0
+			}
+			{ break.() };
+			desc = SynthDescLib.global.at(defname);
+			if(desc.notNil) {
+				args = Array(desc.controlNames.size * 2);
+				aIsSelected = keys.includes($a);
+				desc.controlNames.do { |name|
+					var str = name.asString;
+					var firstIsSelected = str.includes(str[0]);
+					case
+					{ aIsSelected and: { str == "atk" } or: {
+						firstIsSelected and: {
+							str.findRegexpAt("[Aa]tk$", 1).notNil
+						}
+					} } {
+						args.add(name).add(atk);
+					}
+					{ aIsSelected and: { str == "dcy" } or: {
+						firstIsSelected and: {
+							str.findRegexpAt("[Dd]cy$", 1).notNil
+						}
+					} } {
+						args.add(name).add(dcy);
+					}
+					{ aIsSelected and: { str == "sus" } or: {
+						firstIsSelected and: {
+							str.findRegexpAt("[Ss]us$", 1).notNil
+						}
+					} } {
+						args.add(name).add(sus);
+					}
+					{ aIsSelected and: { str == "rel" } or: {
+						firstIsSelected and: {
+							str.findRegexpAt("[Rr]el$", 1).notNil
+						}
+					} } {
+						args.add(name).add(rel);
+					};
+				};
+				~set.(*args);
 			};
 		};
 		currentEnvironment
