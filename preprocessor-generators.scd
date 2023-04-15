@@ -540,12 +540,12 @@ protect {
 		// let's reuse that for the number of repeats
 		~makeStream = {
 			~seqStream = Pdup(
-				Pfunc { min(1, ~offset.next) },
+				Pfunc { max(1, ~offset.next) },
 				Prand(~pool.asArray, inf)
 			).collect(_.item).asStream;
 		};
 		~embedInStream = { |inval|
-			Pdup(Pfunc { min(1, ~offset.next) }, Prand(~pool)).embedInStream(inval)
+			Pdup(Pfunc { max(1, ~offset.next) }, Prand(~pool)).embedInStream(inval)
 		};
 		~snippet.("repeat1", "\\repeat1(##items, wildcards, reset, repeats##)");
 	} => PR(\clGenRepeat1);
@@ -864,11 +864,12 @@ protect {
 			~doReset = 0;  // reset is meaningless for wrand anyway
 			currentEnvironment
 		};
+		~patternClass = Pwrand;
 		~makeStream = {
-			~seqStream = Pwrand(~pool.asArray, ~weightPattern.(), inf).collect(_.item).asStream;
+			~seqStream = ~patternClass.new(~pool.asArray, ~weightPattern.(), inf).collect(_.item).asStream;
 		};
 		~embedInStream = { |inval|
-			Pwrand(~pool, ~weightPattern.(), ~repeats).embedInStream(inval)
+			~patternClass.new(~pool, ~weightPattern.(), ~repeats).embedInStream(inval)
 		};
 		~weightPattern = {
 			var firstNum = ~args.detectIndex { |item| ~isNumProxy.(item) };
@@ -884,6 +885,16 @@ protect {
 		~helpString = "\\wrand(\"items\", weight0, weight1...)";
 		~snippet.("wrand", "\\wrand(##items, wildcards, weights...##)");
 	} => PR(\clGenWrand);
+
+	PR(\clGenWrand).clone {
+		~patternClass = Pwxrand;
+
+		// see xrand comment: xrand is stateful; need to preserve the stream
+		~repeats = inf;
+
+		~helpString = "\\wxrand(\"items\", weight0, weight1...)";
+		~snippet.("wxrand", "\\wxrand(##items, wildcards, weights...##)");
+	} => PR(\clGenWxrand);
 
 	PR(\clGenSeq).clone {
 		~repeats = \unset;  // \shuf*num() will override this
@@ -969,7 +980,21 @@ protect {
 				if(~patIndex.isNil) {
 					~patIndex = ~getParmIndex.(~parm);
 				};
-				cache = bp.phrases[bp.prevPhrase].pairs[~patIndex].source.pattern.list[0][\cachedItems];
+
+				// any of these could fail
+				// 'try' would be easier
+				// but 'try' collects a backtrace on error
+				// and backtraces are DANGEROUS
+				if(bp.prevPhrase.notNil) {
+					cache = bp.phrases[bp.prevPhrase];
+				};
+				if(cache.notNil and: { ~patIndex.isNumber }) {
+					cache = cache.pairs[~patIndex];
+				};
+				if(cache.notNil) { cache = cache.source };
+				if(cache.notNil) { cache = cache.pattern };
+				if(cache.notNil) { cache = cache.list[0] };
+				if(cache.notNil) { cache = cache[\cachedItems] };
 				if(cache.isNil) {
 					rrand(~fallbackMin.next, ~fallbackMax.next);
 				} {
@@ -1595,9 +1620,11 @@ protect {
 			} { nil };  // else no error
 		};
 		~canStutter = { |item, index, quant|
-			~getIndexDur.(index) >= (2 * quant) and: {
-				~matchItems.isEmpty or: { ~matchItems.includesEqual(item.item) }
-				and: { ~wildcardCheck.(item[\wildcard]) }
+			item.item.isRest.not and: {
+				~getIndexDur.(index) >= (2 * quant) and: {
+					~matchItems.isEmpty or: { ~matchItems.includesEqual(item.item) }
+					and: { ~wildcardCheck.(item[\wildcard]) }
+				}
 			}
 		};
 		~modifySource = {
@@ -1778,6 +1805,13 @@ protect {
 							lastPitch = ~items[pair[1]].item;
 						};
 						new = SequenceNote(lastPitch.asFloat + ~insStream.next.asFloat);
+						// this test is COMPLETE BULLSHIT
+						// because ~canStutter should prohibit rests from even
+						// getting in here! I think I got it
+						// but I have a show so I'm leaving it in for extra insurance
+						if(lastPitch.isRest) {
+							new.freq = Rest(new.freq);
+						};
 						new = ~applyArtic.(~articStream.next, new);
 						lastPitch = new;
 						pair = new.yield;
@@ -2351,6 +2385,83 @@ protect {
 		};
 		~snippet.("artic", "\\artic(##articPool, wildcards##)");
 	}.import((clGenPitch: #[artic])) => PR(\clGenArtic);
+
+	PR(\clGenArtic).clone {
+		~poolArgs = {
+			var out = ~args[2, 4..];
+			if(~args.size.even) {
+				out = out.add(~args.last);
+			};
+			out;
+		};
+		~localPrep = {
+			var i = 1;
+			var sortValues, order;
+			~convertArticPools.();
+			~wildcards = ~args[0];
+			if(~wildcards.notNil) {
+				~wildcards = ~wildcards.collect(_.item);
+			};
+			~pools = Array(~args.size + 1 div: 2);
+			while {
+				i < ~args.size
+			} {
+				if(i == (~args.size - 1)) {
+					if(i.odd) {
+						~checkArticPool.(~args[i]);
+						~pools.add([0, ~args[i]]);
+					} {
+						"BP(%): articSplit ignoring extra value"
+						.format(~bpKey.asCompileString).warn;
+					};
+					i = i + 1;
+				} {
+					if(~isNumProxy.(~args[i])) {
+						~checkArticPool.(~args[i+1]);
+						~pools.add([~args[i], ~args[i+1]]);
+						i = i + 2;
+					} {
+						Error("BP(%): articSplit should alternate durations and pools"
+							.format(~bpKey.asCompileString)
+						).throw;
+					};
+				};
+			};
+			if(~pools.last[0] != 0) {
+				~pools.add([0, ["_"]]);
+			};
+			sortValues = ~pools.collect { |pair| pair[0].value };
+			order = sortValues.order { |a, b| a > b };
+			~pools = ~pools[order];
+			~poolStreams = ~pools.collect { |pair|
+				Prand(pair[1].asArray, inf).asStream;
+			};
+			currentEnvironment
+		};
+		~apply = { |item, i|
+			var artic, new, j;
+			if(item.item.isKindOf(SequenceNote) and: {
+				~wildcards.isNil or: { ~wildcards.includes(item.wildcard) }
+			}) {
+				j = ~pools.detectIndex { |pair| pair[0].value < ~durAtIndex.(i) };
+				artic = ~poolStreams.clipAt(j).next;
+				new = item.item.copy;
+				new = ~applyArtic.(artic, new);
+				item.copy.put(\item, new);
+			} {
+				item
+			};
+		};
+		// [\dur] is not available yet... have to calculate *rolls eyes*
+		~durAtIndex = { |i|
+			if(i < (~items.size - 1)) {
+				~items[i+1][\time] - ~items[i][\time]
+			} {
+				~dur - ~items[i][\time]
+			}
+		};
+		~snippet.("articSplit", "\\articSplit(##wildcards##, 0.25, \"_\", \".\")");
+	} => PR(\clGenArticSplit);
 
 	PR(\clGen).clone {
 		~poolArgs = { [~args[0]] };
