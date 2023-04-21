@@ -989,12 +989,12 @@ protect {
 					cache = bp.phrases[bp.prevPhrase];
 				};
 				if(cache.notNil and: { ~patIndex.isNumber }) {
-					cache = cache.pairs[~patIndex];
+					cache = cache.tryPerform(\pairs).tryPerform(\at, ~patIndex);
 				};
-				if(cache.notNil) { cache = cache.source };
-				if(cache.notNil) { cache = cache.pattern };
-				if(cache.notNil) { cache = cache.list[0] };
-				if(cache.notNil) { cache = cache[\cachedItems] };
+				if(cache.notNil) { cache = cache.tryPerform(\source) };
+				if(cache.notNil) { cache = cache.tryPerform(\pattern) };
+				if(cache.notNil) { cache = cache.tryPerform(\list).tryPerform(\at, 0) };
+				if(cache.notNil) { cache = cache.tryPerform(\at, \cachedItems) };
 				if(cache.isNil) {
 					rrand(~fallbackMin.next, ~fallbackMax.next);
 				} {
