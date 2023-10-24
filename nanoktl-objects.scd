@@ -198,7 +198,8 @@ protect {
 				gap = ~gap.y,
 				// must save colors because GUI object init runs in another proto
 				ltAqua = ~ltAqua, aqua = ~aqua,
-				green = ~green, ltGreen = ~ltGreen;
+				green = ~green, ltGreen = ~ltGreen,
+				sBkColor = ~sliderBG;
 				8.do { |i|
 					out.add("/1/toggle%".format(~padString.(i+1, 2)).asSymbol).add((
 						bounds: Rect.fromPoints(
@@ -223,7 +224,7 @@ protect {
 						),
 						class: Slider,
 						// I considered implementing receive-drag on the slider too but it didn't work
-						init: { |view| view.knobColor_(green) },
+						init: { |view| view.knobColor_(green).background_(sBkColor) },
 						spec: [0, 1]
 					))
 					.add("/1/toggle%".format(~padString.(i+9, 2)).asSymbol).add((

@@ -164,6 +164,7 @@ protect {
 		~white = Color.white;
 		~black = Color.black;
 		~tabBackground = Color.gray(0.3);
+		~sliderBG = Color.new255(38, 38, 38);
 
 		~yellow = Color(0.7, 0.7, 0.2); // Color.yellow(0.6);
 		~ltYellow = Color.yellow(0.6, 0.6, 0.2); // ~yellow.blend(~black, 0.7);
@@ -192,7 +193,7 @@ protect {
 		lightness = [~tabBackground.red, ~tabBackground.green, ~tabBackground.blue].mean;
 		~labelBG = Color.grey(1.0 - lightness.round, 0.06);
 
-		~sliders = { |n = 1, prefix = "/1", oneBound(Rect(0, 0, 400, 50)), buttonExtent(Point(50, 50)), gap = 10, bcolor, bltColor, scolor, sltColor, startI = 0, nameStartI = 1|
+		~sliders = { |n = 1, prefix = "/1", oneBound(Rect(0, 0, 400, 50)), buttonExtent(Point(50, 50)), gap = 10, bcolor, bltColor, scolor, sltColor, sBkColor, startI = 0, nameStartI = 1|
 			var out = Array(n * 5),
 			togStr = prefix ++ "/toggle",
 			slStr = prefix ++ "/fader",
@@ -234,7 +235,7 @@ protect {
 					),
 					class: Slider,
 					// I considered implementing receive-drag on the slider too but it didn't work
-					init: { |view| view.knobColor_(scolor) },
+					init: { |view| view.knobColor_(scolor).background_(sBkColor) },
 					spec: [0, 1]
 				));
 				origin.y = origin.y + oneBound.height + gap;
@@ -244,9 +245,9 @@ protect {
 
 		~tabSpecs = [
 			"Tab1", {
-				var out = ~sliders.(1, "/1", oneBound: Rect(0, 0, ~sliderWidth, ~buttonExtent.y), buttonExtent: ~buttonExtent, gap: ~gap.x, bcolor: ~yellow, bltColor: ~ltYellow, scolor: ~yellow, sltColor: ~ltYellow, startI: 16),
+				var out = ~sliders.(1, "/1", oneBound: Rect(0, 0, ~sliderWidth, ~buttonExtent.y), buttonExtent: ~buttonExtent, gap: ~gap.x, bcolor: ~yellow, bltColor: ~ltYellow, scolor: ~yellow, sltColor: ~ltYellow, sBkColor: ~sliderBG, startI: 16),
 				last = out.last;
-				out = out ++ ~sliders.(2, "/1", oneBound: Rect(0, last.bounds.bottom, ~sliderWidth, ~buttonExtent.y), buttonExtent: ~buttonExtent, gap: ~gap.x, bcolor: ~aqua, bltColor: ~ltAqua, scolor: ~aqua, sltColor: ~ltAqua, nameStartI: 2, startI: 17);
+				out = out ++ ~sliders.(2, "/1", oneBound: Rect(0, last.bounds.bottom, ~sliderWidth, ~buttonExtent.y), buttonExtent: ~buttonExtent, gap: ~gap.x, bcolor: ~aqua, bltColor: ~ltAqua, scolor: ~aqua, sltColor: ~ltAqua, sBkColor: ~sliderBG, nameStartI: 2, startI: 17);
 				last = out.last;
 				out = out.grow(out.size + (7*2));
 				5.do { |i|
@@ -279,13 +280,15 @@ protect {
 			"Tab2", ~sliders.(
 				8, "/2", oneBound: Rect(0, 0, ~sliderWidth, ~buttonExtent.y),
 				buttonExtent: ~buttonExtent, gap: ~gap.y,
-				bcolor: ~aqua, bltColor: ~ltAqua, scolor: ~green, sltColor: ~ltGreen,
+				bcolor: ~aqua, bltColor: ~ltAqua,
+				scolor: ~green, sltColor: ~ltGreen, sBkColor: ~sliderBG,
 				startI: 0
 			),
 			"Tab3", ~sliders.(
 				8, "/3", oneBound: Rect(0, 0, ~sliderWidth, ~buttonExtent.y),
 				buttonExtent: ~buttonExtent, gap: ~gap.y,
-				bcolor: ~aqua, bltColor: ~ltAqua, scolor: ~red, sltColor: ~ltRed,
+				bcolor: ~aqua, bltColor: ~ltAqua,
+				scolor: ~red, sltColor: ~ltRed, sBkColor: ~sliderBG,
 				startI: 8
 			),
 		];
@@ -314,7 +317,7 @@ protect {
 
 		~presetOSCCmd = '/button_27';
 
-		~sliders = { |n = 1, prefix = "/1", oneBound(Rect(0, 0, 400, 50)), buttonExtent(Point(50, 50)), gap = 10, bcolor, bltColor, scolor, sltColor, startI = 0, nameStartI = 1|
+		~sliders = { |n = 1, prefix = "/1", oneBound(Rect(0, 0, 400, 50)), buttonExtent(Point(50, 50)), gap = 10, bcolor, bltColor, scolor, sltColor, sBkColor, startI = 0, nameStartI = 1|
 			var out = Array(n * 6),
 			togStr = prefix ++ "/button_",
 			slStr = prefix ++ "/fader_",
@@ -358,7 +361,7 @@ protect {
 					),
 					class: Slider,
 					// I considered implementing receive-drag on the slider too but it didn't work
-					init: { |view| view.knobColor_(scolor) },
+					init: { |view| view.knobColor_(scolor).background_(sBkColor) },
 					spec: [0, 1]
 				));
 				origin.y = origin.y + oneBound.height + gap;
@@ -370,18 +373,21 @@ protect {
 			"Tab1", ~sliders.(
 				12, "", oneBound: Rect(0, 0, ~sliderWidth, ~buttonExtent.y),
 				buttonExtent: ~buttonExtent, gap: ~gap.y,
-				bcolor: ~aqua, bltColor: ~ltAqua, scolor: ~green, sltColor: ~ltGreen,
+				bcolor: ~aqua, bltColor: ~ltAqua,
+				scolor: ~green, sltColor: ~ltGreen, sBkColor: ~sliderBG,
 				startI: 0
 			) ++ ~sliders.(
 				12, "", oneBound: Rect(106, 0, ~sliderWidth, ~buttonExtent.y),
 				buttonExtent: ~buttonExtent, gap: ~gap.y,
-				bcolor: ~aqua, bltColor: ~ltAqua, scolor: ~green, sltColor: ~ltGreen,
+				bcolor: ~aqua, bltColor: ~ltAqua,
+				scolor: ~green, sltColor: ~ltGreen, sBkColor: ~sliderBG,
 				startI: 12, nameStartI: 13
 			),
 			"Tab2", ~sliders.(
 				2, "", oneBound: Rect(0, 0, ~sliderWidth, ~buttonExtent.y),
 				buttonExtent: ~buttonExtent, gap: ~gap.y,
-				bcolor: ~aqua, bltColor: ~ltAqua, scolor: ~green, sltColor: ~ltGreen,
+				bcolor: ~aqua, bltColor: ~ltAqua,
+				scolor: ~green, sltColor: ~ltGreen, sBkColor: ~sliderBG,
 				startI: 24, nameStartI: 25
 			)
 		];
@@ -1091,13 +1097,27 @@ protect {
 				};
 				if(obj.isKindOf(BP)) {
 					defer(inEnvir {
-						~bpSimpleCtls.put(key, SimpleController(obj)
-							.put(\play, inEnvir { defer(~updateView) })
-							.put(\stop, inEnvir { |obj, what, value|
-								if(value == \stopped) { defer(~updateView) };
-							})
-							.put(\voicer_, inEnvir { defer(~updateView) })
-						);
+						// creating a BP seems to call classHooks at least twice
+						// and '.exists' doesn't disambiguate
+						// so we can only check if we created a controller before
+						// but it gets worse... the two calls are for physically
+						// different BP objects. So we cannot use 'obj'
+						// as it is out of date by the time the defer{} wakes up.
+						// For now, the best I can think of is to keep the 'defer'
+						// to allow BP to juggle the objects, then look it up
+						// based on the key (use the latest available BP('st'),
+						// of which there should only ever be one).
+						// This is... horrid.
+						if(~bpSimpleCtls[key].isNil) {
+							obj = BP(key);  // this has changed, see above
+							~bpSimpleCtls.put(key, SimpleController(obj)
+								.put(\play, inEnvir { defer(~updateView) })
+								.put(\stop, inEnvir { |obj, what, value|
+									if(value == \stopped) { defer(~updateView) };
+								})
+								.put(\voicer_, inEnvir { defer(~updateView) })
+							);
+						};
 					}, 0.1);
 				};
 				~updateView.defer(0.05);  // updateView is already linked to this envir
