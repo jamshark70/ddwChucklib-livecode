@@ -712,9 +712,11 @@ Proto {
 				};
 			};
 		});
-		~view.view.receiveDragHandler_({ |view|
-			view.setString(View.currentDrag.asString, view.selectionStart, 0)
-		})
+		~view.view.receiveDragHandler_(inEnvir({ |view|
+			view.setString(View.currentDrag.asString, view.selectionStart, 0);
+			// potentially nice idea but what a mess
+			~dragAction.();
+		}, ~view))
 		.canReceiveDragHandler_({ View.currentDrag.isString });
 		currentEnvironment
 	};

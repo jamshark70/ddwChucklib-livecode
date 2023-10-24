@@ -172,6 +172,28 @@ Library.put(\clLivecode, \setupbars, \guiIsFront, false);
 { |preset, bp|
 	var vc, presetDef, proc;
 	var gcs;
+	var watcher;
+	var applyPreset = {
+		watcher.remove;
+		"applying preset pairs".debug;
+		gcs = vc.v.globalControls;
+		// pairsDo supports both SeqColl and Dictionary
+		presetDef.pairsDo { |key, value|
+			switch(key)
+			{ \makeParms } { nil }  // no-op
+			{ \postAction } {
+				vc.use { value.value(vc) }
+			}
+			{
+				proc.set(key, value);
+				// presets should be able to override globalcontrol defaults
+				// but not with patterns
+				if(gcs[key].notNil and: { value.isNumber }) {
+					gcs[key].value = value
+				};
+			};
+		};
+	};
 	vc = \bpAsVC.eval(bp);
 	presetDef = vc.env[\presets].tryPerform(\at, preset) ?? {
 		// vc.env[\collIndex] is the Factory's collIndex
@@ -184,22 +206,11 @@ Library.put(\clLivecode, \setupbars, \guiIsFront, false);
 		)).throw;
 	};
 	proc = BP(bp);  // already validated by \bpAsVC
-	gcs = vc.v.globalControls;
-	// pairsDo supports both SeqColl and Dictionary
-	presetDef.pairsDo { |key, value|
-		switch(key)
-		{ \makeParms } { nil }  // no-op
-		{ \postAction } {
-			vc.use { value.value(vc) }
-		}
-		{
-			proc.set(key, value);
-			// presets should be able to override globalcontrol defaults
-			// but not with patterns
-			if(gcs[key].notNil and: { value.isNumber }) {
-				gcs[key].value = value
-			};
-		};
+	if(vc.env[\vcIsReady] == true) {
+		applyPreset.value
+	} {
+		watcher = SimpleController(vc)
+		.put(\vcReady, applyPreset);
 	};
 	proc
 } => Func(\preset);
@@ -207,6 +218,8 @@ Library.put(\clLivecode, \setupbars, \guiIsFront, false);
 { |parent, bounds(Rect(800, 200, 500, 400))|
 	var view = TreeView(parent, bounds);
 	var watcher;
+	var editor, closeFunc;
+
 	view.columns_(["ID", "preset"]).setColumnWidth(0, 140);
 	if(parent.isNil) { view.front };
 
@@ -290,6 +303,17 @@ Library.put(\clLivecode, \setupbars, \guiIsFront, false);
 				);
 			} { nil }
 		} { nil }
+	};
+
+	// do not commit this! it assumes a specific GUI
+	// also there's no way to do this for IDE documents
+	editor = topEnvironment[\editor];
+	if(editor.notNil) {
+		closeFunc = {
+			defer { view.close };
+			editor.view[\dragAction].removeFunc(closeFunc);
+		};
+		editor.view[\dragAction] = editor.view[\dragAction].addFunc(closeFunc);
 	};
 
 	view
