@@ -513,7 +513,8 @@ protect {
 
 		// makeStream should always be infinite
 		~makeStream = {
-			~seqStream = Pseq(~pool.asArray, inf).collect(_.item).asStream;
+			~seqPattern = Pseq(~pool.asArray, inf).collect(_.item);
+			~seqStream = ~seqPattern.asStream;
 		};
 		// embedInStream is for generators embedded in pools, should use repeats
 		~embedInStream = { |inval|
@@ -688,6 +689,104 @@ protect {
 	} => PR(\clGenReplace);
 
 	PR(\clGenSeq).clone {
+		// I think not necessary
+		~poolArgs = { ~args[[0, 2]] };
+		~superPrep = ~localPrep;
+		~localPrep = {
+			~superPrep.value;
+			~restItem = ~args[2] ?? {
+				if(~isPitch ?? { false }) {
+					[(item: SequenceNote(Rest(120), ~dur, ~dur, 0.5))]
+				} {
+					[(item: $x)]
+				};
+			};
+			~restItemStream = Prand(~restItem, inf).asStream;  // not sure
+		};
+		~canBePool = false;
+		~modifySource = {
+			~items.do { |item, i|
+				var next, restItem;
+				if(~replaceItems.includesEqual(item[\wildcard])) {
+					// some replacers might need access to the state
+					~currentItem = item;
+					~currentIndex = i;
+					next = ~seqStream.next(item);
+					if(~isRestChar.(next)) {
+						restItem = ~restItemStream.next(item)[\item];
+						if(restItem.isRest.not) {
+							restItem = Rest(restItem);
+						};
+						// copy is critical here!
+						// 18-1014: wildcard-replacers update the wildcard
+						~items[i] = item.copy.put(\wildcard, item[\item])
+						.put(\item, restItem);
+					};
+				};
+			};
+		};
+		~isRestChar = { |item|
+			if(item.isKindOf(Dictionary)) {
+				item = item[\item];
+			};
+			// comment may be totally wrong for = vs -
+			// tricky: for isPitch parameters,
+			// "." compiles to an articulation pool,
+			// which is totally incompatible with this usage
+
+			// btw: why did I say item == $. here? Everywhere else, '-' is the rest
+			"-.".includes(item) or: { item.tryPerform(\asFloat) == 45 }
+		};
+		~snippet.("rest", "\\rest(##switch, wildcards, restItem##)");
+	} => PR(\clGenRest);
+
+	PR(\clGenRest).clone {
+		~localPrep = {
+			// superPrep needs: pool, replaceItems, doReset, offset
+			// this is faking an object as if you had written
+			// \rest(\repeat1(\seq("=-", , , {Ppatlace(...)})))
+			~numNotes = ~args[0] ?? { ClNumProxy(1) };
+			~numRests = ~args[1] ?? { ClNumProxy(1) };
+			~doReset = ~args[4] ?? { 0 };
+			#[numNotes, numRests, doReset].do { |key|
+				if(~isNumProxy.(key.envirGet).not) {
+					Error("%: % should be a number proxy".format(~protoID, key)).throw;
+				};
+			};
+			if(~args[2].isSequenceableCollection) {
+				~replaceItems = ~args[2].collect { |item| item.item };
+			} {
+				~replaceItems = [$*];
+			};
+			~pool = Pdup(
+				// because ClNumProxy can stream
+				Ppatlace([~numNotes, ~numRests], inf),
+				Pseq("=-".collectAs({ |char, i|
+					var item;
+					if(~isPitch ?? { false }) {
+						item = SequenceNote(Rest(char.ascii));
+					} {
+						item = char;
+					};
+					(item: item, dur: ~dur * 0.5, time: i * (~dur * 0.5))
+				}, Array), inf)
+			);
+
+			~restItem = ~args[3] ?? {
+				if(~isPitch ?? { false }) {
+					[(item: SequenceNote(Rest(120), ~dur, ~dur, 0.5))]
+				} {
+					[(item: $x)]
+				};
+			};
+			~restItemStream = Prand(~restItem, inf).asStream;  // not sure
+			// ~superPrep.value;
+		};
+
+		~snippet.("restn", "\\restn(##numEvents##, numRests, wildcards, restItem, reset)");
+	} => PR(\clGenRestn);
+
+	PR(\clGenSeq).clone {
 		~poolArgs = { ~args[0..1] };
 		~resetFlag = true;  // special case, these two
 		~repeats = inf;
@@ -723,8 +822,8 @@ protect {
 				Prand(~pool, { ~repeats.next }, { ~offset.next })
 			]).embedInStream(inval)
 		};
-		~helpString = "\\seq(\"first\", \"items\")";
-		~snippet.("first", "\\seq(##first, items, wildcards, reset##)");
+		~helpString = "\\first(\"first\", \"items\")";
+		~snippet.("first", "\\first(##first, items, wildcards, reset##)");
 	} => PR(\clGenFirst);
 
 	PR(\clGen).clone {
@@ -749,7 +848,10 @@ protect {
 			var didDelete = false;
 			~items = ~getUpstreamItems.();
 			~items.do { |item, i|
-				var condition = ~replaceItems.includesEqual(item[\wildcard]) and: {
+				var condition = (
+					~replaceItems.includesEqual(item[\wildcard])
+					or: { ~replaceItems.includesEqual(item[\item]) }
+				) and: {
 					// why '.not'? 0.75 should be 75% chance of keeping it
 					// (higher number -> more event density)
 					~prob.next.coin.not
@@ -804,34 +906,37 @@ protect {
 		~global = IdentityDictionary.new;
 		~repository = { PR(\clGenGdefn).global };
 		~makeStream = {
+			~seqStream = Routine { |inval|
+				~embedInStream.(inval)
+			};
+		};
+		~embedInStream = { |inval|
+			var next, tries, warned = false;
 			var stream, repository = ~repository.();
 			if(repository[~pool].isNil) {
 				repository[~pool] = Pdefn(~pool).asStream;
 			};
 			stream = repository[~pool];
-			// Insurance against failure: auto-reset if the stream ends.
-			// 10 nils in a row, stop (don't infloop)
-			~seqStream = Routine { |inval|
-				var next, tries, warned = false;
-				loop {
-					tries = 10;
-					while {
-						next = stream.next(inval);
-						next.isNil and: { tries > 0 }
-					} {
-						tries = tries - 1;
-						stream.reset;
-					};
-					if(next.isNil) {
-						if(warned.not) {
-							"\\pdefn(, `%) stream ended, rests will be substituted".format(~pool).warn;
-							warned = true;
-						};
-					} {
-						warned = false;
-					};
-					inval = next.yield;
+			loop {
+				// Insurance against failure: auto-reset if the stream ends.
+				// 10 nils in a row, stop (don't infloop)
+				tries = 10;
+				while {
+					next = stream.next(inval);
+					next.isNil and: { tries > 0 }
+				} {
+					tries = tries - 1;
+					stream.reset;
 				};
+				if(next.isNil) {
+					if(warned.not) {
+						"\\pdefn(, `%) stream ended, rests will be substituted".format(~pool).warn;
+						warned = true;
+					};
+				} {
+					warned = false;
+				};
+				inval = next.yield;  // may yield nil if pdefn ends
 			};
 		};
 		~helpString = "\\gdefn(, `key)";
@@ -985,8 +1090,8 @@ protect {
 				// 'try' would be easier
 				// but 'try' collects a backtrace on error
 				// and backtraces are DANGEROUS
-				if(bp.prevPhrase.notNil) {
-					cache = bp.phrases[bp.prevPhrase];
+				if(bp[\prevPhrase].notNil) {
+					cache = bp.phrases[bp[\prevPhrase]];
 				};
 				if(cache.notNil and: { ~patIndex.isNumber }) {
 					cache = cache.tryPerform(\pairs).tryPerform(\at, ~patIndex);
@@ -2366,6 +2471,7 @@ protect {
 			currentEnvironment
 		};
 		~process = {
+			if(~resetFlag) { ~poolStream.reset };
 			~items = ~getUpstreamItems.();
 			~items.collect(~apply);
 		};
@@ -2386,6 +2492,13 @@ protect {
 		~snippet.("artic", "\\artic(##articPool, wildcards##)");
 	}.import((clGenPitch: #[artic])) => PR(\clGenArtic);
 
+	// \articSplit(wildcards, dur0, articpool0, dur1, articpool1, ... articpoolDefault)
+	// durs are arranged in decreasing order
+	// match: given dur <= event dur, and last dur is 0 (so shortest notes will match last)
+	// so \articSplit("*", 0.5, "_", "~"):
+	// event dur = 0.5: do match vs 0.5, apply "_"
+	// event dur = 0.25, no match vs 0.5, do match 0, apply "~"
+	// so now the meaning is: "0.5 and greater, use '_', less than 0.5, use '~'"
 	PR(\clGenArtic).clone {
 		~poolArgs = {
 			var out = ~args[2, 4..];
@@ -2439,11 +2552,12 @@ protect {
 			currentEnvironment
 		};
 		~apply = { |item, i|
-			var artic, new, j;
+			var artic, new, j, dur;
 			if(item.item.isKindOf(SequenceNote) and: {
 				~wildcards.isNil or: { ~wildcards.includes(item.wildcard) }
 			}) {
-				j = ~pools.detectIndex { |pair| pair[0].value < ~durAtIndex.(i) };
+				dur = ~durAtIndex.(i);
+				j = ~pools.detectIndex { |pair| pair[0].value <= dur };
 				artic = ~poolStreams.clipAt(j).next;
 				new = item.item.copy;
 				new = ~applyArtic.(artic, new);
