@@ -852,6 +852,11 @@ protect {
 		~bindGenericGlobalControl = { |thing, adverb, parms|
 			// prefer Tab3 for gcs
 			var index = ~getIndexFromAdverb.(adverb, #[8, 0], \fader), newMap;
+
+			// if last occupant was a mxmap, there may be a toggle map attached
+			// which will be invalid, so, dump it before reassigning
+			~maps[~toggleKeys[index]].free;
+
 			~maps[~faderKeys[index]].free;
 			newMap = PR(\gcmap).copy.prep(~faderKeys[index], (gc: thing, label: thing.name));
 			~maps[~faderKeys[index]] = newMap;
