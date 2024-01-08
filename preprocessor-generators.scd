@@ -170,6 +170,7 @@ protect {
 		};
 		~asPattern = { |bp|  // the BP() object -- asPattern should be called @ top level only
 			var pat, rest, didProcess = false;
+			// var startTime = Main.elapsedTime;
 			if(~items.isNil) {
 				~items = ~doProcess.(bp);
 				~items = ~updateDeltas.(~items, \delta);
@@ -205,6 +206,7 @@ protect {
 				~repository[~parm] = ~items.last;
 			};
 			if(didProcess) { ~unprocess.() };
+			// (Main.elapsedTime - startTime).debug("BP(%) pattern processing time".format(bp.collIndex));
 			if(~isMain) {
 				pat
 			} {
@@ -576,6 +578,9 @@ protect {
 						.format(~bpKey.asCompileString, key)
 					).throw
 				};
+			};
+			if(~numToSkip.value == inf) {
+				Error("BP(%): numToSkip must not be inf").throw;
 			};
 			if(~args[3].isSequenceableCollection) {
 				~replaceItems = ~args[3].collect { |item| item.item };
@@ -2574,7 +2579,7 @@ protect {
 				~dur - ~items[i][\time]
 			}
 		};
-		~snippet.("articSplit", "\\articSplit(##wildcards##, 0.25, \"_\", \".\")");
+		~snippet.("articSplit", "\\articSplit(##wildcards##, 0.5, \"_\", \".\")");
 	} => PR(\clGenArticSplit);
 
 	PR(\clGen).clone {
