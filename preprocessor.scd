@@ -2240,6 +2240,7 @@ play: #{
 	timingOffset = ~timingOffset ? 0,
 	clock = ~clock,
 	voicer = ~voicer,
+	latency = ~latency ?? { voicer.target.server.latency },
 	bundle, releaseGate;
 	if((currentEnvironment.tryPerform(\isRest) ? false).not) {
 		~prepNote.value;
@@ -2261,19 +2262,17 @@ play: #{
 			var releaseTime = thisThread.clock.beats2secs(
 				thisThread.beats + length + timingOffset
 			);
-			Func(\schedEventBundleArray).doAction(lag, ~timingOffset, node.server,
-				node.server.makeBundle(false, {
+					thisThread.clock.sched(timingOffset, inEnvir {
 					if(~forceNew == true) {
-						node.trigger(freq, ~gate.wrapAt(i), ~args.wrapAt(i));
+						node.trigger(freq, ~gate.wrapAt(i), ~args.wrapAt(i), latency);
 					} {
-						voicer.prArticulate1(node, freq, nil, ~gate.wrapAt(i), ~args.wrapAt(i),
+							voicer.prArticulate1(node, freq, nil, ~gate.wrapAt(i), ~args.wrapAt(i), latency,
 							slur: ~accent != true,
 							seconds: thisThread.seconds
 						);
 					};
 					node.releaseTime = releaseTime;
-				})
-			);
+				});
 			if(length.notNil and: { length != inf }) {
 				thisThread.clock.sched(length + timingOffset, {
 					voicer.releaseNode(node, freq, releaseGate.wrapAt(i),
