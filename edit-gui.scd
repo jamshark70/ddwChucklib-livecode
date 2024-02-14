@@ -878,7 +878,9 @@ Proto {
 	~background = Color.gray(0.15);
 	~stringColor = Color.white;
 	~markColor = Color(0.5, 1, 0.5);  // Color(0.8, 0, 0);
-	~font = Font("Inconsolata", 18);
+	~font = Font("Inconsolata",
+		if(Window.screenBounds.height > 1000) { 28 } { 18 }
+	);
 	~markFont = ~font.boldVariant;
 	~textProperties = #[background, scrollBackground, stringColor, markColor, font, markFont];
 	~getTextProperties = getTextProperties;

@@ -153,6 +153,9 @@ protect {
 			};
 			currentEnvironment
 		};
+
+		~tabMessage = { |i| [("/" ++ (i+1)).asSymbol] };
+		~tabOffset = 0;
 	} => PR(\abstractTouch);
 
 	// this has GUI stuff in it -- maybe revisit
@@ -315,7 +318,7 @@ protect {
 		~xyExtent = Point(140, 145);
 		~gap = Point(3, 3);
 
-		~presetOSCCmd = '/button_27';
+		~presetOSCCmd = '/presetButton';
 
 		~sliders = { |n = 1, prefix = "/1", oneBound(Rect(0, 0, 400, 50)), buttonExtent(Point(50, 50)), gap = 10, bcolor, bltColor, scolor, sltColor, sBkColor, startI = 0, nameStartI = 1|
 			var out = Array(n * 6),
@@ -333,7 +336,7 @@ protect {
 					bounds: Rect.fromPoints(origin, origin + buttonExtent - Point(gap, 0)),
 					class: StaticText,
 					init: { |view|
-						view.string_((i + startI).asDigit.asString);
+						view.string_(((i + startI % 24)).asDigit.asString);
 					}
 				))
 				.add((togStr ++ num).asSymbol)
@@ -384,11 +387,24 @@ protect {
 				startI: 12, nameStartI: 13
 			),
 			"Tab2", ~sliders.(
-				2, "", oneBound: Rect(0, 0, ~sliderWidth, ~buttonExtent.y),
+				12, "", oneBound: Rect(0, 0, ~sliderWidth, ~buttonExtent.y),
 				buttonExtent: ~buttonExtent, gap: ~gap.y,
 				bcolor: ~aqua, bltColor: ~ltAqua,
 				scolor: ~green, sltColor: ~ltGreen, sBkColor: ~sliderBG,
-				startI: 24, nameStartI: 25
+				startI: 24, nameStartI: 25,
+			) ++ ~sliders.(
+				12, "", oneBound: Rect(106, 0, ~sliderWidth, ~buttonExtent.y),
+				buttonExtent: ~buttonExtent, gap: ~gap.y,
+				bcolor: ~aqua, bltColor: ~ltAqua,
+				scolor: ~green, sltColor: ~ltGreen, sBkColor: ~sliderBG,
+				startI: 36, nameStartI: 37
+			),
+			"Tab3", ~sliders.(
+				3, "", oneBound: Rect(0, 0, ~sliderWidth, ~buttonExtent.y),
+				buttonExtent: ~buttonExtent, gap: ~gap.y,
+				bcolor: ~aqua, bltColor: ~ltAqua,
+				scolor: ~green, sltColor: ~ltGreen, sBkColor: ~sliderBG,
+				startI: 48, nameStartI: 49
 			)
 		];
 		~chuckOSCKeys = {
@@ -404,6 +420,9 @@ protect {
 			toggleKeys = keys.select { |key| key[1] == $b }.collect(_.asSymbol);
 			(keys: keys, faderKeys: faderKeys, toggleKeys: toggleKeys)
 		};
+
+		~tabOffset = { |activeTab| activeTab * 24 };
+		~tabMessage = { |i| ['/panel_1', i.asFloat] };
 	} => PR(\openStageTouch);
 
 	Proto {
@@ -425,6 +444,7 @@ protect {
 			~makeWindow.();
 			~makeTabs.();
 			~window.front;
+
 			currentEnvironment;
 		};
 		~free = {
@@ -479,7 +499,7 @@ protect {
 		~makeTabs = {
 			~tabs = TabbedView(~parentView, ~parentView.bounds.insetBy(2, 2), ~tabSpecs[0, 2 ..])
 			.backgrounds_([~model.tabBackground]);
-			~tabSwitch = Array.fill(~tabs.views.size, { |i| ("/" ++ (i+1)).asSymbol });
+			~tabSwitch = Array.fill(~tabs.views.size, { |i| ~model.tabMessage(i) });
 			~views = IdentityDictionary.new;
 			~labels = IdentityDictionary.new;
 			~tabSpecs.pairsDo { |name, viewSpecs, i|
@@ -496,7 +516,7 @@ protect {
 			~tabs.focusActions = Array.fill(~tabs.views.size, { |i|
 				inEnvir {
 					if(~tabFocusActive and: { ~model.addr.notNil }) {
-						~model.sendAddr.sendMsg(~tabSwitch[i]);
+						~model.sendAddr.sendMsg(*(~tabSwitch[i]));
 					};
 				}
 			});
@@ -540,8 +560,9 @@ protect {
 
 		~respond = { |obj, msg|  // what, args
 			var what = msg[0], view;
+
 			// reserved: switch tabs
-			case { (view = ~tabSwitch.indexOf(what)).notNil } {
+			case { (view = ~tabSwitch.indexOfEqual(msg)).notNil } {
 				(inEnvir {
 					~tabFocusActive = false;  // suppress focusAction
 					~tabs.focus(view);
@@ -564,6 +585,8 @@ protect {
 				};
 			}
 		};
+
+		~tabOffset = { ~model.tabOffset(~tabs.activeTab) };
 	} => PR(\abstractTouchGUI);
 
 	Proto {
@@ -905,12 +928,12 @@ protect {
 				newMap = PR(\abstrMobileResp).copy.prep(~toggleKeys[index],
 					(label: "M"));
 				newMap.prAction = { |msg| mixer.mute(msg[1] > 0) };
-				newMap[\update] = newMap[\update].addFunc({ |obj, what, ag|
+				newMap[\update] = newMap[\update].addFunc(inEnvir({ |obj, what, ag|
 					if(what == \mixerFreed and: { ag === mixer }) {
 						~free.();
 						MixerChannel.removeDependant(currentEnvironment);
 					};
-				});
+				}, newMap));
 				newMap.userfree = {
 					BP(~oscInKey).setGUIValue(~path[0], 0);
 				};
@@ -1039,7 +1062,12 @@ protect {
 					item = ~items[view.value];
 					char = char.toUpper;
 					if(item.notNil and: { ~chuckTargetChars.includes(char) }) {
-						i = ~chuckTargetChars.indexOf(char);
+						if(BP.exists(~touchKey)) {
+							i = BP(~touchKey).tabOffset;
+						} {
+							i = 0;
+						};
+						i = i + ~chuckTargetChars.indexOf(char);
 						// must chuck into the proto, not the BP
 						item[\dragObject].chuck(BP(\chuckOSC).v, i);
 					};
@@ -1114,18 +1142,24 @@ protect {
 						// of which there should only ever be one).
 						// This is... horrid.
 						if(~bpSimpleCtls[key].isNil) {
-							obj = BP(key);  // this has changed, see above
-							~bpSimpleCtls.put(key, SimpleController(obj)
-								.put(\play, inEnvir { defer(~updateView) })
-								.put(\stop, inEnvir { |obj, what, value|
-									if(value == \stopped) { defer(~updateView) };
-								})
-								.put(\voicer_, inEnvir { defer(~updateView) })
-							);
+							// do not try to access BP(key)
+							// unless there's something there
+							// otherwise it will mistakenly create an empty
+							// BP and this will break future =>
+							if(BP.exists(key)) {
+								obj = BP(key);  // this has changed, see above
+								~bpSimpleCtls.put(key, SimpleController(obj)
+									.put(\play, inEnvir { defer(~updateView) })
+									.put(\stop, inEnvir { |obj, what, value|
+										if(value == \stopped) { defer(~updateView) };
+									})
+									.put(\voicer_, inEnvir { defer(~updateView) })
+								);
+							};
 						};
 					}, 0.1);
 				};
-				~updateView.defer(0.05);  // updateView is already linked to this envir
+				~updateView.defer(0.3);  // updateView is already linked to this envir
 			};
 			~freeHook = inEnvir { |key, obj|
 				var item = ~items.detect { |it| it[\object] === obj };
