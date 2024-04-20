@@ -131,7 +131,9 @@ protect {
 				~addr = replyAddr;
 				~sendAddr = NetAddr(~addr.ip, ~sendPort);
 				parentEnvir[\pingStatus] = true;
-				parentEnvir[\pingCond].signalAll;
+				if(parentEnvir[\pingCond].notNil) {
+					parentEnvir[\pingCond].signalAll;
+				};
 			};
 		};
 

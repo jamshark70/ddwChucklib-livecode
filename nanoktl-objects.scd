@@ -74,7 +74,9 @@ protect {
 			// touch interface needs to wait for ping; MIDI doesn't
 			// so signal that it's OK to move ahead
 			parentEnvir[\pingStatus] = true;
-			parentEnvir[\pingCond].signalAll;
+			if(parentEnvir[\pingCond].notNil) {
+				parentEnvir[\pingCond].signalAll;
+			};
 			currentEnvironment
 		};
 		~freeCleanup = {
