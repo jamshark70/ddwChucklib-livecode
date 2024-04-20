@@ -1719,10 +1719,10 @@ protect {
 			};
 			currentEnvironment
 		};
-		~defaultNames = #[/*baseItems,*/ match, numToAdd, quant, prob, insPool, wildcards];
-		~defaults = [/*nil,*/ nil, 1, 0.25, 0.75, nil, nil];
+		~defaultNames = #[/*baseItems,*/ match, numToAdd, quant, prob, insPool, wildcards, replaceWildcard];
+		~defaults = [/*nil,*/ nil, 1, 0.25, 0.75, nil, nil, nil];
 		// expand this later
-		~validation = [/*nil,*/ nil, \isNumProxy, \isNumProxy, \isNumProxy, nil, nil];
+		~validation = [/*nil,*/ nil, \isNumProxy, \isNumProxy, \isNumProxy, nil, nil, nil];
 		~isNumProxy = { |thing, key|
 			if(thing.tryPerform(\isNumProxy) != true) {
 				"BP(%): %'s % input expected number"
@@ -1744,7 +1744,8 @@ protect {
 				var new = valueStream.next(pair);
 				~items = ~items.add((
 					item: new,
-					wildcard: new,
+					wildcard: if(~replaceWildcard.isNil) { new }
+					{ ~replaceWildcard.choose.item },
 					src: \stutt,  // DON'T HARDCODE THIS
 					time: pair[0]
 				));
@@ -1806,7 +1807,7 @@ protect {
 			};
 		};
 		~makeStream = 0;  // ~seqStream is not used here
-		~snippet.("stutt", "\\stutt(##match, numToAdd, quant, prob, insItem \"-\", wildcards##)");
+		~snippet.("stutt", "\\stutt(##match, numToAdd, quant, prob, insItem \"-\", wildcards, \"*\"##)");
 	}.import((clGenPitch: #[artic])) => PR(\clGenStutt);
 
 	PR(\clGenStutt).clone {
@@ -1865,22 +1866,22 @@ protect {
 	// for each, add up to n-1 new things
 	// e.g. addLimit = 3 means a total of 3 events following from a source event
 	PR(\clGenStutt).clone {
-		~defaultNames = #[/*baseItems,*/ match, numToAdd, quant, prob, addLimit, insPool, wildcards];
-		~defaults = [/*nil,*/ nil, 1, 0.25, 0.75, 1000, nil, nil];
+		~defaultNames = #[/*baseItems,*/ match, numToAdd, quant, prob, addLimit, insPool, wildcards, replaceWildcard];
+		~defaults = [/*nil,*/ nil, 1, 0.25, 0.75, 1000, nil, nil, nil];
 		// expand this later
-		~validation = [/*nil,*/ nil, \isNumProxy, \isNumProxy, \isNumProxy, \isNumProxy, nil, nil];
+		~validation = [/*nil,*/ nil, \isNumProxy, \isNumProxy, \isNumProxy, \isNumProxy, nil, nil, nil];
 		~makeGoCondition = { |time, index|
 			var addLimit = max(0, ~addLimit.next - 1);
 			{ |time, numAdded| numAdded < addLimit }
 		};
-		~snippet.("stuttN", "\\stuttN(##match, numToAdd, quant, prob, numInclusive, insItem \"-\", wildcards##)");
+		~snippet.("stuttN", "\\stuttN(##match, numToAdd, quant, prob, numInclusive, insItem \"-\", wildcards, \"*\"##)");
 	} => PR(\clGenStuttN);
 
 	PR(\clGenStuttN).clone {
-		~defaultNames = #[/*baseItems,*/ match, numToAdd, quant, prob, addLimit, insPool, articPool, wildcards];
-		~defaults = [/*nil,*/ nil, 1, 0.25, 0.75, 1000, nil, nil, nil];
+		~defaultNames = #[/*baseItems,*/ match, numToAdd, quant, prob, addLimit, insPool, articPool, wildcards, replaceWildcard];
+		~defaults = [/*nil,*/ nil, 1, 0.25, 0.75, 1000, nil, nil, nil, nil];
 		// expand this later
-		~validation = [/*nil,*/ nil, \isNumProxy, \isNumProxy, \isNumProxy, \isNumProxy, nil, nil, nil];
+		~validation = [/*nil,*/ nil, \isNumProxy, \isNumProxy, \isNumProxy, \isNumProxy, nil, nil, nil, nil];
 
 		~superPrep = ~localPrep;
 		~localPrep = {
@@ -1930,15 +1931,15 @@ protect {
 			};
 		};
 
-		~snippet.("stuttPitch", "\\stuttPitch(##match, numToAdd, quant, prob, numInclusive, intervalPool, articPool, wildcards##)");
+		~snippet.("stuttPitch", "\\stuttPitch(##match, numToAdd, quant, prob, numInclusive, intervalPool, articPool, wildcards, \"*\"##)");
 	} => PR(\clGenStuttPitch);
 
 	// for each, add up to a total duration
 	PR(\clGenStutt).clone {
-		~defaultNames = #[/*baseItems,*/ match, numToAdd, quant, prob, addDur, insPool, wildcards];
-		~defaults = [/*nil,*/ nil, 1, 0.25, 0.75, 1000, nil, nil];
+		~defaultNames = #[/*baseItems,*/ match, numToAdd, quant, prob, addDur, insPool, wildcards, replaceWildcard];
+		~defaults = [/*nil,*/ nil, 1, 0.25, 0.75, 1000, nil, nil, nil];
 		// expand this later
-		~validation = [/*nil,*/ nil, \isNumProxy, \isNumProxy, \isNumProxy, \isNumProxy, nil, nil];
+		~validation = [/*nil,*/ nil, \isNumProxy, \isNumProxy, \isNumProxy, \isNumProxy, nil, nil, nil];
 		~makeGoCondition = { |time, index|
 			var nextTime = if(index < (~items.size - 1)) {
 				~items[index + 1].time
@@ -1949,7 +1950,7 @@ protect {
 			nextTime = min(nextTime, time + ~addDur.next);
 			{ |time| time < nextTime }
 		};
-		~snippet.("stuttDur", "\\stuttDur(##match, numToAdd, quant, prob, addDur, insItem \"-\", wildcards##)");
+		~snippet.("stuttDur", "\\stuttDur(##match, numToAdd, quant, prob, addDur, insItem \"-\", wildcards, \"*\"##)");
 	} => PR(\clGenStuttDur);
 
 	PR(\clGenStutt).clone {
