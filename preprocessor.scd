@@ -2175,12 +2175,21 @@ scAccidentals: true,
 
 prepNote: #{
 	var i, args, argval, thisEvent = currentEnvironment;
+	var adj = 1, octaveRatio;
+	~mode = ~mode.asMode;
 	~newFreq = ~freq ?? { ~note.asFloat };
 	~mtranspose.notNil.if({ ~newFreq = ~newFreq + ~mtranspose });
 	(~midi ? false).not.if({ ~newFreq = ~newFreq.unmapMode(~mode.asMode, ~scAccidentals) });
 	~ctranspose.notNil.if({ ~newFreq = ~newFreq + ~ctranspose });
 
-	~newFreq = ~midiNoteToFreq.value(~newFreq).asArray;
+	if(~tuning.notNil) {
+		adj = ~tuning.wrapAt(~newFreq);  // adjusted semitones
+		adj = adj - adj.round;
+		octaveRatio = ~tuning.tryPerform(\octaveRatio) ?? { 2 };
+		adj = octaveRatio ** (adj / ~tuning.size);
+	};
+
+	~newFreq = (adj * ~midiNoteToFreq.value(~newFreq)).asArray;
 	~dur = ~dur ?? { ~delta ?? { ~note.dur } };
 	~length = (~length ?? { ~note.length }).asArray;
 
@@ -2221,6 +2230,7 @@ prepNote: #{
 				thisThread.seconds
 			);
 		};
+		// ~gate = ~gate.wrapExtend(~nodes.size);
 		~voicer.setArgsInEvent(currentEnvironment);
 	};
 	~sendBass.();
