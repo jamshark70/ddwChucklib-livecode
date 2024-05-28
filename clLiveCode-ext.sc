@@ -63,14 +63,14 @@ PstepDurPair : Pstep {
 			Library.put(\cl, \instr, (Quarks.folder +/+ "ddwLivecodeInstruments/*.scd").pathMatch);
 			{
 				(Quarks.folder +/+ "ddwLivecodeInstruments/*.scd").pathMatch.do { |path|
-					path.loadPath
+					path.load
 				};
 			} => Func(\loadClInstr);
 		};
 
 		{ |files|
 			var dir = Library.at(\cl, \path);
-			files.do { |name| (dir +/+ name).loadPath };
+			files.do { |name| (dir +/+ name).load };
 		} => Func(\loadClFiles);
 
 		{ \loadClFiles.eval(Library.at(\cl, \files)) } => Func(\loadCl);

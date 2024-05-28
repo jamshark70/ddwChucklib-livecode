@@ -2860,5 +2860,5 @@ Proto {
 );
 
 ["preprocessor-generators.scd"].do { |name|
-	(thisProcess.nowExecutingPath.dirname +/+ name).loadPath;
+	(thisProcess.nowExecutingPath.dirname +/+ name).load;
 };
