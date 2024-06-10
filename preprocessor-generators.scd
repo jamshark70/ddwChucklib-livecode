@@ -677,6 +677,7 @@ protect {
 	} => PR(\clGenVossdiff);
 
 	PR(\clGenRand).clone {
+		~canBePool = false;
 		~modifySource = {
 			~items.do { |item, i|
 				if(~replaceItems.includesEqual(item[\wildcard])) {
@@ -1038,6 +1039,90 @@ protect {
 		~helpString = "\\shufn(\"items\")";
 		~snippet.("shufn", "\\shuf(##items, wildcards, reset##)");
 	} => PR(\clGenShufn);
+
+	PR(\clGenSeq).clone {
+		~localPrep = {
+			~pool = ~args[0].asArray;
+			~checkEmpty.(~pool, "pool");
+			case
+			{ ~isNumProxy.(~args[1]) } {
+				~stepStream = (Pfunc { ~args[1].next }.reject(_ == 0)).asStream;
+			}
+			// should be possible only for item strings
+			// how to check if it's a pitch string?
+			{ ~args[1].isSequenceableCollection } {
+				~stepStream = Prand(~args[1], inf).collect { |item|
+					item[\item].asFloat
+				}.reject(_ == 0).asStream;
+			}
+			{ Error("\\walk(): Invalid step sequence").throw };
+			if(~args[2].isSequenceableCollection) {
+				~replaceItems = ~args[2].collect { |item| item.item };
+			} {
+				~replaceItems = [$*];
+			};
+			~offset = ~args[3] ?? { -1 };
+			~wrap = ~args[4] ?? { 0 };
+			#[wrap, offset].do { |key|
+				if(~isNumProxy.(key.envirGet).not) {
+					Error("%: % should be a number proxy".format(~protoID, key)).throw;
+				};
+			};
+			~doReset = 0;
+
+			currentEnvironment
+		};
+		// reimplement Pwalk because of a turnaround bug
+		~walkPattern = {
+			Prout { |inval|
+				var pos = ~offset.next, newPos;
+				var directionStream = Pseq([1, -1], inf).asStream;
+				var direction = directionStream.next;
+				var step, val, wrap;
+				var count;
+				if(pos < 0) {
+					pos = ~lastPos ?? { 0 };
+				};
+				// default ~repeats == 1 should be inf
+				// all explicit repeats are passed as ClNumProxy
+				if(~repeats.tryPerform(\isNumProxy) == true) {
+					count = ~repeats.next;
+				} {
+					count = inf;
+				};
+				while {
+					count > 0 and: {
+						step = ~stepStream.next(inval);
+						step.notNil
+					}
+				} {
+					newPos = pos + (step * direction);
+					if(newPos < 0 or: { newPos >= ~pool.size }) {
+						if(~wrap.next != 0) {
+							newPos = newPos.wrap(0, ~pool.size - 1);
+						} {
+							newPos = newPos.fold(0, ~pool.size - 1);
+							direction = directionStream.next(inval);
+						};
+					};
+					inval = ~pool.wrapAt(pos).yield;
+					pos = newPos;
+					count = count - 1;
+				};
+				~lastPos = pos;
+				inval
+			}
+		};
+		~makeStream = {
+			~seqStream = ~walkPattern.value.collect(_.item).asStream
+		};
+		~embedInStream = { |inval|
+			~walkPattern.().embedInStream(inval)
+		};
+
+		~helpString = "\\walk(\"items\", steps, wildcards, offset, wrap)";
+		~snippet.("walk", "\\walk(\"##items##\", steps, wildcards, offset, wrap)");
+	} => PR(\clGenWalk);
 
 	PR(\clGenSeq).clone({
 		~poolArgs = { [~args[1]] };
