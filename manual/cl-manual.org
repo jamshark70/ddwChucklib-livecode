@@ -2415,22 +2415,33 @@ TempoClock.tempo = 112/60;
      does not receive an extra item, because the =-= on beat 3 is
      already choked off a half beat later.
 
-- =\stutt("new items", numToAdd, quant, prob, "insItem", "wildcards")= :: Choose
-     up to /numToAdd/ matching items and stutter them according to
-     /quant/. /New items/ determines the items to match (if omitted,
-     it matches any items, also taking /wildcards/ into account). At
-     /quant/ intervals, a new item is inserted if =prob.coin= is
-     true. /insItem/ specifies the item to insert; if omitted, it will
-     insert a copy of the existing item.
+- =\stutt("new items", numToAdd, quant, prob, "insItem", "wildcards", "setWildcards")= :: Choose
+  up to /numToAdd/ matching items and stutter them according to
+  /quant/. /New items/ determines the items to match (if omitted, it
+  matches any items, also taking /wildcards/ into account). At /quant/
+  intervals, a new item is inserted if =prob.coin= is true. /insItem/
+  specifies the item to insert; if omitted, it will insert a copy of
+  the existing item. =setWildcards= allows you to distinguish between
+  source items and stutt-inserted items in downstream processing.
 
-- =\stuttDur("new items", numToAdd, quant, prob, addDur, "insItem", "wildcards")= ::
+- =\stuttDur("new items", numToAdd, quant, prob, addDur, "insItem", "wildcards", "setWildcards")= ::
      Like =\stutt()=, except that /addDur/ is a maximum duration over
      which to repeat/subdivide each item. This may produce jittery
      patterns with empty space in between.
 
-- =\stuttN(("new items", numToAdd, quant, prob, numInclusive, "insItem", "wildcards")= ::
+- =\stuttN(("new items", numToAdd, quant, prob, numInclusive, "insItem", "wildcards", "setWildcards")= ::
      Like =\stutt()=, except that /addDur/ is a maximum number of new
      items to add.
+
+- =\stuttPitch("match items", numToAdd, quant, prob, numInclusive, "intervals", "articPool", wildcards, "setWildcards")= :: Like
+  =\stuttN()=, except that new items are calculated from intervals,
+  similar to =\pitch()=. The following expressions are equivalent:
+
+  #+begin_src SuperCollider -i
+  \ins("*", 1..2, 0.5)::\stuttN(, 1..2, 0.25, 1, 5, "@", "*")::\pitch("@", "6,7,23", -4, 4)
+  
+  \ins("*", 1..2, 0.5)::\stuttPitch(, 1..2, 0.25, 1, 5, "6,7,23", , "*", "@")
+  #+end_src
 
 - =\div("new items", "replaceItems", numToAdd, quant, divisor, divisible)= :: Choose
      up to /numToAdd/ matching items (taken from /replaceItems/, which
@@ -2490,6 +2501,16 @@ TempoClock.tempo = 124/60;
 VC(\pad).v.gui; VC(\pl).v.gui;  // adjust filters
   #+END_SRC
 
+- =\par("rhythm", "replacer1", "replacer2"...)= :: Produces multiple
+  parallel layers following the same rhythm template. For each
+  replacer, ="rhythm"= is evaluated once (to produce wildcards), and
+  then the replacer is evaluated to fill in that layer. Good for
+  minimalist textures, e.g.
+
+  #+begin_src SuperCollider -i
+\par("\ins("*", 8..12, 0.25)", "\seq("785")", "\seq("237,")", "\seq("4,11,")")
+  #+end_src
+
 *** Wildcard-replacement generators
 Note that =\seq()=, =\ser()=, =\rand()=, =\wrand()=, =\xrand()=, and
 =\shuf()= are based on the corresponding SuperCollider patterns
@@ -2534,9 +2555,18 @@ Note that =\seq()=, =\ser()=, =\rand()=, =\wrand()=, =\xrand()=, and
      in random order without repeating the same item twice in a row,
      like =Pxrand=.
 
-- =\shuf("items", "wildcards", reset)= :: Shuffles the items
-     into random order, and returns each one before choosing a new
-     order. See =Pnshuf()= in the ddwPatterns quark.
+- =\shuf("items", "wildcards", reset)= :: Shuffles the items into
+  random order, and returns each one before choosing a new order. If
+  embedded into a composite sequence with a finite number of repeats,
+  the shuffle-stream is maintained throughout. That is, in
+  =\seq("1''\shuf*3("12345")")=, all 5 items must be used exactly once
+  before repeating any, even though only 3 are streamed out at a
+  time. See =Pnshuf()= in the ddwPatterns quark.
+
+- =\shufn("items", "wildcards", reset)= :: Shuffles =repeats= items
+  into random order. This is like =\shuf()= except that, in a
+  composite sequence, every time the stream enters =\shufn()=, the
+  order is chosen with no memory of past iterations.
 
 - =\first("init items", "items", "wildcards", reset)= :: Like
   =\rand()=, but, when reset, it begins with a sequence of the "init
@@ -2681,6 +2711,51 @@ Mode(\cphr) => Mode(\default);
 /pl-
   #+END_SRC
 
+- =\walk("items", steps, "wildcards", offset, wrap)= :: A random
+  walk. =items= are taken in order (unlike other item pools). =steps=
+  should be either a number proxy, or a pitch-style string where ="2"=
+  steps forward by one, and ="7,"= steps backward one. =offset= is the
+  starting position in the pool string. If =wrap= is 0, the random
+  walk will reverse direction when it encounters a boundary; if
+  nonzero, it will wrap around to the other boundary in that
+  case. (=wrap= is reevaluated every time a boundary is crossed.) If
+  this pattern is embedded in a sequence with a finite number of
+  repeats, it will a/ remember its previous state and continue from
+  where it left off, and b/ re-evaluate =offset= each time.
+
+- =\skip("sequence pattern", numToPlay, numToSkip, wildcards, reset)= :: From
+  the sequence pattern, alternately pass through =numToPlay= items,
+  then skip over =numToSkip= items. For example, a gapped scale
+  pattern could be written =\skip("\seq("12345678")", 2..5, 1..2)=.
+
+- =\voss("weights", "wildcards")= :: 1/f noise, using a modified Voss
+  algorithm. The number of generators comes from the =weights= string,
+  which also controls the relative influence of each, where 1 or 2 is
+  a weight of 1, 3 is twice as powerful, 4 is 3 times as powerful,
+  etc. Standard Voss noise with eight generators would be
+  =\voss("11111111")=.
+
+- =\vossdiff("weights", "wildcards")= :: Generates a Voss noise
+  sequence, but returns the difference between pitches (the
+  intervals), suitable for use as a step stream in =\pitch()=.
+
+- =\replace("items", "wildcards")= :: Previously-filled items with a
+  prior wildcard (matching the wildcard list) are overwritten with new
+  values.
+
+- =\rest("switch", "wildcards", "restItem")= :: For each wildcard
+  match, pull an item from the =switch= pool. If it is either =-= or
+  =.=, replace the wildcard with a rest; otherwise, leave the item
+  alone. This is meant to deactivate sounding events from an
+  already-populated stream.
+
+- =\restn(numEvents, numRests, "wildcards", "restItem", reset)= :: Alternates
+  between preserving and suppressing notes---a nice way to introduce
+  space into a busy texture. In each cycle, first =numEvents= events
+  pass through unchanged; then =numRests= items are replaced with
+  rests. This should be done between inserting wildcards and filling
+  in their values.
+
 Note also that =\seq()=, =\rand()=, =\wrand()=, =\xrand()=, =\shuf()=,
 =\first()= and =\repeat1()= may be used in (or as!) pool strings
 (Listing [[genSequencers]]).
@@ -2772,6 +2847,15 @@ Mode(\cphr) => Mode(\default);
 /pl-
   #+END_SRC
 
+- =\articSplit("wildcards", dur1, "artic1", dur2, "artic2"... "defaultArtic")= :: Notes
+  of different durations will be given an articulation from the
+  matching articulation pool (instead of one global articulation
+  pool). Durations should be listed in ascending order. The note
+  duration matches if it is less than a written duration, so
+  =\articSplit("*", 0.5, ".", "_")= will assign staccato to anything
+  shorter than an eighth note, and normal articulation to eighth notes
+  or longer.
+
 - =\xpose("intervalPool", "wildcards")= :: Transposition. For
      each /wildcard/-matching note, choose an interval from
      /intervalPool/ and transpose the note accordingly.
@@ -2812,12 +2896,13 @@ Mode(\cphr) => Mode(\default);
 
 - =\chain(generator, generator...)= :: For internal use only.
 
-- =\delete("wildcards", probability)= :: Find existing items produced
-     by a given wildcard, and keep those items based on
-     probability. 0.75 probability means a 3/4 chance of keeping the
-     item; I felt that a higher probability should result in a more
-     dense texture. If the coin toss determines that the note should
-     not be kept, it is removed and its timepoint will be empty.
+- =\delete("wildcards", probability, negate)= :: Find existing items
+  produced by a given wildcard, and keep those items based on
+  probability. 0.75 probability means a 3/4 chance of keeping the
+  item; I felt that a higher probability should result in a more dense
+  texture. If the coin toss determines that the note should not be
+  kept, it is removed and its timepoint will be empty. A nonzero
+  =negate= value inverts the probability.
 
 - =\wildcards("wildcards")= :: If an item had been produced by
      wildcard replacement, "undo" this: replace the real value with
