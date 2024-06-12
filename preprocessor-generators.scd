@@ -507,7 +507,8 @@ protect {
 					~currentIndex = i;
 					// copy is critical here!
 					// 18-1014: wildcard-replacers update the wildcard
-					~items[i] = item.copy.put(\wildcard, item[\item])
+					~items[i] = item.copy
+					.put(\wildcard, item[\wildcard] ?? { item[\item] })
 					.put(\item, ~seqStream.next(item));
 				};
 			};
@@ -686,7 +687,8 @@ protect {
 					~currentIndex = i;
 					// copy is critical here!
 					// 18-1014: wildcard-replacers update the wildcard
-					~items[i] = item.copy.put(\wildcard, item[\item])
+					~items[i] = item.copy
+					.put(\wildcard, item[\wildcard] ?? { item[\item] })
 					.put(\item, ~seqStream.next(item));
 				};
 			};
@@ -725,7 +727,8 @@ protect {
 						};
 						// copy is critical here!
 						// 18-1014: wildcard-replacers update the wildcard
-						~items[i] = item.copy.put(\wildcard, item[\item])
+						~items[i] = item.copy
+						.put(\wildcard, item[\wildcard] ?? { item[\item] })
 						.put(\item, restItem);
 					};
 				};
