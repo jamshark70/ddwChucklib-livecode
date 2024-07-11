@@ -46,6 +46,25 @@ ClNumProxy {
 	// users shouldn't use this object directly as a pattern
 	asStream {}
 	isNumProxy { ^true }
+
+	hi_ {
+		// on second thought, no, just swallow the call
+		// SubclassResponsibilityError(this, 'hi_', this.class)
+	}
+}
+
+ClRangeNumProxy : ClNumProxy {
+	var <>lo, <hi;
+
+	*new { |lo = 0.0, hi = 1.0|
+		^super.new.lo_(lo).hi_(hi)
+	}
+	init {
+		val = Pfunc { rrand(lo, hi) };
+		this.reset;
+	}
+
+	hi_ { |argHi| hi = argHi }
 }
 
 ClAbstractParseNode {
@@ -472,22 +491,34 @@ ClRangeNode : ClNumberNode {
 				}
 			};
 			this.skipSpaces(stream);
-			hi = ClNumberNode(stream, this);
+			if(stream.peek == $n) {
+				hi = \upperBound;
+				stream.next;
+			} {
+				hi = ClNumberNode(stream, this);
+			};
 			if(hi.value.isNil) {
 				Error("No upper bound found in range").throw;
 			};
 		} {
 			Error("Invalid lower bound in range").throw;
 		};
-		if(low.value <= hi.value) {
+		if(hi.isSymbol or: { low.value <= hi.value }) {
 			children = [low, hi];
 		} {
 			children = [hi, low];
 		};
 	}
 	streamCode { |stream|
-		stream << "ClNumProxy(Pwhite(" // "PR(\\clNumProxy).copy.prep(Pwhite("
-		<<< children[0].value << ", " <<< children[1].value << ", inf))";
+		stream << "ClRangeNumProxy("
+		<<< children[0].value << ", " <<< children[1].value
+		<< ")"
+		// if(hi == \upperBound) {
+		//
+		// } {
+		// 	stream << "ClNumProxy(Pwhite(" // "PR(\\clNumProxy).copy.prep(Pwhite("
+		// 	 << ", inf))";
+		// }
 	}
 }
 
@@ -723,7 +754,7 @@ ClGeneratorNode : ClAbstractParseNode {
 				pre: { |stream| stream.next }  // stringnodes assume you've already dropped the opening quote
 			),
 			(type: ClPatStringNode, regexp: "^\".*\""),
-			(type: ClRangeNode, regexp: "^-?[0-9.]+ *\\.\\. *-?[0-9]"),
+			(type: ClRangeNode, regexp: "^-?[0-9.]+ *\\.\\. *(-?[0-9]+|n)"),
 			(type: ClNumberNode, regexp: "^-?[0-9]"),
 			(type: ClStringNode, regexp: "^`[A-Za-z0-9_]+",
 				endTest: { |ch| not(ch.isAlphaNum or: { "_`".includes(ch) }) },

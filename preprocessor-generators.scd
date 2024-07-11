@@ -529,6 +529,18 @@ protect {
 	} => PR(\clGenSeq);
 
 	PR(\clGenSeq).clone {
+		~superPrep = ~localPrep;
+		~localPrep = {
+			~superPrep.();
+			// ser common case is "play 3, 4, 5 .. n notes of the sequence"
+			// filling in upper bound must be lazy
+			if(~repeats.respondsTo(\hi)) {
+				if(~repeats.hi == \upperBound) {
+					~repeats.hi = max(1, ~repeats.lo).roundUp(~pool.size);
+				};
+			};
+			currentEnvironment
+		};
 		~embedInStream = { |inval|
 			Pser(~pool, { ~repeats.next }, { ~offset.next }).embedInStream(inval)
 		};
