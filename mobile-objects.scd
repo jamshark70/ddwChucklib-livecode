@@ -120,7 +120,8 @@ protect {
 			if(guiOnly.not) {
 				NotificationCenter.notify(currentEnvironment, msg[0], args);
 			};
-			if(msg[0] == '/ping' /*and: { ~addr.isNil }*/) {
+			switch(msg[0])
+			{ '/ping' } {
 				if(~pingDebug or: { ~addr != replyAddr }) {
 					"/ping: set mobile IP%\n".postf(
 						if(~pingDebug) {
@@ -134,6 +135,18 @@ protect {
 				if(parentEnvir[\pingCond].notNil) {
 					parentEnvir[\pingCond].signalAll;
 				};
+			}
+			{ '/openstage_connect' } {
+				(inEnvir {
+					NotificationCenter.registrationsFor(currentEnvironment)
+					.keysValuesDo { |path, dict|
+						dict.keysValuesDo { |obj, func|
+							if(obj.isKindOf(Proto)) {
+								obj.resendState;
+							};
+						};
+					};
+				}).defer(0.5);
 			};
 		};
 
@@ -666,6 +679,7 @@ protect {
 			if(labels.isString) { labels = [labels] };
 			~path.do { |p, i| oscin.setLabel(p, labels.wrapAt(i)) };
 		};
+		~resendState = 0;  // default no-op
 	} => PR(\abstrMobileResp);
 
 	PR(\abstrMobileResp).clone {
@@ -747,6 +761,15 @@ protect {
 				BP(~oscInKey).setGUIValue(~path[0], ~cspec.unmap(~gc.value));
 			}
 			{ \modelWasFreed } { ~free.() }
+		};
+		~resendState = {
+			var addr = BP(~oscInKey)[\addr];
+			if(addr.notNil) {
+				~path.do { |p|
+					addr.sendMsg(p, ~gc.unmappedValue);
+				};
+				~setLabels.();
+			};
 		};
 	} => PR(\gcmap);
 
