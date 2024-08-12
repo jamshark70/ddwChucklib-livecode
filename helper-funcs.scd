@@ -185,11 +185,12 @@ Library.put(\clLivecode, \setupbars, \guiIsFront, false);
 				vc.use { value.value(vc) }
 			}
 			{
-				proc.set(key, value);
 				// presets should be able to override globalcontrol defaults
 				// but not with patterns
 				if(gcs[key].notNil and: { value.isNumber }) {
 					gcs[key].value = value
+				} {
+					proc.set(key, value);
 				};
 			};
 		};
@@ -561,3 +562,12 @@ Library.put(\clLivecode, \setupbars, \guiIsFront, false);
 	match = str.findRegexpAt("([A-Za-z0-9]+)", i);
 	[i, match]
 } => Func(\strGetIdentifier);
+
+
+// quicky make modulator synthdefs for Plug
+{ |name, func|
+	SynthDef(name, { |out|
+		var sig = SynthDef.wrap(func);
+		Out.perform(UGen.methodSelectorForRate(sig.rate), out, sig);
+	}).add;
+} => Func(\plugDef);
