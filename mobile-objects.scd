@@ -146,6 +146,7 @@ protect {
 							};
 						};
 					};
+					NotificationCenter.notify(currentEnvironment, \openstage_connect);
 				}).defer(0.5);
 			};
 		};
@@ -734,6 +735,15 @@ protect {
 				Error("OSC response: updater recursion limit reached").throw;
 			};
 		};
+		~resendState = {
+			var addr = BP(~oscInKey)[\addr];
+			if(addr.notNil) {
+				~path.do { |p|
+					addr.sendMsg(p, BP(~specs[\bp]).isPlaying.binaryValue);
+				};
+				~setLabels.([~specs[\bp]]);
+			};
+		};
 	} => PR(\bptrig);
 
 	PR(\abstrMobileResp).clone {
@@ -764,13 +774,17 @@ protect {
 		};
 		~resendState = {
 			var addr = BP(~oscInKey)[\addr];
+			var v;
 			if(addr.notNil) {
-				~path.do { |p|
-					addr.sendMsg(p, ~gc.unmappedValue);
+				v = ~getValue.().asArray;
+				~path.do { |p, i|
+					addr.sendMsg(p, v.wrapAt(i));
 				};
-				~setLabels.();
+				~setLabels.(~getLabels.());
 			};
 		};
+		~getValue = { ~gc.unmappedValue };
+		~getLabels = { nil };
 	} => PR(\gcmap);
 
 	PR(\gcmap).clone {
@@ -827,6 +841,7 @@ protect {
 				BP(~oscInKey).setGUIValue(~path[0], ~cspec.unmap(what[0]));
 			}
 		};
+		~getLabels = { nil /*[~specs[\mixer].name]*/ };
 	} => PR(\mxmap);
 
 	PR(\abstrMobileResp).clone {
@@ -944,15 +959,18 @@ protect {
 			// volume fader
 			~maps[~faderKeys[index]].free;
 			newMap = PR(\mxmap).copy.prep(~faderKeys[index],
-				(mixer: mixer, ctl: \level, label: mixer.name.asString + "level"));
+				(mixer: mixer, ctl: \level, label: mixer.name.asString /*+ "level"*/));
 			~maps[~faderKeys[index]] = newMap;
 			~setNotification.(newMap, ~faderKeys[index]);
 			// mute button -- some hackage here
 			if(parms.tryPerform(\at, \setMute) != false) {
 				~maps[~toggleKeys[index]].free;
 				newMap = PR(\abstrMobileResp).copy.prep(~toggleKeys[index],
-					(label: "M"));
+					(mixer: mixer, label: mixer.name.asString));
 				newMap.prAction = { |msg| mixer.mute(msg[1] > 0) };
+				newMap.resendState = PR(\gcmap).v[\resendState];
+				// newMap.getLabels = { "M" };
+				newMap.getValue = { ~specs[\mixer].muted.binaryValue };
 				newMap[\update] = newMap[\update].addFunc(inEnvir({ |obj, what, ag|
 					if(what == \mixerFreed and: { ag === mixer }) {
 						~free.();
