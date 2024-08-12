@@ -1859,11 +1859,11 @@ protect {
 			// so, save the original input size
 			var inputSize = ~items.size;
 			quant = ~quant.next;
-			prob = ~prob.next;
+			prob; // = ~prob.next;
 
 			// get source indices
 			~items.collectIndices { |item, index| ~canStutter.(item, index, quant) }
-			.scramble.keep(~numToAdd.next).do { |index|
+			.scramble.keep(~numToAdd.next).quickSort(_ < _).do { |index|
 				// var didAdd = false;
 				var numAdded = 0;
 				time = ~items[index].time;
@@ -1878,6 +1878,7 @@ protect {
 					time = time + quant;
 					time < nextTime and: { goCondition.value(time, numAdded) }
 				} {
+					prob = ~prob.next;
 					if(prob.coin) {
 						times = times.add([time, index]);
 						numAdded = numAdded + 1;
