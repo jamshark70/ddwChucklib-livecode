@@ -2832,18 +2832,22 @@ Proto {
 	};
 
 	~printPreset = { |stream(Post)|
-		var vc, doComma = false;
+		var doComma = false;
+		var vc = ~event[\voicer];
 		if(~defaults.isKindOf(Proto)) {
-			~defaults[\override].pairs.pairsDo { |a, b, i|
-				if(doComma) {
-					stream << ", ";
-				} {
-					doComma = true;
+			~defaults[\override][\pairs].pairsDo { |a, b, i|
+				if(vc.notNil and: {
+					vc.globalControls[a].isNil
+				}) {
+					if(doComma) {
+						stream << ", ";
+					} {
+						doComma = true;
+					};
+					Post << a << ": " <<< b;
 				};
-				Post << a << ": " <<< b.source;
 			};
 		};
-		vc = ~event[\voicer];
 		if(vc.notNil) {
 			vc.globalControlsByCreation.do { |gc|
 				if(doComma) {
