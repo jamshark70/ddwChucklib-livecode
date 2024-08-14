@@ -658,14 +658,26 @@ protect {
 		};
 		~numericPattern = { |repeats(inf)|
 			var prev;
+			var allZero = true;
+			var tuple = Ptuple(
+				~weights.collect { |item, i|
+					item = max(0, item.item.asFloat.asInteger.abs);
+					if(item > 0) { allZero = false };
+					Pdup((1 << i), Pxrand((item.neg .. item), inf))
+				},
+				inf
+			);
+			if(allZero) {
+				// if the user accidentally wrote \voss("11111")
+				// then all components are pure 0
+				// so the 'reject' below will fail
+				// in that case, replace the i=0 component with a step up/down pattern
+				// and all the others are 0 so just throw them away
+				tuple.list = [Pxrand((-1 .. 1), inf)]
+			};
+			tuple.postcs;
 			Pfin(repeats.next,
-				Ptuple(
-					~weights.collect { |item, i|
-						item = max(1, item.item.asFloat.asInteger.abs);
-						Pdup((1 << i), Pxrand((item.neg .. item), inf))
-					},
-					inf
-				).collect(_.sum)
+				tuple.collect(_.sum)
 				// note that this cannot infloop because
 				// all generators at minimum produce -1, 0, 1 in some order
 				// and Pxrand cannot repeat values
