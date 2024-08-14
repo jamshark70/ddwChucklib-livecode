@@ -675,7 +675,6 @@ protect {
 				// and all the others are 0 so just throw them away
 				tuple.list = [Pxrand((-1 .. 1), inf)]
 			};
-			tuple.postcs;
 			Pfin(repeats.next,
 				tuple.collect(_.sum)
 				// note that this cannot infloop because
