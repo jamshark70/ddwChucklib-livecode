@@ -1204,7 +1204,13 @@ protect {
 				if(cache.notNil) { cache = cache.tryPerform(\source) };
 				if(cache.notNil) { cache = cache.tryPerform(\pattern) };
 				if(cache.notNil) { cache = cache.tryPerform(\list).tryPerform(\at, 0) };
-				if(cache.notNil) { cache = cache.tryPerform(\at, \cachedItems) };
+				case
+				{ cache.isKindOf(Proto) } {
+					cache = cache[\cachedItems]
+				}
+				{ cache.notNil } {
+					cache = cache.tryPerform(\at, \cachedItems)
+				};
 				if(cache.isNil) {
 					rrand(~fallbackMin.next, ~fallbackMax.next);
 				} {
