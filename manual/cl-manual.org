@@ -1116,7 +1116,7 @@ parmMap: (
 should be characters (=Char=), because the elements of the pattern
 strings that represent "notes" are characters.
 
-The inner dictionaries may contain two other items, optionally:
+The inner dictionaries may contain three other items, optionally:
 
 - =isPitch= :: If =true=, enables pitch notation for this parameter (Section [[Pitch notation]]).
 - =alias= :: An alternate name for this parameter, to use in the
@@ -1137,6 +1137,11 @@ The inner dictionaries may contain two other items, optionally:
      #+END_SRC
      Written this way, =def= in the /Set pattern/ statement will be
      populate =instrument= in the resulting events.
+- =default= :: A value identifier (single-character) to use if no
+  value has been supplied. For instance, if the default parameter is
+  producing eighth-notes, but an auxiliary parameter's first value is
+  halfway through the bar, the default value will be applied in the
+  first part of the bar.
 
 *** Array arguments in the parameter map
 Array arguments are valid, and will be placed into resulting events as
