@@ -2299,7 +2299,13 @@ protect {
 		~deltaIndexFromItem = { |item|
 			case
 			{ item.isKindOf(SequenceNote) } {
-				item.asFloat
+				item = item.asFloat;
+				// char 0 --> value 9.0; char A --> value 65.0
+				if(item >= 10) {
+					item - 55  // 65.0 --> 10.0
+				} {
+					item
+				}
 			}
 			{ item.isKindOf(Char) } {
 				~charMap.indexOf(item.toUpper) ?? {
