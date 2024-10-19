@@ -658,23 +658,13 @@ protect {
 		};
 		~numericPattern = { |repeats(inf)|
 			var prev;
-			var allZero = true;
 			var tuple = Ptuple(
 				~weights.collect { |item, i|
-					item = max(0, item.item.asFloat.asInteger.abs);
-					if(item > 0) { allZero = false };
+					item = max((i == 0).binaryValue, item.item.asFloat.asInteger.abs);
 					Pdup((1 << i), Pxrand((item.neg .. item), inf))
 				},
 				inf
 			);
-			if(allZero) {
-				// if the user accidentally wrote \voss("11111")
-				// then all components are pure 0
-				// so the 'reject' below will fail
-				// in that case, replace the i=0 component with a step up/down pattern
-				// and all the others are 0 so just throw them away
-				tuple.list = [Pxrand((-1 .. 1), inf)]
-			};
 			Pfin(repeats.next,
 				tuple.collect(_.sum)
 				// note that this cannot infloop because
@@ -733,6 +723,21 @@ protect {
 				};
 			};
 			~restItemStream = Prand(~restItem, inf).asStream;  // not sure
+			~setTrueRest.(3);
+			~allWildcards = true;
+			(1..2).do { |i|
+				~allWildcards = ~allWildcards and: {
+					~args[i].every { |item|
+						"*@!".includes(item[\item])
+					}
+				}
+			};
+		};
+		~setTrueRest = { |index|
+			// use ~args if given; use parmMap if exists; otherwise assume true
+			~trueRest = ~args[index] ?? {
+				BP(~bpKey).parmMap[~parm][\trueRest] ?? { 1 }
+			};
 		};
 		~canBePool = false;
 		~modifySource = {
@@ -745,13 +750,23 @@ protect {
 					next = ~seqStream.next(item);
 					if(~isRestChar.(next)) {
 						restItem = ~restItemStream.next(item)[\item];
-						if(restItem.isRest.not) {
-							restItem = Rest(restItem);
+						if(~trueRest.next != 0) {
+							if(restItem.isRest.not) {
+								restItem = Rest(restItem);
+							};
+						} {
+							restItem = restItem.dereferenceOperand;
 						};
 						// copy is critical here!
 						// 18-1014: wildcard-replacers update the wildcard
 						~items[i] = item.copy
-						.put(\wildcard, item[\wildcard] ?? { item[\item] })
+						.put(\wildcard,
+							if(~allWildcards) {
+								restItem
+							} {
+								item[\wildcard] ?? { item[\item] }
+							}
+						)
 						.put(\item, restItem);
 					};
 				};
@@ -769,17 +784,19 @@ protect {
 			// btw: why did I say item == $. here? Everywhere else, '-' is the rest
 			"-.".includes(item) or: { item.tryPerform(\asFloat) == 45 }
 		};
-		~snippet.("rest", "\\rest(##switch, wildcards, restItem##)");
+		~snippet.("rest", "\\rest(##switch, wildcards, restItem, trueRest##)");
 	} => PR(\clGenRest);
 
 	PR(\clGenRest).clone {
+		~wildcardCheck = [2, 3];
 		~localPrep = {
 			// superPrep needs: pool, replaceItems, doReset, offset
 			// this is faking an object as if you had written
 			// \rest(\repeat1(\seq("=-", , , {Ppatlace(...)})))
 			~numNotes = ~args[0] ?? { ClNumProxy(1) };
 			~numRests = ~args[1] ?? { ClNumProxy(1) };
-			~doReset = ~args[4] ?? { 0 };
+			~setTrueRest.(4);
+			~doReset = ~args[5] ?? { 0 };
 			#[numNotes, numRests, doReset].do { |key|
 				if(~isNumProxy.(key.envirGet).not) {
 					Error("%: % should be a number proxy".format(~protoID, key)).throw;
@@ -812,10 +829,18 @@ protect {
 				};
 			};
 			~restItemStream = Prand(~restItem, inf).asStream;  // not sure
-			// ~superPrep.value;
+
+			~allWildcards = true;
+			(2..3).do { |i|
+				~allWildcards = ~allWildcards and: {
+					~args[i].every { |item|
+						"*@!".includes(item[\item])
+					}
+				}
+			};
 		};
 
-		~snippet.("restn", "\\restn(##numEvents##, numRests, wildcards, restItem, reset)");
+		~snippet.("restn", "\\restn(##numEvents##, numRests, wildcards, restItem, trueRest, reset)");
 	} => PR(\clGenRestn);
 
 	PR(\clGenSeq).clone {
