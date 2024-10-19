@@ -2320,6 +2320,92 @@ protect {
 		~snippet.("pdelta", "\\pdelta(##pool, quant, deltapool##)");
 	}).import((clGenPitch: #[checkChildReset])) => PR(\clGenPdelta);
 
+	// \timePt(pool, timepts, quant, ignoreCollisions)
+	// ignoreCollisions == 0: if the next timepoint is occupied,
+	// stop and wait for the next bar to render this timepoint
+	// != 0: if it's occupied, just go ahead with the next point
+	// (pretend the collision didn't happen)
+	PR(\clGenPdelta).clone {
+		~tolerance = 0.001;
+		~initRest = false;
+		~numericDefaults = [0.5, 0];
+		~localPrep = {
+			~pool = ~args[0];
+			~timepts = ~args[1];
+			#[quant, ignoreCollisions].do { |name, i|
+				var j = i + 2;
+				case
+				{ ~args[j].isNil } {
+					name.envirPut(~numericDefaults[i])
+				}
+				{ ~isNumProxy.(~args[j]) } {
+					name.envirPut(~args[j])
+				} {
+					Error("BP(%) \\timePt() expected number for '%'"
+						.format(~bpKey.asCompileString, name)
+					).throw;
+				};
+			};
+			~poolStream = Prand(~pool.asArray, inf).collect(_.item).asStream;
+			~dPoolStream = Prand(~timepts.asArray, inf).asStream;
+
+			// prepare reset flags for the 2 pool streams
+			~pReset = ~checkChildReset.(~pool);
+			~dpReset = ~checkChildReset.(~timepts);
+			// want: pReset.not and: dpReset.not (3 ops)
+			// which == not(preset or: dpReset) (2 ops)
+			if(not(~pReset or: { ~dpReset })) {
+				// here: neither subpattern specified reset
+				// therefore both of them should follow the timePt()'s resetFlag
+				~pReset = ~dpReset = ~resetFlag;
+			};
+
+			currentEnvironment
+		};
+		~getAvail = { |items|
+			var point, lastPt = -1, time;
+			var quant = ~quant.next;
+			var ignore = ~ignoreCollisions.next;
+			var avail = Array.new;
+			block { |break|
+				while {
+					point = ~nextTimePoint.();
+					point.notNil and: {
+						point = ~deltaIndexFromItem.(point[\item]);
+						point > lastPt
+					}
+				} {
+					time = quant * point;
+					// got collision?
+					if(items.any { |item| item[\time] absdif: time < ~tolerance }) {
+						if(ignore == 0) {
+							break.();
+						} {
+							~pending = nil;  // continue with next timePt item
+						}
+					} {
+						avail = avail.add(time);
+						lastPt = point;
+						~pending = nil;
+					}
+				};
+			};
+			avail
+		};
+		// collision recovery
+		~nextTimePoint = {
+			var out;
+			if(~pending.notNil) {
+				out = ~pending;
+				~pending = nil;
+				out
+			} {
+				~pending = ~dPoolStream.next;
+			}
+		};
+		~snippet.("timePt", "\\timePt(##pool, timepoints, quant, ignoreCollisions##)");
+	} => PR(\clGenTimePt);
+
 	// non-metric generators
 
 	// Pool
