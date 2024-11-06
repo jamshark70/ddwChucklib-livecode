@@ -551,6 +551,22 @@ protect {
 		~snippet.("ser", "\\ser(##items, wildcards, reset##)");
 	} => PR(\clGenSer);
 
+	// loops over all items, but outputs only 'n' on this embedding
+	PR(\clGenSer).clone {
+		~embedInStream = { |inval|
+			if(~embeddedStream.isNil) {
+				~embeddedStream = Pseq(~pool, inf, { ~offset.next }).asStream
+			};
+			Pfinval({ ~repeats.next }, ~embeddedStream).embedInStream(inval);
+		};
+		// makeStream should always be infinite
+		// as such \seqn by itself is no different from \seq
+		~makeStream = {
+			~seqStream = Pseq(~pool.asArray, inf).collect(_.item).asStream;
+		};
+		~snippet.("seqn", "\\seqn(##items, wildcards, reset##)");
+	} => PR(\clGenSeqn);
+
 	PR(\clGenSeq).clone {
 		// seq ~prep defines a numeric ~offset
 		// let's reuse that for the number of repeats
@@ -2301,7 +2317,7 @@ protect {
 			{ item.isKindOf(SequenceNote) } {
 				item = item.asFloat;
 				// char 0 --> value 9.0; char A --> value 65.0
-				if(item >= 10) {
+				if(item >= 65) {
 					item - 55  // 65.0 --> 10.0
 				} {
 					item
