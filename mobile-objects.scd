@@ -851,7 +851,7 @@ protect {
 		~prAction = { |msg, time, addr, recvPort|
 			~specs[\action].value(msg, time, addr, recvPort);
 			if(~specs[\switchOff] == true) {
-				{
+				inEnvir {
 					~path.do { |p| BP(~oscInKey).setGUIValue(p, 0) };
 				}.defer(0.3);
 			};
@@ -1021,8 +1021,8 @@ protect {
 			var newMap;
 			~maps[~toggleKeys[index]].free;
 			newMap = PR(\trigact).copy.prep(~toggleKeys[index],
-				(action: func, switchOff: parms[\switchOff] == true,
-					label: parms[\label] ?? { "toggle" }
+				(action: func, switchOff: parms.tryPerform(\at, \switchOff) == true,
+					label: parms.tryPerform(\at, \label) ?? { "toggle" }
 				)
 			);
 			~maps[~toggleKeys[index]] = newMap;
