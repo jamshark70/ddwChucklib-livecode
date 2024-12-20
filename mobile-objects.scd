@@ -853,7 +853,7 @@ protect {
 			if(~specs[\switchOff] == true) {
 				inEnvir {
 					~path.do { |p| BP(~oscInKey).setGUIValue(p, 0) };
-				}.defer(0.3);
+				}.defer(0.15);
 			};
 		};
 	} => PR(\trigact);
