@@ -732,11 +732,13 @@ protect {
 		~localPrep = {
 			~superPrep.value;
 			~restItem = ~args[2] ?? {
-				if(~isPitch ?? { false }) {
+				var thing = if(~isPitch ?? { false }) {
 					[(item: SequenceNote(Rest(120), ~dur, ~dur, 0.5))]
 				} {
 					[(item: $x)]
 				};
+				~args = ~args.extend(max(3, ~args.size)).put(2, thing);
+				thing
 			};
 			~restItemStream = Prand(~restItem, inf).asStream;  // not sure
 			~setTrueRest.(3);
@@ -838,11 +840,13 @@ protect {
 			);
 
 			~restItem = ~args[3] ?? {
-				if(~isPitch ?? { false }) {
+				var thing = if(~isPitch ?? { false }) {
 					[(item: SequenceNote(Rest(120), ~dur, ~dur, 0.5))]
 				} {
 					[(item: $x)]
 				};
+				~args = ~args.extend(max(4, ~args.size)).put(3, thing);
+				thing
 			};
 			~restItemStream = Prand(~restItem, inf).asStream;  // not sure
 
