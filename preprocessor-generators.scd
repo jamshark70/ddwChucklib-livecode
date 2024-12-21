@@ -732,21 +732,22 @@ protect {
 		~localPrep = {
 			~superPrep.value;
 			~restItem = ~args[2] ?? {
-				var thing = if(~isPitch ?? { false }) {
+				if(~isPitch ?? { false }) {
 					[(item: SequenceNote(Rest(120), ~dur, ~dur, 0.5))]
 				} {
 					[(item: $x)]
 				};
-				~args = ~args.extend(max(3, ~args.size)).put(2, thing);
-				thing
 			};
 			~restItemStream = Prand(~restItem, inf).asStream;  // not sure
 			~setTrueRest.(3);
 			~allWildcards = true;
-			(1..2).do { |i|
+			[~replaceItems, ~restItem].do { |argValue|
 				~allWildcards = ~allWildcards and: {
-					~args[i].every { |item|
-						"*@!".includes(item[\item])
+					argValue.every { |item|
+						if(item.isKindOf(Dictionary)) {
+							item = item[\item];
+						};
+						"*@!".includes(item)
 					}
 				}
 			};
@@ -840,21 +841,22 @@ protect {
 			);
 
 			~restItem = ~args[3] ?? {
-				var thing = if(~isPitch ?? { false }) {
+				if(~isPitch ?? { false }) {
 					[(item: SequenceNote(Rest(120), ~dur, ~dur, 0.5))]
 				} {
 					[(item: $x)]
 				};
-				~args = ~args.extend(max(4, ~args.size)).put(3, thing);
-				thing
 			};
 			~restItemStream = Prand(~restItem, inf).asStream;  // not sure
 
 			~allWildcards = true;
-			(2..3).do { |i|
+			[~replaceItems, ~restItem].do { |argValue|
 				~allWildcards = ~allWildcards and: {
-					~args[i].every { |item|
-						"*@!".includes(item[\item])
+					argValue.every { |item|
+						if(item.isKindOf(Dictionary)) {
+							item = item[\item];
+						};
+						"*@!".includes(item)
 					}
 				}
 			};
