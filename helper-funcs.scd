@@ -216,6 +216,47 @@ Library.put(\clLivecode, \setupbars, \guiIsFront, false);
 	proc
 } => Func(\preset);
 
+{ |vcOrBP, array|
+	var v;
+	var out;
+	var names;
+	var printComma = false;
+	var key2;
+	var isControl = { |key|
+		names.includes(key.asSymbol) or: {
+			v.globalControls[key].notNil
+		}
+	};
+
+	if(VC.exists(vcOrBP)) {
+		v = VC(vcOrBP).v
+	} {
+		v = \bpAsVoicer.eval(vcOrBP);
+	};
+
+	if(v.notNil) {
+		names = v.controlNames;
+
+		out = Array(array.size);
+		array.pairsDo { |key, value|
+			if(isControl.(key) or: {
+				key2 = key.asString;
+				if(key2.endsWith("Plug")) {
+					isControl.(key2.drop(-4).asSymbol)
+				} { false }
+			}) {
+				out.add(key).add(value);
+				if(printComma) { ", ".post } { printComma = true };
+				"%: %".postf(key, value.asCompileString);
+			};
+		};
+		"\n".post;
+		out
+	} {
+		array
+	}
+} => Func(\prunePreset);
+
 { |parent, bounds(Rect(800, 200, 500, 400))|
 	var view = TreeView(parent, bounds);
 	var watcher;
