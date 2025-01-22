@@ -993,7 +993,13 @@ protect {
 			var next, tries, warned = false;
 			var stream, repository = ~repository.();
 			if(repository[~pool].isNil) {
-				repository[~pool] = Pdefn(~pool).asStream;
+				repository[~pool] = Pprotect(
+					Pdefn(~pool),
+					// if the cached stream dies by error,
+					// clear it so that a new stream will be built next time
+					// if this is not done, probable result is that sclang crashes
+					{ repository[~pool] = nil }
+				).asStream;
 			};
 			stream = repository[~pool];
 			loop {

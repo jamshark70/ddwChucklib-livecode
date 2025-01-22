@@ -2763,11 +2763,31 @@ Proto {
 		currentEnvironment
 	};
 
-	~reset = {
+	~reset = { |error|
+		var cmd;
 		~makeStreamForKey.(\phraseSeq);
 		~makeStreamForKey.(\defaults);
 		~makeStreamForKey.(\postDefaults);
+		if(error.notNil) {
+			if(~lastPhrase.notNil) {
+				cmd = ~rebuildPhrase.(~lastPhrase);
+				("recreated pattern(s):\n" ++ cmd).postln;
+			};
+		};
 		~userreset.();
+	};
+
+	~rebuildPhrase = { |phraseKey|
+		var phr, cmd;
+		phr = ~phraseStrings[~lastPhrase];
+		if(phr.notNil) {
+			phr.keysValuesDo { |key, str|
+				cmd = cmd ++ "/%.%.% = %;\n"
+				.format(~collIndex, ~lastPhrase, key, str);
+			}
+		};
+		\chucklibLiveCode.eval(cmd).interpret;
+		cmd
 	};
 
 	~postParmMap = {
