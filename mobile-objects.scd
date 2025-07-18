@@ -1237,21 +1237,23 @@ protect {
 		};
 		~asView = { ~view };
 		~updateView = {
-			// tryPerform: ~items may be nil or empty
-			// also (FML) ~view.value may be nil
-			var currentID, i;
-			if(~items.notNil and: { ~view.value.notNil }) {
-				// and even if you have an items array, you might pull nil out of it
-				currentID = ~items[~view.value].tryPerform(\at, \id);
-			};
-			~items = ~makeList.();
-			~view.items = ~items.collect(_.string);
-			i = ~items.detectIndex { |item| item[\id] == currentID };
-			if(i.notNil) { ~view.value = i };
-			~updateColors.();
+			defer(inEnvir {
+				// tryPerform: ~items may be nil or empty
+				// also (FML) ~view.value may be nil
+				var currentID, i;
+				if(~items.notNil and: { ~view.value.notNil }) {
+					// and even if you have an items array, you might pull nil out of it
+					currentID = ~items[~view.value].tryPerform(\at, \id);
+				};
+				~items = ~makeList.();
+				~view.items = ~items.collect(_.string);
+				i = ~items.detectIndex { |item| item[\id] == currentID };
+				if(i.notNil) { ~view.value = i };
+				~updateColors.();
+			});
 		};
 		~updateColors = {
-			~view.colors = ~getColors.();
+			defer(inEnvir { ~view.colors = ~getColors.() });
 		};
 		~makeList = {
 			// oopsy, need drags and strings
