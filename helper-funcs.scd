@@ -194,6 +194,7 @@ Library.put(\clLivecode, \setupbars, \guiIsFront, false);
 				};
 			};
 		};
+		proc.changed(\presetReady);
 	};
 	vc = \bpAsVC.eval(bp);
 	presetDef = vc.env[\presets].tryPerform(\at, preset) ?? {
@@ -360,6 +361,7 @@ Library.put(\clLivecode, \setupbars, \guiIsFront, false);
 
 	view
 } => Func(\presetBrowser);
+
 
 // record several mixers with sample-accurate onset
 // for simplicity/livecode use, create a folder in recordingsDir

@@ -100,9 +100,11 @@ PstepDurPair : Pstep {
 		// if you add to an empty Factory, later checks will die with error
 		// so, prevent that
 		if(this.class.exists(collIndex)) {
-			if(presetDef.isKindOf(Dictionary).not) {
+			if([Dictionary, SequenceableCollection].every { |class|
+				presetDef.isKindOf(class).not
+			}) {
 				Error(
-					"Presetdef for '%' should be a dictionary but isn't"
+					"Presetdef for '%' should be a dictionary/array but isn't"
 					.format(key)
 				).throw;
 			};

@@ -1867,7 +1867,10 @@ Proto({
 			presetCheck = Fact(id[0]).presetAt(presetName);
 			// handle 'makeParms' entry
 			if(presetCheck.notNil) {
-				parmString = ~makeParmsIntoList.(presetCheck[\makeParms], parmString);
+				parmString = ~makeParmsIntoList.(
+					~lookupInPreset.(presetCheck, \makeParms),
+					parmString
+				);
 			};
 			[parmString, presetName]
 		} {
@@ -1892,6 +1895,20 @@ Proto({
 			};
 		};
 		parmString
+	};
+	// presets may be [arrays: ofPairs] when keys have dependencies
+	// in that case, we need to be able to look up \makeParms transparently
+	~lookupInPreset = { |preset, key|
+		if(preset.isSequenceableCollection) {
+			block { |break|
+				preset.pairsDo { |k, value|
+					if(k == key) { break.(value) }
+				};
+				nil
+			}
+		} {
+			preset[key]
+		}
 	};
 	// for autoGui: Remember which slots were auto-assigned
 	// round-robin reuse them after running out
@@ -2851,11 +2868,13 @@ Proto {
 		currentEnvironment
 	};
 
+	~findDefaults = { ~defaults };
 	~printPreset = { |stream(Post)|
 		var doComma = false;
 		var vc = ~event[\voicer];
-		if(~defaults.isKindOf(Proto)) {
-			~defaults[\override][\pairs].pairsDo { |a, b, i|
+		var defaults = ~findDefaults.();
+		if(defaults.isKindOf(Proto)) {
+			defaults[\override][\pairs].pairsDo { |a, b, i|
 				if(vc.notNil and: {
 					vc.globalControls[a].isNil
 				}) {
