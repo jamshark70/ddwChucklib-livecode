@@ -102,7 +102,7 @@ protect {
 				item
 			};
 			// "<< % getUpstreamItems".format(~protoID).debug;
-			// out.postcs
+			out // .postcs
 		};
 		~updateDeltas = { |items, key = \dur|
 			var deltas;
@@ -170,6 +170,7 @@ protect {
 		};
 		~asPattern = { |bp|  // the BP() object -- asPattern should be called @ top level only
 			var pat, rest, didProcess = false;
+			var bpk = ~bpKey;
 			// var startTime = Main.elapsedTime;
 			if(~items.isNil) {
 				~items = ~doProcess.(bp);
@@ -593,6 +594,30 @@ protect {
 		~helpString = "\\rand(\"timing\", \"items\")";
 		~snippet.("rand", "\\rand(##items, wildcards##)");
 	} => PR(\clGenRand);
+
+	PR(\clGenRand).clone {
+		~modifySource = {
+			~items.do { |item, i|
+				var next;
+				// includesEqual: SequenceNotes compare pitch only! Use pitch for matching
+				if(~replaceItems.includesEqual(item.item)) {
+					// some replacers might need access to the state
+					~currentItem = item;
+					~currentIndex = i;
+					next = ~seqStream.next(item);
+					// copy is critical here!
+					// 18-1014: wildcard-replacers update the wildcard
+					~items[i] = item.copy
+					.put(\item, next);
+					if("*@!".includes(next)) {
+						~items[i].put(\wildcard, next);
+					};
+				};
+			};
+		};
+		~helpString = "\\replaceWC(\"items\", \"wildcards\")";
+		~snippet.("replaceWC", "\\replaceWC(##items, wildcards##)");
+	} => PR(\clGenReplaceWC);
 
 	PR(\clGenSeq).clone {
 		~localPrep = {
@@ -2945,6 +2970,32 @@ protect {
 		};
 		~snippet.("wildcards", "\\wildcards(##wildcards, negate##)");
 	} => PR(\clGenWildcards);
+
+	// maybe a later version might have a flag to avoid conflicts
+	// this version will just naively stuff multiple items onto the same timepoint
+	PR(\clGen).clone {
+		~localPrep = {
+			~quantFactor = ~args[0];
+			if(~isNumProxy.(~quantFactor).not) {
+				Error("\\quant: quantFactor is not a number proxy").throw;
+			};
+			currentEnvironment
+		};
+		~process = {
+			var time = ~time, end = time + ~dur;
+			var factor = ~quantFactor.next;
+			~items = ~getUpstreamItems.();
+			~items.do { |item, i|
+				if(item[\time] >= time and: { item[\time] < end }) {
+					~items[i] = item.copy.put(\time,
+						(item[\time] - time).round(factor) + time
+					);
+				};
+			};
+			~items
+		};
+		~snippet.("quant", "\\quant(##quant##)");
+	} => PR(\clGenQuant);
 
 	// PR(\clGen).clone {
 	//
