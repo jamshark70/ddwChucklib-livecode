@@ -989,32 +989,37 @@ protect {
 		};
 		// both mixer and play/stop
 		~bindBP = { |bp, adverb, parms|
-			var index = ~getIndexFromAdverb.(adverb, 0, \fader),
-			mixer = bp.v.chan,
-			newMap;
-			if(mixer.isNil) {
-				mixer = bp.event[\voicer];  // mixer as temp here
-				if(mixer.notNil) { mixer = mixer.asMixer };  // mixer is really a Voicer at the start of this!
-			};
-			if(parms.isNil) {
-				parms = ()  // setMute: false
-			};
-			// may be multiple mixers
-			// note: 'do' handles [mixer, mixer...], and mixer, and nil
-			mixer.do { |mixer, i|
-				var localParms = parms;
-				if(i == 0) {
-					localParms = localParms.copy.put(\setMute, false);
+			var index, mixer, newMap;
+			if(bp.exists) {
+				index = ~getIndexFromAdverb.(adverb, 0, \fader);
+				mixer = bp.v.chan;
+				if(mixer.isNil) {
+					mixer = bp.event[\voicer];  // mixer as temp here
+					if(mixer.notNil) { mixer = mixer.asMixer };  // mixer is really a Voicer at the start of this!
 				};
-				if(index + i < ~faderKeys.size) {
-					~bindMixerChannel.(mixer, index + i, localParms);
+				if(parms.isNil) {
+					parms = ()  // setMute: false
 				};
+				// may be multiple mixers
+				// note: 'do' handles [mixer, mixer...], and mixer, and nil
+				mixer.do { |mixer, i|
+					var localParms = parms;
+					if(i == 0) {
+						localParms = localParms.copy.put(\setMute, false);
+					};
+					if(index + i < ~faderKeys.size) {
+						~bindMixerChannel.(mixer, index + i, localParms);
+					};
+				};
+				~maps[~toggleKeys[index]].free;
+				newMap = PR(\bptrig).copy.prep(~toggleKeys[index],
+					(bp: bp.collIndex, label: bp.collIndex, once: parms[\once]));
+				~maps[~toggleKeys[index]] = newMap;
+				~setNotification.(newMap, ~toggleKeys[index]);
+			} {
+				"BP(%) is empty, cannot put into the GUI"
+				.format(bp.collIndex.asCompileString).warn;
 			};
-			~maps[~toggleKeys[index]].free;
-			newMap = PR(\bptrig).copy.prep(~toggleKeys[index],
-				(bp: bp.collIndex, label: bp.collIndex, once: parms[\once]));
-			~maps[~toggleKeys[index]] = newMap;
-			~setNotification.(newMap, ~toggleKeys[index]);
 		};
 		~bindFunction = { |func, adverb, parms|
 			var index = ~getIndexFromAdverb.(adverb, 0, \toggle);
