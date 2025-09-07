@@ -2989,6 +2989,28 @@ protect {
 		~snippet.("wildcards", "\\wildcards(##wildcards, negate##)");
 	} => PR(\clGenWildcards);
 
+	PR(\clGen).clone {
+		~localPrep = {
+			~pool = ~args[0];
+			~checkEmpty.(~pool, "wildcard pool");
+			~pool = ~pool.collect(_.item);
+			currentEnvironment
+		};
+		~process = {
+			var end = ~time + ~dur;
+			var includes;
+			~items = ~getUpstreamItems.();
+			~items.do { |item|
+				if(item[\time] >= ~time and: { item[\time] < end
+					and: { item[\wildcard].isNil }
+				}) {
+					item[\wildcard] = item[\wildcard];
+				};
+			};
+		};
+		~snippet.("setWildcard", "\\setWildcard(##wildcards##)");
+	} => PR(\clGenSetWildcard);
+
 	// maybe a later version might have a flag to avoid conflicts
 	// this version will just naively stuff multiple items onto the same timepoint
 	PR(\clGen).clone {
