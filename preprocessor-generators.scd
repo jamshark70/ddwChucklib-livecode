@@ -2994,17 +2994,42 @@ protect {
 			~pool = ~args[0];
 			~checkEmpty.(~pool, "wildcard pool");
 			~pool = ~pool.collect(_.item);
+			~makePoolStream.();
 			currentEnvironment
+		};
+		~makePoolStream = {
+			~poolStream = Prand(~pool, inf).collect({ |thing|
+				if(thing.isKindOf(Dictionary)) {
+					thing[\item]
+				} {
+					thing
+				}
+			}).asStream;
 		};
 		~process = {
 			var end = ~time + ~dur;
 			var includes;
 			~items = ~getUpstreamItems.();
-			~items.do { |item|
+			~items.do { |item, i|
+				var next;
 				if(item[\time] >= ~time and: { item[\time] < end
-					and: { item[\wildcard].isNil }
+					// upstream sets every note's wildcard to itself
+					and: { item[\wildcard] == item[\item] }
 				}) {
-					item[\wildcard] = item[\wildcard];
+					next = ~poolStream.next(item);
+					if(next.isNil) {
+						~makePoolStream.();
+						next = ~poolStream.next(item);
+						if(next.isNil) {
+							"BP(%): setWildcard stream ran out"
+							.format(~bpKey.asCompileString)
+							.warn;
+						} {
+							~items[i] = item.copy.put(\wildcard, next);
+						};
+					} {
+						~items[i] = item.copy.put(\wildcard, next);
+					};
 				};
 			};
 		};
