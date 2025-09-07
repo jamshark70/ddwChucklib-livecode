@@ -1337,6 +1337,7 @@ protect {
 			~seqStream = Routine {
 				// first init only is from previous item
 				var pitch, prev, i, new;
+				var ok = true;
 				if(~connect.next > 0) {
 					// prev item might be a rest, if it's a placeholder from \ins
 					// so, scan backward through rests; normally this won't loop
@@ -1351,6 +1352,13 @@ protect {
 					prev = rrand(~fallbackMin.next, ~fallbackMax.next);
 				} {
 					prev = prev.item;
+				};
+				if(prev.respondsTo(\asFloat).not) {
+					ok = false;
+					"BP(%): Unresolved wildcard % in pitch processor"
+					.format(~bpKey, prev)
+					.warn;
+					prev = rrand(~fallbackMin.next, ~fallbackMax.next);
 				};
 				loop {
 					pitch = prev.asFloat + ~intervalStream.next;
@@ -2106,21 +2114,31 @@ protect {
 			} {
 				Routine { |pair|
 					var lastIndex, lastPitch, new;
+					var ok = true;
 					loop {
 						if(pair[1] != lastIndex) {
 							lastIndex = pair[1];
 							lastPitch = ~items[pair[1]].item;
 						};
-						new = SequenceNote(lastPitch.asFloat + ~insStream.next.asFloat);
-						// this test is COMPLETE BULLSHIT
-						// because ~canStutter should prohibit rests from even
-						// getting in here! I think I got it
-						// but I have a show so I'm leaving it in for extra insurance
-						if(lastPitch.isRest) {
-							new.freq = Rest(new.freq);
+						if(lastPitch.respondsTo(\asFloat)) {
+							new = SequenceNote(lastPitch.asFloat + ~insStream.next.asFloat);
+							// ~canStutter should prohibit rests from even
+							// getting in here! but seems unreliable...?
+							// I have a show so I'm leaving it in for extra insurance
+							if(lastPitch.isRest) {
+								new.freq = Rest(new.freq);
+							};
+							new = ~applyArtic.(~articStream.next, new);
+							lastPitch = new;
+						} {
+							if(ok) {
+								ok = false;
+								"BP(%): Unresolved wildcard % in pitch processor"
+								.format(~bpKey, lastPitch.asCompileString)
+								.warn;
+							};
+							new = Rest(0)
 						};
-						new = ~applyArtic.(~articStream.next, new);
-						lastPitch = new;
 						pair = new.yield;
 					};
 				};
