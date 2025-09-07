@@ -69,7 +69,7 @@ ClRangeNumProxy : ClNumProxy {
 
 ClAbstractParseNode {
 	var <>begin, <>end, <>string, <>parentNode, <>children;
-	var <time, <dur;
+	var <time, <dur, <>beatsPerBar = 4;
 	var <>bpKey, <>isPitch = false, <>isMain = false, <>phrase, <>parm;
 	var <>lastSelected;  // for GUI, not used for parsing
 
@@ -83,6 +83,7 @@ ClAbstractParseNode {
 
 	init { |stream, argParent|
 		parentNode = argParent;
+		beatsPerBar = parentNode.tryPerform(\beatsPerBar);
 		children = Array.new;
 		begin = stream.pos;
 		this.parse(stream);
@@ -208,6 +209,12 @@ ClAbstractParseNode {
 	setTime { |onset(0), argDur(4)|
 		time = onset;
 		dur = argDur;
+	}
+	getMeter { |numDivisions|
+		// only use meter if spanning the whole bar
+		^if(time == 0 and: { dur == beatsPerBar and: { BP.exists(\clMeters) } }) {
+			BP(\clMeters).get(beatsPerBar, numDivisions)
+		} // else nil
 	}
 	isSpacer { ^false }
 }
@@ -718,24 +725,29 @@ ClDividerNode : ClAbstractParseNode {
 		};
 	}
 	setTime { |onset(0), argDur(4), extraDur(0)|
-		var itemDur = argDur / max(children.size, 1), durs, lastI;
+		var itemDurs, durs, lastI;
 		time = onset;
 		dur = argDur;
+		itemDurs = this.getMeter(children.size);
+		if(itemDurs.isNil) {
+			itemDurs = (argDur / max(children.size, 1)).dup(children.size);
+		};
 		// children should be clStringNodes or clGeneratorNodes
 		durs = Array(children.size);
 		children.do { |item, i|
 			if(item.isSpacer and: { lastI.notNil }) {
-				durs[lastI] = durs[lastI] + itemDur;
+				durs[lastI] = durs[lastI] + itemDurs[i];
 			} {
 				lastI = i;
 			};
-			durs.add(itemDur);
+			durs.add(itemDurs[i]);
 		};
 		if(lastI.notNil) {
 			durs[lastI] = durs[lastI] + extraDur;
 		};
 		children.do { |item, i|
-			item.setTime(onset + (i * itemDur), durs[i]);
+			item.setTime(onset, durs[i]);
+			onset = onset + itemDurs[i];
 		};
 	}
 }
@@ -1055,26 +1067,37 @@ ClPatStringNode : ClAbstractParseNode {
 		stream << " ]";
 	}
 	setTime { |onset(0), argDur(4)|
-		var itemDur = argDur / max(children.size, 1), i, extraDur = 0, first;
+		var itemDurs, i, extraDur = 0, first;
 		time = onset;
 		dur = argDur;
+		itemDurs = this.getMeter(children.size);
+		if(itemDurs.isNil) {
+			itemDurs = (argDur / max(children.size, 1)).dup(children.size);
+		};
 		// all children should be divider nodes
 		// what about items spanning a division? reverse order
+		// so we need to start with the last onset time = sum of n-1 items
 		i = children.size - 1;
+		if(i > 1) {
+			(0 .. children.size - 2).do { |j|
+				onset = onset + itemDurs[j];
+			};
+		};
 		children.reverseDo { |item|
-			var itemOnset = onset + (i * itemDur);
-			item.setTime(itemOnset, itemDur, extraDur);
+			var itemOnset = onset;
+			item.setTime(itemOnset, itemDurs[i], extraDur);
 			if(item.children.size == 0) {
-				extraDur = extraDur + itemDur;
+				extraDur = extraDur + itemDurs[i];
 			} {
 				first = item.children.detect { |ch| ch.isSpacer.not };
 				if(first.notNil) {
 					extraDur = first.time - itemOnset;
 				} {
-					extraDur = extraDur + itemDur;
+					extraDur = extraDur + itemDurs[i];
 				}
 			};
 			i = i - 1;
+			if(i >= 0) { onset = onset - itemDurs[i] };
 		};
 	}
 }
@@ -1247,18 +1270,26 @@ ClPatternSetNode : ClAbstractParseNode {
 		if(stream.peek == $() {
 			Error("Composite patterns not refactored yet").throw;
 		};
-		if(stream.peek.isDecDigit or: { stream.peek == $+ }) {
+		if(stream.peek != $") {
 			children = children.add(ClPatStringQuantNode(stream, this));
 			hasQuant = true;
+			beatsPerBar = children.last.quant;
+		} {
 		};
 		if(stream.peek == $\") {
 			if(id.clClass.exists(id.objKey)) {
 				obj = id.clClass.new(id.objKey);
+				if(beatsPerBar.isNil) {
+					beatsPerBar = (obj.clock ?? { TempoClock.default }).beatsPerBar;
+				};
 				try {
 					isPitch = obj.parmIsPitch(id.parm) ?? { false };
 					isMain = id.parm == obj.defaultParm ?? { false };
 				};
+			} {
+				beatsPerBar = 4;  // BP doesn't exist; assume 4/4
 			};
+			// beatsPerBar should automatically get propagated down to children
 			children = children.add(
 				ClPatStringNode(stream, this,
 					(bpKey: id.objKey, isPitch: isPitch, isMain: isMain, parm: id.parm)
