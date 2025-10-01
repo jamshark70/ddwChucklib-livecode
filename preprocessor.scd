@@ -2628,7 +2628,7 @@ Proto {
 				aIsSelected = keys.includes($a);
 				desc.controlNames.do { |name|
 					var str = name.asString;
-					var firstIsSelected = str.includes(str[0]);
+					var firstIsSelected = keys.includes(str[0]);
 					case
 					{ aIsSelected and: { str == "atk" } or: {
 						firstIsSelected and: {
