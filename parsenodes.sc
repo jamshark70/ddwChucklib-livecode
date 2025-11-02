@@ -955,6 +955,7 @@ ClChainNode : ClAbstractParseNode {
 			Error("'::' syntax is valid between two generators only").throw;
 		};
 		parentNode = argParentNode;
+		beatsPerBar = parentNode.tryPerform(\beatsPerBar);
 		leftNode.parentNode = this;
 		children = [leftNode];
 		// if(stream.peek == $/) { stream.next };
