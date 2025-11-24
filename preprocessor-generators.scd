@@ -2989,6 +2989,8 @@ protect {
 		~snippet.("wildcards", "\\wildcards(##wildcards, negate##)");
 	} => PR(\clGenWildcards);
 
+	// this is intended for [bracket-source] items, which don't get WCs
+	// -- assigns a WC to them
 	PR(\clGen).clone {
 		~localPrep = {
 			~pool = ~args[0];
