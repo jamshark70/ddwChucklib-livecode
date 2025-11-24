@@ -101,9 +101,11 @@ Library.put(\clLivecode, \setupbars, \guiIsFront, false);
 	});
 } => Func(\changeTempo);
 
-{ |mode = \default|
+{ |mode = \default, post = true|
 	if(Mode.exists(mode)) {
-		"changeKey: Mode(%) => Mode('default')\n".postf(mode.asCompileString);
+		if(post == true) {
+			"changeKey: Mode(%) => Mode('default')\n".postf(mode.asCompileString);
+		};
 		Mode(mode) => Mode(\default);
 	} {
 		"changeKey: Mode(%) does not exist".format(mode.asCompileString).warn;
@@ -190,6 +192,7 @@ Library.put(\clLivecode, \setupbars, \guiIsFront, false);
 				if(gcs[key].notNil and: { value.isNumber }) {
 					gcs[key].value = value
 				} {
+					if(value.isFunction) { value = value.value(vc) };
 					proc.set(key, value);
 				};
 			};
