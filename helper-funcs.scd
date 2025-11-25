@@ -193,7 +193,17 @@ Library.put(\clLivecode, \setupbars, \guiIsFront, false);
 				if(gcs[key].notNil and: { value.isNumber }) {
 					gcs[key].value = value
 				} {
-					if(value.isFunction) { value = value.value(vc) };
+					// functions in presets are used for two purposes:
+					// 1. as Plug constructors (should remain a function)
+					// 2. for lazy init, to resolve an object at vc-creation time
+					// 1. should be written `\name, { ... Plug() ... }`
+					// 2. should be `\deferred -> { |vc| ... }`
+					if(value.isKindOf(Association)) {
+						if(value.key == \deferred and: { value.value.isFunction }) {
+							// this is not actually a joke
+							value = value.value.value(vc)
+						};
+					};
 					proc.set(key, value);
 				};
 			};
