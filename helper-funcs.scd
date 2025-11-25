@@ -85,6 +85,7 @@ Library.put(\clLivecode, \setupbars, \guiIsFront, false);
 // if last 2 are omitted, it will wait until the next barline to switch the meter
 { |beatsPerBar, clock(TempoClock.default), barBeat(clock.nextBar), newBaseBarBeat(barBeat)|
 	clock.schedAbs(barBeat, {
+		"changeMeter set to % at %\n".postf(beatsPerBar, barBeat);
 		clock.setMeterAtBeat(beatsPerBar, newBaseBarBeat);
 		nil
 	});
