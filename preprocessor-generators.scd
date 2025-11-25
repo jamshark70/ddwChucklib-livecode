@@ -2373,9 +2373,12 @@ protect {
 				item = item.asFloat;
 				// char 0 --> value 9.0; char A --> value 65.0
 				if(item >= 65) {
-					item - 55  // 65.0 --> 10.0
+					item - 55  // 65.0 --> 10.0 (also, guaranteed to be positive)
 				} {
-					item
+					// item < 0 isn't valid for forward movement in time
+					// note that this is an index into a duration table
+					// where all values should be > 0
+					max(0, item)
 				}
 			}
 			{ item.isKindOf(Char) } {
