@@ -1079,7 +1079,7 @@ ClPatStringNode : ClAbstractParseNode {
 		// what about items spanning a division? reverse order
 		// so we need to start with the last onset time = sum of n-1 items
 		i = children.size - 1;
-		if(i > 1) {
+		if(i >= 1) {
 			(0 .. children.size - 2).do { |j|
 				onset = onset + itemDurs[j];
 			};
