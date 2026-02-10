@@ -600,7 +600,8 @@ protect {
 			~items.do { |item, i|
 				var next;
 				// includesEqual: SequenceNotes compare pitch only! Use pitch for matching
-				if(~replaceItems.includesEqual(item.item)) {
+				// if empty, replace everything with WCs
+				if(~replaceItems.size == 0 or: { ~replaceItems.includesEqual(item.item) }) {
 					// some replacers might need access to the state
 					~currentItem = item;
 					~currentIndex = i;
@@ -2296,12 +2297,21 @@ protect {
 			~pool = ~args[0];
 			~quant = ~args[1] ?? { 0.25 };
 			~dpool = ~args[2];
+			// ~alwaysDownbeat = ~args[3] ?? { 0 };
 			~poolStream = Prand(~pool.asArray, inf).collect(_.item).asStream;
 			~dpool = Prand(~dpool.asArray, inf);
 			~dpoolStream = ~dpool.asStream;
 			~resetCount = 0;  // see ~getAvail; trap infinite loops
 			~initRest = false;  // see superclass modifySource
 			~remainder = 0;
+
+			#[quant/*, alwaysDownbeat*/].do { |key|
+				if(~isNumProxy.(key.envirGet).not) {
+					Error("BP(%): % should be a number proxy but isn't"
+						.format(~collIndex.asCompileString, key.asCompileString)
+					).throw;
+				};
+			};
 
 			// prepare reset flags for the 2 pool streams
 			~pReset = ~checkChildReset.(~pool);
@@ -2333,6 +2343,7 @@ protect {
 			tolerance = 0.001,
 			quant = ~quant.next,
 			item, index;
+			// var constrain = ~alwaysDownbeat.next;
 			if(quant != ~oldQuant) {
 				~oldQuant = quant;
 				if(quant.size > 0) {
@@ -2364,7 +2375,16 @@ protect {
 					}
 				};
 			};
-			~remainder = now - end;
+			// something is wrong with this
+			// getting late messages that I didn't get before
+			// that means some time values are going backward when they shouldn't
+			// probably negative time at the beginning of the bar
+			// no time to debug it now
+			// if(constrain == 0) {
+				~remainder = now - end;
+			// } {
+			// ~remainder = 0;  // upstream should interpret this as "go to barline only"
+			// };
 			avail
 		};
 		~deltaIndexFromItem = { |item|
@@ -2391,7 +2411,7 @@ protect {
 				1
 			};
 		};
-		~snippet.("pdelta", "\\pdelta(##pool, quant, deltapool##)");
+		~snippet.("pdelta", "\\pdelta(##pool, quant, deltapool, alwaysDownbeat##)");
 	}).import((clGenPitch: #[checkChildReset])) => PR(\clGenPdelta);
 
 	// \timePt(pool, timepts, quant, ignoreCollisions)
