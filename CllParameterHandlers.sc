@@ -73,6 +73,7 @@ CllParm {
 	var <storeParm, <patternParm;
 	var isDefault;
 	var valueLookup, isRest;
+	var prevValueID;
 
 	// bpKey should have been validated in the factory
 	// I won't recheck it redundantly here
@@ -91,9 +92,15 @@ CllParm {
 		if(BP(bpKey).parmIsPitch(parm)) {
 			valueLookup = \pitchLookup;
 			isRest = \pitchIsRest;
+			prevValueID = map.tryPerform(\at, \default) ?? { SequenceNote(0, 1, 0.9) };
 		} {
 			valueLookup = \dictLookup;
 			isRest = \otherIsRest;
+			if(map[\default].notNil) {
+				prevValueID = map[\default];
+			} {
+				prevValueID = Rest(0)
+			};
 		};
 	}
 
@@ -104,7 +111,15 @@ CllParm {
 	}
 
 	// higher level hook, for subclasses handling arrays
+	// we need both common behavior and class-specific overrides
+	// I don't really *want* to split it further down but I don't see a better way
 	processValue { |valueID, inEvent|
+		var saveID = valueID;
+		var next = this.prProcessValue(valueID, inEvent);
+		prevValueID = saveID;
+		^next
+	}
+	prProcessValue { |valueID, inEvent|
 		^this.processOneValue(valueID, inEvent)
 	}
 
@@ -142,25 +157,34 @@ CllParm {
 			if(event == \rest or: { event.class == Char }) {
 				if(isDefault) {
 					inEvent[\legato] = 0.9;
-				};
-				event = Rest(map[\rest] ?? { 0 });
+					event = Rest(map[\rest] ?? { 0 });
+				} {
+					event = prevValueID;
+				}
 			};
 			convert.(event, inEvent, map) ?? { event }
 		};
 	}
 	dictLookup { |event, inEvent|
-		var result = if(map.notNil) {
+		var convert = result = if(map.notNil) {
 			if(map[\convertFunc].notNil) {
-				map[\convertFunc].value(event, inEvent, map)
+				convert = { |ev| map[\convertFunc].value(ev, inEvent, map) }
 			} {
-				map[event]
+				convert = { |ev| map[ev] };
 			};
 		};
-		^if(result == \rest or: { event == \rest }) {
+		var result = convert.(event);
+		^(if(result == \rest or: { event == \rest }) {
 			Rest(result ?? { 0 })
 		} {
-			result  // nil if not specified
-		};
+			// character token was not specified in the parmMap
+			// always rest if default; non-default parms substitute prev value
+			if(isDefault) {
+				result
+			} {
+				result ?? { convert.(prevValueID) }
+			}
+		});
 	}
 
 	valueIsRest { |event, inEvent|
@@ -192,7 +216,7 @@ CllParm {
 }
 
 CllDefaultNoAliasParm : CllParm {
-	processValue { |valueID, inEvent|
+	prProcessValue { |valueID, inEvent|
 		var out;
 		out = valueID.copy;
 		out[0] = this.processOneValue(out[0], inEvent);
@@ -201,7 +225,7 @@ CllDefaultNoAliasParm : CllParm {
 }
 
 CllSimpleAliasParm : CllParm {
-	processValue { |valueID, inEvent|
+	prProcessValue { |valueID, inEvent|
 		var result = this.processOneValue(valueID, inEvent);
 		inEvent.put(storeParm, result);
 		^result
@@ -209,7 +233,7 @@ CllSimpleAliasParm : CllParm {
 }
 
 CllDefaultArrayAliasParm : CllParm {
-	processValue { |valueID, inEvent|
+	prProcessValue { |valueID, inEvent|
 		var result = this.valueForParm(valueID[0], inEvent), sp0;
 		if(result.isNil) {
 			result = [Rest(valueID[0])];
@@ -232,7 +256,7 @@ CllDefaultArrayAliasParm : CllParm {
 }
 
 CllNonDefaultArrayAliasParm : CllParm {
-	processValue { |valueID, inEvent|
+	prProcessValue { |valueID, inEvent|
 		var result = this.valueForParm(valueID, inEvent);
 		if(result.isNil) {
 			result = [Rest(valueID)];
