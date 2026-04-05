@@ -269,9 +269,11 @@ protect {
 
 		// articulation support; not all generators will use this,
 		// but inheritance is complex enough, just put it here
-		~artic = ($~: inf /*1.01*/, $_: 0.9, $.: 0.4,
+		~artic = ($~: inf /*1.01*/, $=: 1.0, $_: 0.9, $.: 0.4,
 			$>: { |note| note.args = \accent; nil }  // don't change length
 		);
+		~articString = ~artic.keys.as(Array).join;
+		~articNonAccentString = ~articString.select { |ch| ch != $> };
 		~isValidArtic = { |artic|
 			if(artic.tryPerform(\isClGen) ?? { false }) {
 				if(artic.tryPerform(\canBePool) ?? { false }) {
@@ -324,7 +326,7 @@ protect {
 						item = str.peek;
 						case { item.isKindOf(Dictionary) and: { item[\item].isKindOf(SequenceNote) } } {
 							ch2 = item[\item].asFloat.asInteger.asAscii;
-							if("~_.".includes(ch2)) {
+							if(~articNonAccentString.includes(ch2)) {
 								out.add(\accent -> ch2);  // ">_" branch
 								str.next;
 							} {
@@ -338,7 +340,7 @@ protect {
 						}
 						{ Error("Wrong character in artic pool").throw }
 					}
-					{ "~_.".includes(ch) } {
+					{ ~articNonAccentString.includes(ch) } {
 						out.add(ch);
 					}
 					{ Error("Wrong character in artic pool").throw }
@@ -827,7 +829,7 @@ protect {
 			// which is totally incompatible with this usage
 
 			// btw: why did I say item == $. here? Everywhere else, '-' is the rest
-			"-.".includes(item) or: { item.tryPerform(\asFloat) == 45 }
+			~articNonAccentString.includes(item) or: { item.tryPerform(\asFloat) == 45 }
 		};
 		~snippet.("rest", "\\rest(##switch, wildcards, restItem, trueRest##)");
 	} => PR(\clGenRest);
@@ -1234,9 +1236,6 @@ protect {
 		~canBePool = false;  // inheritance here is messy...
 		~defaults = [/*[],*/ [(item: $*)], #[-2, -1, 1, 2].collect({ |int| (item: int) }), 0, 7, "_"];
 		~argNames = #[/*baseItems,*/ replaceItems, intervalPool, fallbackMin, fallbackMax, articPool];
-		~artic = ($~: inf /*1.01*/, $_: 0.9, $.: 0.4,
-			$>: { |note| note.args = \accent; nil }  // don't change length
-		);
 		~doReset = 0;
 		~localPrep = {
 			~argNames.do { |key, i|
@@ -2013,7 +2012,7 @@ protect {
 		};
 		~makeStream = 0;  // ~seqStream is not used here
 		~snippet.("stutt", "\\stutt(##match, numToAdd, quant, prob, insItem \"-\", wildcards, \"*\"##)");
-	}.import((clGenPitch: #[artic])) => PR(\clGenStutt);
+	} => PR(\clGenStutt);
 
 	PR(\clGenStutt).clone {
 		~modifySource = {

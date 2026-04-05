@@ -270,6 +270,7 @@ ClEventStringNode : ClStringNode {
 					{ $, } { degree = degree - 7 }
 					{ $' } { degree = degree + 7 }
 					{ $~ } { legato = inf /*1.01*/ }
+					{ $= } { legato = 1.0 }
 					{ $_ } { legato = 0.9 }
 					{ $. } { legato = 0.4 }
 					{ $> } { accent = true }
@@ -295,7 +296,7 @@ ClPitchEventNode : ClEventStringNode {
 	parse { |stream|
 		// while loop assumes that the pitch number has already been eaten
 		var ch = stream.next, new = String.with(ch);
-		while { (ch = stream.next).notNil and: { "+-',~_.>".includes(ch) } } {
+		while { (ch = stream.next).notNil and: { "+-',~=_.>".includes(ch) } } {
 			new = new.add(ch);
 		};
 		if(ch.notNil) { stream.pos = stream.pos - 1 };
@@ -334,7 +335,7 @@ ClChordNode : ClEventStringNode {
 		} {
 			stream.next;  // used 'peek' above, have to advance past closing delimiter
 			ch = stream.peek;
-			if(".~>_".includes(ch)) {
+			if(".~>=_".includes(ch)) {
 				new = ClArticNode(stream, this);
 				children = children.add(new);
 			};
@@ -346,6 +347,7 @@ ClChordNode : ClEventStringNode {
 		if(children.last.isMemberOf(ClArticNode)) {
 			switch(children.last.char)
 			{ $~ } { legato = inf /*1.01*/ }
+			{ $= } { legato = 1.0 }
 			{ $_ } { legato = 0.9 }
 			{ $. } { legato = 0.4 };
 			accent = children.last.accented;
@@ -367,7 +369,7 @@ ClChordNode : ClEventStringNode {
 }
 
 ClArticNode : ClStringNode {
-	var artic = "_.~", accent = ">";
+	var artic = "=_.~", accent = ">";
 	var <>char, <>accented = false;
 
 	parse { |stream|
@@ -630,7 +632,7 @@ ClDividerNode : ClAbstractParseNode {
 				new
 				/*
 				new = String.with(ch);
-				while { (ch = stream.next).notNil and: { "+-',~_.>".includes(ch) } } {
+				while { (ch = stream.next).notNil and: { "+-',~=_.>".includes(ch) } } {
 					new = new.add(ch);
 				};
 				if(ch.notNil) { stream.pos = stream.pos - 1 };
@@ -749,7 +751,7 @@ ClGeneratorNode : ClAbstractParseNode {
 			(type: ClGeneratorNode, regexp: "^\\\\[a-zA-Z0-9_]+"),
 			(type: ClPassthruNumberNode, regexp: "^\{.*\}"),
 			// more specific "" test must come first
-			(type: ClArticPoolNode, regexp: "^\"[._~>]+\"",
+			(type: ClArticPoolNode, regexp: "^\"[.=_~>]+\"",
 				match: { |node| node.isPitch ?? { false } },
 				pre: { |stream| stream.next }  // stringnodes assume you've already dropped the opening quote
 			),
