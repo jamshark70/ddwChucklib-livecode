@@ -488,10 +488,12 @@ protect {
 				~window = temp.findWindow;
 				~iMadeWindow = false;
 			};
-			~parentView.onClose = inEnvir {
+			~parentView.onClose_(inEnvir {
 				if(~window.notNil) { ~window.onClose = nil };
 				~free.();
-			};
+			});
+			~window.acceptsMouseOver_(true);
+			~parentView.mouseEnterAction_(inEnvir { ~window.front });
 		};
 		~calcExtent = { |overrideModel|
 			var maxPt = ~minExtent, specs;
@@ -546,14 +548,37 @@ protect {
 				view[\init].value(view.view);
 				view[\spec] = view[\spec].asSpec;
 				if(view[\class] == Slider2D) {
-					view.view.action = inEnvir { |vw|
+					view.view.action_(inEnvir { |vw|
 						// this is not exactly right
 						~model.tryPerform(\viewChanged, oscpath, view[\spec].map([vw.x, vw.y]));
-					};
+					})
+					.mouseEnterAction_(inEnvir { |vw|
+						var data;
+						// why? Because the view only knows ~model
+						// it doesn't know which "link" object below services it
+						// so I'm broadcasting a request, and getting the data back via callback
+						NotificationCenter.notify(~model, oscpath, [(
+							what: \getCtlValue,
+							callback: { |d| data = d }
+						)]);
+						if(data.notNil) {
+							vw.toolTip = data.collect(_.asFloat.asStringPrec(6));
+						};
+					});
 				} {
-					view.view.action = inEnvir { |vw|
+					view.view.action_(inEnvir { |vw|
 						~model.tryPerform(\viewChanged, oscpath, view[\spec].map(vw.value));
-					};
+					})
+					.mouseEnterAction_(inEnvir { |vw|
+						var data;
+						NotificationCenter.notify(~model, oscpath, [(
+							what: \getCtlValue,
+							callback: { |d| data = d }
+						)]);
+						if(data.notNil) {
+							vw.toolTip = data.asFloat.asStringPrec(6);
+						};
+					});
 				};
 				~views[oscpath] = view;
 				~viewHook.(oscpath, view, parent);  // currently, adds superimposed label view
@@ -655,7 +680,16 @@ protect {
 					|msg, time, addr, recvPort|
 					if(~rdepth < 50) {
 						~rdepth = ~rdepth + 1;
-						~prAction.(msg, time, addr, recvPort);
+						// pretty bad hack: this is the best way I can think of
+						// for the GUI slider manager to reach this link object
+						if(msg.isKindOf(Dictionary)) {
+							switch(msg[\what])
+							{ \getCtlValue } {
+								msg[\callback].value(~gc.value)
+							}
+						} {
+							~prAction.(msg, time, addr, recvPort);
+						};
 						~rdepth = ~rdepth - 1;
 					} {
 						Error("OSC response: Recursion limit reached").throw;
@@ -785,6 +819,12 @@ protect {
 		};
 		~getValue = { ~gc.unmappedValue };
 		~getLabels = { nil };
+
+		// ~update = { |obj, what|
+		// 	case
+		// 	{ what.isKindOf(Dictionary) } {
+		// 	}
+		// };
 	} => PR(\gcmap);
 
 	PR(\gcmap).clone {
@@ -835,6 +875,9 @@ protect {
 				{ \value } {
 					BP(~oscInKey).setGUIValue(~path[0], ~cspec.unmap(~gc.value));
 				}
+				// { \getCtlValue } {
+				// 	what[\callback].debug("callback").value(~gc.value.debug("gc.value"))
+				// }
 				{ \modelWasFreed } { ~free.() }
 			}
 			{ obj.isKindOf(Bus) } {

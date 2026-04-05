@@ -904,7 +904,9 @@ Proto {
 	};
 
 	~makeGui = {
-		~win = Window(~windowTitle, ~bounds.value).background_(~windowBackground);
+		~win = Window(~windowTitle, ~bounds.value).background_(~windowBackground)
+		.acceptsMouseOver_(true);
+		~win.view.mouseEnterAction_(inEnvir { ~win.front });
 		~pages = Array.new;
 		~pageMenu = PopUpMenu()
 		.background_(~backColor).stringColor_(~stringColor)
