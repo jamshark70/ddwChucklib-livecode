@@ -185,21 +185,22 @@ protect {
 			pat = Pseq(rest ++ ~items, 1);
 			if(BP.exists(~bpKey) and: { ~parm != BP(~bpKey).defaultParm }) {
 				pat = pat.collect { |ev, inEvent|
+					if(ev[\item].isNil) {
+						// incumbent on you to put the parm into ~defaults
+						ev[\item] = inEvent[~parm];
+					};
 					if(ev[\initialRest] == true) {
 						inEvent.put(\initialRest, true);
 					};
-					if(ev[\item].isNil) {
-						// incumbent on you to put the parm into ~defaults
-						[inEvent[~parm], ev[\delta]]
-					} {
-						[ev[\item], ev[\delta]]
-					}
+					~applyAnnotation.(ev, inEvent);
+					[ev[\item], ev[\delta]]
 				};
 			} {
 				pat = pat.collect { |ev, inEvent|
 					if(ev[\initialRest] == true) {
 						inEvent.put(\initialRest, true);
 					};
+					~applyAnnotation.(ev, inEvent);
 					[ev[\item], ev[\delta], ev[\dur]]
 				};
 			};
@@ -449,6 +450,18 @@ protect {
 			if(obj.size == 0) {
 				Error("Values expected for %, but was empty".format(str)).throw;
 			};
+		};
+		~annotateEvent = { |event, annotations|
+			if(event[\annotation].isNil) {
+				event[\annotation] = IdentityDictionary.new;
+			};
+			event[\annotation].putAll(annotations);
+		};
+		~applyAnnotation = { |generatorEvent, inEvent|
+			if(generatorEvent[\annotation].notNil) {
+				inEvent.putAll(generatorEvent[\annotation]);
+			};
+			inEvent
 		};
 	}, parentKeys: #[canEmbed, protoID, isClGen, patternStringKeys, patternStringFuncs])
 	.import((clPatternSet: #[decodePitch])) => PR(\clGen);
@@ -3186,7 +3199,7 @@ protect {
 				items = ~updateDeltas.(items, \dur);
 				items.do { |item|
 					if(lookupSet.includes(item).not) {
-						item[\layerID] = ~layerIDs[i];
+						~annotateEvent.(item, (layerID: ~layerIDs[i]));
 						new = new.add(item);
 					};
 				};
