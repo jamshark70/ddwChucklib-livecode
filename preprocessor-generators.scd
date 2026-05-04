@@ -3099,6 +3099,123 @@ protect {
 		~snippet.("quant", "\\quant(##quant##)");
 	} => PR(\clGenQuant);
 
+	// PR(\clGen).clone {
+	//
+	// } => PR(\clGenLeadTo);
+
+	// \fork(items, "\gen()| \gen()|...")
+	PR(\clGen).clone {
+		~copyNonGenerators = false;
+		~localPrep = {
+			~generators = ~args[0];
+			currentEnvironment
+		};
+		~process = {
+			~items = ~getUpstreamItems.();
+			~items = ~processOne.(~items, ~generators);
+		};
+		// factored out for subclass
+		~processOne = { |items, patternString|
+			var lastGenTime = 0, newItems = Array.new;
+			patternString.do { |gen, i|
+				var start, end, partition;
+				if(gen.tryPerform(\isClGen) ?? { false }) {
+					start = gen.time;
+					end = start + gen.dur;
+					// any stray items?
+					if(start - lastGenTime > 0.0001) {
+						newItems = newItems.addAll(items.select { |item|
+							item[\time] >= lastGenTime and: { item[\time] < start }
+						});
+					};
+					partition = items.select { |item|
+						item[\time] >= start and: { item[\time] < end }
+					};
+					gen.baseItems = partition;
+					newItems = newItems.addAll(gen.process);
+					lastGenTime = gen.time + gen.dur;
+				} {
+					if(~copyNonGenerators) {
+						newItems = newItems.add(gen)
+					};
+				};
+			};
+			newItems = newItems.addAll(items.select { |item|
+				item[\time] >= lastGenTime
+			});
+			newItems
+		};
+
+		// pool validation: tricky because non-pool gens are allowed here
+		// but each should be validated
+		~checkPoolArgs = { |inPool = false|
+			var checkOne = { |item|
+				if(item.isKindOf(Proto)) {
+					item.checkPoolArgs(false)  // not in pool
+				};
+			};
+			if(inPool) {
+				Error("%% may not be used in a pool".format(
+					$\\, ~protoID.asString.drop(5).toLower
+				)).throw;
+			};
+			~args.do { |a| a.do(checkOne) };  // ~args for subclass
+		};
+
+		~snippet.("fork", "\\fork(##genString##)");
+	} => PR(\clGenFork);
+
+	PR(\clGenFork).clone {
+		~poolArgs = { ~strings };
+		~localPrep = {
+			~source = ~args[0];
+			~strings = ~args[1..].collect { |str|
+				if(str.every { |item| item.tryPerform(\isClGen) ?? { false } }) {
+					str  // all are clGens, pass through OK
+				} {
+					// replace with \rand() (compatible with other pool strings)
+					// the [] wrapper represents the "" string
+					[PR(\clGenRand).copy.putAll((
+						// str is already an array, but needs 'doReset' and 'offset'
+						args: [str, nil, ClNumProxy(0), ClNumProxy(0)],
+						bpKey: ~bpKey,
+						parm: ~parm,
+						time: ~time,
+						dur: ~dur,
+						isPitch: ~isPitch,
+						isMain: ~isMain
+					)).prep]
+				};
+			};
+			~layerIDs = Array.fill(~strings.size, { UniqueID.next });
+			~checkPoolArgs.();
+			currentEnvironment
+		};
+		~process = {
+			var sourceItems = ~getUpstreamItems.();
+			var lookupSet = sourceItems.as(IdentitySet);
+			var items, new;
+			// prevent items from leaking in from the previous bar
+			~items = sourceItems;
+			~strings.do { |patString, i|
+				items = sourceItems.copy;
+				items = ~processOne.(items, ~source);  // common source
+				items = ~processOne.(items, patString);
+				items = ~updateDeltas.(items, \dur);
+				items.do { |item|
+					if(lookupSet.includes(item).not) {
+						~annotateEvent.(item, (layerID: ~layerIDs[i]));
+						new = new.add(item);
+					};
+				};
+			};
+			// as in Ppar, delta may need to be different from dur
+			// dur was set above
+			~items = ~updateDeltas.((sourceItems ++ new).sort { |a, b| a[\time] < b[\time] }, \delta);
+		};
+		~snippet.("par", "\\par(##source, string0, string1...##)");
+	} => PR(\clGenPar);
+
 	// read 'times' of already-prepared events
 	// and warp them according to an envelope
 	// Env([0, midpoint, 1], [midpoint, 1 - midpoint], [curve.neg, curve])
@@ -3195,117 +3312,34 @@ protect {
 		~snippet.("warpTime", "\\warpTime(curve, midpoint, wildcards)");
 	} => PR(\clGenWarpTime);
 
-	// PR(\clGen).clone {
-	//
-	// } => PR(\clGenLeadTo);
-
-	// \fork(items, "\gen()| \gen()|...")
-	PR(\clGen).clone {
+	PR(\clGenWarpTime).clone({
+		~copyNonGenerators = true;
+		~superPrep = ~localPrep;
 		~localPrep = {
-			~generators = ~args[0];
+			~superPrep.();
+			~generators = ~args[3];
 			currentEnvironment
 		};
-		~process = {
-			~items = ~getUpstreamItems.();
-			~items = ~processOne.(~items, ~generators);
-		};
-		// factored out for subclass
-		~processOne = { |items, patternString|
-			var lastGenTime = 0, newItems = Array.new;
-			patternString.do { |gen, i|
-				var start, end, partition;
-				if(gen.tryPerform(\isClGen) ?? { false }) {
-					start = gen.time;
-					end = start + gen.dur;
-					// any stray items?
-					if(start - lastGenTime > 0.0001) {
-						newItems = newItems.addAll(items.select { |item|
-							item[\time] >= lastGenTime and: { item[\time] < start }
-						});
-					};
-					partition = items.select { |item|
-						item[\time] >= start and: { item[\time] < end }
-					};
-					gen.baseItems = partition;
-					newItems = newItems.addAll(gen.process);
-					lastGenTime = gen.time + gen.dur;
-				}
-			};
-			newItems = newItems.addAll(~items.select { |item|
-				item[\time] >= lastGenTime
-			});
-			newItems
-		};
 
-		// pool validation: tricky because non-pool gens are allowed here
-		// but each should be validated
-		~checkPoolArgs = { |inPool = false|
-			var checkOne = { |item|
-				if(item.isKindOf(Proto)) {
-					item.checkPoolArgs(false)  // not in pool
+		~superGetSub = ~getSubdivisions;
+		~getSubdivisions = {
+			var saveItems;
+			~gens = ~processOne.(Array.new, ~generators);
+			~gens.do { |item|
+				if("*@!".includes(item[\item])) {
+					item[\wildcard] = item[\item];
 				};
 			};
-			if(inPool) {
-				Error("%% may not be used in a pool".format(
-					$\\, ~protoID.asString.drop(5).toLower
-				)).throw;
+			protect {
+				saveItems = ~items;
+				~items = ~gens;
+				~superGetSub.();
+			} {
+				~items = saveItems;
 			};
-			~args.do { |a| a.do(checkOne) };  // ~args for subclass
 		};
-
-		~snippet.("fork", "\\fork(##genString##)");
-	} => PR(\clGenFork);
-
-	PR(\clGenFork).clone {
-		~poolArgs = { ~strings };
-		~localPrep = {
-			~source = ~args[0];
-			~strings = ~args[1..].collect { |str|
-				if(str.every { |item| item.tryPerform(\isClGen) ?? { false } }) {
-					str  // all are clGens, pass through OK
-				} {
-					// replace with \rand() (compatible with other pool strings)
-					// the [] wrapper represents the "" string
-					[PR(\clGenRand).copy.putAll((
-						// str is already an array, but needs 'doReset' and 'offset'
-						args: [str, nil, ClNumProxy(0), ClNumProxy(0)],
-						bpKey: ~bpKey,
-						parm: ~parm,
-						time: ~time,
-						dur: ~dur,
-						isPitch: ~isPitch,
-						isMain: ~isMain
-					)).prep]
-				};
-			};
-			~layerIDs = Array.fill(~strings.size, { UniqueID.next });
-			~checkPoolArgs.();
-			currentEnvironment
-		};
-		~process = {
-			var sourceItems = ~getUpstreamItems.();
-			var lookupSet = sourceItems.as(IdentitySet);
-			var items, new;
-			// prevent items from leaking in from the previous bar
-			~items = sourceItems;
-			~strings.do { |patString, i|
-				items = sourceItems.copy;
-				items = ~processOne.(items, ~source);  // common source
-				items = ~processOne.(items, patString);
-				items = ~updateDeltas.(items, \dur);
-				items.do { |item|
-					if(lookupSet.includes(item).not) {
-						~annotateEvent.(item, (layerID: ~layerIDs[i]));
-						new = new.add(item);
-					};
-				};
-			};
-			// as in Ppar, delta may need to be different from dur
-			// dur was set above
-			~items = ~updateDeltas.((sourceItems ++ new).sort { |a, b| a[\time] < b[\time] }, \delta);
-		};
-		~snippet.("par", "\\par(##source, string0, string1...##)");
-	} => PR(\clGenPar);
+		~snippet.("warpSeg", "\\warpTime(curve, midpoint, wildcards, string)");
+	}).import((clGenFork: #[processOne])) => PR(\clGenWarpSeg);
 
 	PR(\clGen).clone {
 		~localPrep = {
