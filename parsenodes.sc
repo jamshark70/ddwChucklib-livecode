@@ -570,7 +570,7 @@ ClPassthruNumberNode : ClStringNode {
 		// avoid code duplication in the generated string by using a function.
 		// stream << "PR(\\clNumProxy).copy.prep(Plazy { var func = { " << ~value
 		stream << "ClNumProxy(Plazy { var func = { " << value
-		<< " }, thing = func.value; if(thing.isPattern) { PnNilSafe(thing, inf, 10) } { Pfunc(func) } })";
+		<< " }, thing = func.value; case { thing.isPattern or: { thing.isKindOf(Stream) } } { PnNilSafe(thing, inf, 10) } { Pfunc(func) } })";
 	}
 }
 
