@@ -3099,6 +3099,102 @@ protect {
 		~snippet.("quant", "\\quant(##quant##)");
 	} => PR(\clGenQuant);
 
+	// read 'times' of already-prepared events
+	// and warp them according to an envelope
+	// Env([0, midpoint, 1], [midpoint, 1 - midpoint], [curve.neg, curve])
+	// produces an "inverted sigmoid" = speed up, then slow down
+	// negative curve reverses this
+	// midpoint = 1 uses the speed-up part; midpoint = 0, slow down only
+	// assumes that times are sorted in order
+	PR(\clGen).clone {
+		~localPrep = {
+			~curve = ~args[0] ?? { 1.7 };  // noticeable curve but not too extreme
+			~midpoint = ~args[1] ?? { 0.5 };
+			~wildcards = ~args[2].collect { |item| item.item };
+
+			#[curve, midpoint].do { |key|
+				var val = key.envirGet;
+				if(~isNumProxy.(val).not) {
+					"BP(%): % = % is not a number"
+					.format(~bpKey.asCompileString, key, val)
+				};
+			};
+			currentEnvironment
+		};
+
+		~process = {
+			var subdivisions;
+			var i;
+			~items = ~getUpstreamItems.();
+			if(~wildcards.size == 0) {
+				// no boundaries: treat the gen's time block as one unit
+				subdivisions = [[~time, ~time + ~dur]];
+			} {
+				subdivisions = ~getSubdivisions.();
+			};
+
+			i = 0;
+			subdivisions.do { |pair|
+				var curve = ~curve.next;
+				var midpoint = ~midpoint.next;
+				var env = Env([0, midpoint, 1], [midpoint, 1 - midpoint], [curve.neg, curve]);
+				var time, endTime, dur;
+
+				#time, endTime = pair;
+				dur = endTime - time;
+
+				// roll up to the start of this bit
+				while {
+					~items[i].notNil and: {
+						~items[i][\time] < time
+					}
+				} {
+					i = i + 1;
+				};
+				while {
+					~items[i].notNil and: {
+						~items[i][\time] <= endTime
+					}
+				} {
+					~items[i][\time] = env[(~items[i][\time] - time) / dur] * dur + time;
+					i = i + 1;
+				};
+			};
+
+			~items
+		};
+
+		~getSubdivisions = {
+			var endTime = ~time + ~dur - 0.0001;
+			var lastTime;
+			var result = [[~time, nil]];  // drop later
+			var lastItem = block { |break|
+				~items.do { |item|
+					case
+					{ item[\time].inclusivelyBetween(~time, endTime) } {
+						if(~wildcards.includesEqual(item[\wildcard])) {
+							result.last[1] = item[\time] - 0.0001;
+							result = result.add([item[\time], nil]);
+						};
+					}
+					{ item[\time] >= endTime } {
+						break.(item)
+					}
+				};
+				nil
+			};
+			if(lastItem.notNil) {
+				result.last[1] = lastItem[\time] - 0.0001;
+				result = result.add([lastItem[\time], endTime]);
+			} {
+				result.last[1] = endTime;
+			};
+			result.reject { |pair| pair[1] < pair[0] }
+		};
+
+		~snippet.("warpTime", "\\warpTime(curve, midpoint, wildcards)");
+	} => PR(\clGenWarpTime);
+
 	// PR(\clGen).clone {
 	//
 	// } => PR(\clGenLeadTo);
