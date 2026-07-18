@@ -832,17 +832,17 @@ protect {
 				};
 			};
 		};
+		// Used to say "~articNonAccentString"
+		// but I can't do that because $= is a member,
+		// but $= should not be a rest. Only $-, $., $_
+		// note that removeEvery makes you think it should accept single items
+		// but it must be a collection
+		~restChars = "-" ++ ~articNonAccentString.removeEvery("=");
 		~isRestChar = { |item|
 			if(item.isKindOf(Dictionary)) {
 				item = item[\item];
 			};
-			// comment may be totally wrong for = vs -
-			// tricky: for isPitch parameters,
-			// "." compiles to an articulation pool,
-			// which is totally incompatible with this usage
-
-			// btw: why did I say item == $. here? Everywhere else, '-' is the rest
-			~articNonAccentString.includes(item) or: { item.tryPerform(\asFloat) == 45 }
+			~restChars.includes(item) or: { item.tryPerform(\asFloat) == 45 }
 		};
 		~snippet.("rest", "\\rest(##switch, wildcards, restItem, trueRest##)");
 	} => PR(\clGenRest);
@@ -1149,6 +1149,9 @@ protect {
 		~snippet.("shuf", "\\shuf(##items, wildcards, reset##)");
 	} => PR(\clGenShuf);
 
+	// can this perhaps be deprecated?
+	// Use of Pnshuf in clGenShuf means that it will embed 'n' items only
+	// so how is that different from shufn?
 	PR(\clGenShuf).clone {
 		~makeStream = {
 			~seqStream = Pn(Pshuf(~pool.asArray, 1), inf).collect(_.item).asStream;
@@ -1157,8 +1160,64 @@ protect {
 			Pfin(~repeats, Pn(Pshuf(~pool, 1), inf)).embedInStream(inval)
 		};
 		~helpString = "\\shufn(\"items\")";
-		~snippet.("shufn", "\\shuf(##items, wildcards, reset##)");
+		~snippet.("shufn", "\\shufn(##items, wildcards, reset##)");
 	} => PR(\clGenShufn);
+
+	PR(\clGenShuf).clone {
+		~shufPrep = ~localPrep;
+		~localPrep = {
+			var size;
+			~pool = ~args[0];
+			if(~isNumProxy.(~pool)) {
+				// in case of \shufStep(16, ...), fake the format of "1234567890ABC..."
+				size = ~pool.next;
+				~pool = Array.fill(size, { |i|
+					(
+						item: SequenceNote(
+							if(i < 10) { i } { i + 55 },
+							nil, 0.9, nil
+						),
+						time: i / size,
+						dur: 1 / size
+					)
+				});
+			};
+			~checkEmpty.(~pool, "pool");
+			~step = ~args[1] ?? { ~pool.size div: 2 };
+			if(~args[2].isSequenceableCollection) {
+				~replaceItems = ~args[2].collect { |item| item.item };
+			} {
+				~replaceItems = [$*];
+			};
+			// if(~args[2].isNumber) {
+			// 	~doReset = ~args[2] > 0;
+			// } {
+			// 	~doReset = false;
+			// };
+			~doReset = ~args[3] ?? { 0 };
+			#[doReset].do { |key|
+				if(~isNumProxy.(key.envirGet).not) {
+					Error("%: % should be a number proxy".format(~protoID, key)).throw;
+				};
+			};
+			if(~repeats == \unset) { ~repeats = 1 };
+			currentEnvironment
+		};
+		~makeStream = {
+			~seqPattern = PshufSteps(~pool.size, ~step, inf).collect { |index|
+				~pool[index][\item]
+			};
+			~seqStream = ~seqPattern.asStream;
+		};
+		// embedInStream is for generators embedded in pools, should use repeats
+		~embedInStream = { |inval|
+			PshufSteps(~pool.size, ~step.next, ~repeats.next).collect { |index|
+				~pool[index][\item]
+			}.embedInStream(inval)
+		};
+		~helpString = "\\shufStep(\"items, step, wildcards, reset\")";
+		~snippet.("shufStep", "\\shufStep(##items, step, wildcards, reset##)");
+	} => PR(\clGenShufStep);
 
 	PR(\clGenSeq).clone {
 		~localPrep = {
@@ -2477,7 +2536,10 @@ protect {
 				while {
 					point = ~nextTimePoint.();
 					point.notNil and: {
-						point = ~deltaIndexFromItem.(point[\item]);
+						if(point.isKindOf(IdentityDictionary)) {
+							point = point[\item];
+						};
+						point = ~deltaIndexFromItem.(point);
 						point > lastPt
 					}
 				} {
