@@ -2597,10 +2597,15 @@ Proto {
 					~postDefaultsPbind.set(key, BPStream(envKey));
 				};
 			} {
-				~defaults.put(key, value);
+				~prSetInDefaults.(key, value);
+				// ~defaults.put(key, value);
 			};
 		};
 		currentEnvironment
+	};
+	// a clone may need to override this
+	~prSetInDefaults = { |key, value|
+		~defaults.put(key, value);
 	};
 
 	// a for amp; f, m, others by letters
